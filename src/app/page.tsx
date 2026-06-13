@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import AjukanPermohonanWizard from "./dashboard/contents/opd/ajukan-permohonan/AjukanPermohonan";
+import Image from "next/image";
+import Link from "next/link";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,14 +21,6 @@ type MenuKey = OPDMenuKey | BPKADMenuKey;
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
-const IconDashboard = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-    <rect x="1" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
-    <rect x="10" y="1" width="7" height="7" rx="1.5" fill="currentColor" />
-    <rect x="1" y="10" width="7" height="7" rx="1.5" fill="currentColor" />
-    <rect x="10" y="10" width="7" height="7" rx="1.5" fill="currentColor" />
-  </svg>
-);
 const IconFilePlus = () => (
   <svg
     width="18"
@@ -287,7 +282,7 @@ const PAGE_META: Record<
   { title: string; subtitle: string; action?: { label: string } }
 > = {
   "ajukan-permohonan": {
-    title: "Ajukan Permohonan",
+    title: "Ajukan Permohonan Penghapusan Piutang",
     subtitle: "Buat dan kirimkan permohonan baru kepada BPKAD.",
     action: { label: "Buat Permohonan" },
   },
@@ -318,17 +313,19 @@ const PAGE_META: Record<
 
 // ── Logo ─────────────────────────────────────────────────────────────────────
 
-const DonezoLogo = () => (
-  <div className="flex items-center gap-2.5">
-    <div className="w-8 h-8 rounded-full border-2 border-[#1a4e8f] flex items-center justify-center">
-      <div className="w-3.5 h-3.5 rounded-full border-2 border-[#1a4e8f] relative">
-        <div className="absolute top-0.5 left-0.5 w-1 h-1 bg-[#1a4e8f] rounded-full" />
-      </div>
+const SiPuspitaLogo = () => (
+  <Link href="/">
+    <div className="relative">
+      <h1 className="text-2xl font-bold">
+        <span className="text-slate-800">Si</span>
+        <span className="text-amber-600">Puspita</span>
+      </h1>
+      <div className="mt-0.5 h-0.5 w-2/3 rounded-full bg-linear-to-r from-amber-400 to-amber-600"></div>
+      <p className="mt-1.5 text-[11px] font-medium text-slate-500">
+        Sistem Pengajuan Penghapusan Piutang Terintegrasi
+      </p>
     </div>
-    <span className="text-[#1a1a1a] font-semibold text-lg tracking-tight">
-      Donezo
-    </span>
-  </div>
+  </Link>
 );
 
 // ── NavItem ──────────────────────────────────────────────────────────────────
@@ -350,7 +347,7 @@ const NavItem: React.FC<NavItemProps> = ({
 }) => (
   <div
     onClick={onClick}
-    className={`relative flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all duration-150 ${
+    className={`relative flex cursor-pointer items-center gap-3 rounded-xl px-4 py-2.5 transition-all duration-150 ${
       active
         ? "bg-[#1a4e8f] text-white"
         : "text-[#7a8899] hover:bg-[#f0f4fb] hover:text-[#1a4e8f]"
@@ -360,7 +357,7 @@ const NavItem: React.FC<NavItemProps> = ({
     <span className="text-sm font-medium">{label}</span>
     {badge !== undefined && (
       <span
-        className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
+        className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
           active ? "bg-white/20 text-white" : "bg-[#e8f0fb] text-[#1a4e8f]"
         }`}
       >
@@ -382,14 +379,14 @@ const Sidebar: React.FC<SidebarProps> = ({ role, active, onNavigate }) => {
   const menus = role === "OPD" ? OPD_MENUS : BPKAD_MENUS;
 
   return (
-    <aside className="w-60 min-h-screen bg-white flex flex-col border-r border-[#f0f0f0] shrink-0">
+    <aside className="flex min-h-screen w-60 shrink-0 flex-col border-r border-[#f0f0f0] bg-white">
       <div className="px-5 pt-7 pb-8">
-        <DonezoLogo />
+        <SiPuspitaLogo />
       </div>
 
       {/* Dynamic menu based on role */}
-      <div className="px-3 mb-4 flex-1">
-        <p className="text-[10px] font-semibold text-[#b0bac5] tracking-widest uppercase px-4 mb-2">
+      <div className="mb-4 flex-1 px-3">
+        <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
           Menu
         </p>
         {menus.map((item) => (
@@ -405,8 +402,8 @@ const Sidebar: React.FC<SidebarProps> = ({ role, active, onNavigate }) => {
       </div>
 
       {/* General — always shown */}
-      <div className="px-3 border-t border-[#f0f0f0] pt-3 pb-3">
-        <p className="text-[10px] font-semibold text-[#b0bac5] tracking-widest uppercase px-4 mb-2">
+      <div className="border-t border-[#f0f0f0] px-3 pt-3 pb-3">
+        <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
           General
         </p>
         <NavItem icon={<IconSettings />} label="Settings" onClick={() => {}} />
@@ -449,11 +446,11 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#ebebeb] bg-white hover:bg-[#f7f8fa] text-[#1a1a1a] text-sm font-medium transition-colors"
+        className="flex items-center gap-2 rounded-xl border border-[#ebebeb] bg-white px-3 py-2 text-sm font-medium text-[#1a1a1a] transition-colors hover:bg-[#f7f8fa]"
       >
         <IconUsers />
         <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleColors[role]}`}
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${roleColors[role]}`}
         >
           {role}
         </span>
@@ -461,8 +458,8 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-44 bg-white border border-[#ebebeb] rounded-xl shadow-lg z-50 overflow-hidden py-1">
-          <p className="text-[10px] font-semibold text-[#b0bac5] tracking-widest uppercase px-4 py-2">
+        <div className="absolute top-full left-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-[#ebebeb] bg-white py-1 shadow-lg">
+          <p className="px-4 py-2 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
             Pilih User
           </p>
           {roles.map((r) => (
@@ -472,14 +469,14 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
                 onChange(r);
                 setOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
+              className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
                 role === r
-                  ? "bg-[#f0f4fb] text-[#1a4e8f] font-medium"
+                  ? "bg-[#f0f4fb] font-medium text-[#1a4e8f]"
                   : "text-[#4a5568] hover:bg-[#f7f8fa]"
               }`}
             >
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`h-2 w-2 rounded-full ${
                   role === r ? "bg-[#1a4e8f]" : "bg-[#d1d8e0]"
                 }`}
               />
@@ -497,52 +494,84 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
+// ── Header ───────────────────────────────────────────────────────────────────
+
 interface HeaderProps {
   role: UserRole;
   onRoleChange: (role: UserRole) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ role, onRoleChange }) => (
-  <header className="h-17 bg-white border-b border-[#f0f0f0] flex items-center px-8 gap-4 shrink-0">
-    <div className="flex items-center gap-2.5 bg-[#f7f8fa] border border-[#ebebeb] rounded-xl px-4 py-2.5 flex-1 max-w-85">
-      <IconSearch />
-      <span className="text-[#b0bac5] text-sm flex-1">Search task</span>
-      <div className="flex items-center gap-1 text-[#b0bac5] text-xs border border-[#e0e0e0] rounded-md px-1.5 py-0.5">
-        <span>⌘</span>
-        <span>F</span>
-      </div>
-    </div>
-    <div className="flex-1" />
+const Header: React.FC<HeaderProps> = ({ role, onRoleChange }) => {
+  // Data user berdasarkan role
+  const userData: Record<
+    UserRole,
+    {
+      name: string;
+      subtitle: string;
+      initials: string;
+      avatarGradient: string;
+    }
+  > = {
+    OPD: {
+      name: "Disdik",
+      subtitle: "Dinas Pendidikan dan Kebudayaan",
+      initials: "DP",
+      avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
+    },
+    BPKAD: {
+      name: "BPKAD",
+      subtitle: "Badan Pengelolaan Keuangan dan Aset Daerah",
+      initials: "BK",
+      avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+    },
+  };
 
-    {/* Role Dropdown */}
-    <RoleDropdown role={role} onChange={onRoleChange} />
+  const currentUser = userData[role];
 
-    <button className="w-9 h-9 flex items-center justify-center text-[#7a8899] hover:text-[#1a4e8f] hover:bg-[#f0f4fb] rounded-xl transition-colors">
-      <IconMail />
-    </button>
-    <button className="w-9 h-9 flex items-center justify-center text-[#7a8899] hover:text-[#1a4e8f] hover:bg-[#f0f4fb] rounded-xl transition-colors">
-      <IconBell />
-    </button>
-    <div className="w-px h-8 bg-[#ebebeb]" />
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-linear-to-br from-[#f4a07a] to-[#e07858] flex items-center justify-center text-white text-sm font-semibold">
-        TM
+  return (
+    <header className="flex h-17 shrink-0 items-center gap-4 border-b border-[#f0f0f0] bg-white px-8">
+      <div className="flex max-w-85 flex-1 items-center gap-2.5 rounded-xl border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5">
+        <IconSearch />
+        <span className="flex-1 text-sm text-[#b0bac5]">Search task</span>
+        <div className="flex items-center gap-1 rounded-md border border-[#e0e0e0] px-1.5 py-0.5 text-xs text-[#b0bac5]">
+          <span>⌘</span>
+          <span>F</span>
+        </div>
       </div>
-      <div className="flex flex-col">
-        <span className="text-[#1a1a1a] text-sm font-semibold leading-tight">
-          Totok Michael
-        </span>
-        <span className="text-[#b0bac5] text-xs">tmichael20@mail.com</span>
+      <div className="flex-1" />
+
+      {/* Role Dropdown */}
+      <RoleDropdown role={role} onChange={onRoleChange} />
+
+      <button className="flex h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f]">
+        <IconMail />
+      </button>
+      <button className="flex h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f]">
+        <IconBell />
+      </button>
+      <div className="h-8 w-px bg-[#ebebeb]" />
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br ${currentUser.avatarGradient} text-sm font-semibold text-white`}
+        >
+          {currentUser.initials}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm leading-tight font-semibold text-slate-800">
+            {currentUser.name}
+          </span>
+          <span className="text-xs text-slate-500">{currentUser.subtitle}</span>
+        </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 // ── Empty content placeholder ─────────────────────────────────────────────────
 
 const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex flex-col items-center justify-center h-64 rounded-2xl border-2 border-dashed border-[#d8e4f5] bg-white/60 gap-3">
-    <div className="w-10 h-10 rounded-full bg-[#e8f0fb] flex items-center justify-center text-[#1a4e8f] opacity-60">
+  <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#d8e4f5] bg-white/60">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8f0fb] text-[#1a4e8f] opacity-60">
       <svg
         width="20"
         height="20"
@@ -555,7 +584,7 @@ const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
         <path d="M10 7v6M7 10h6" strokeLinecap="round" />
       </svg>
     </div>
-    <p className="text-[#b0bac5] text-sm font-medium">— konten {label} —</p>
+    <p className="text-sm font-medium text-[#b0bac5]">— konten {label} —</p>
   </div>
 );
 
@@ -569,24 +598,20 @@ const MainContent: React.FC<MainContentProps> = ({ activeMenu }) => {
   const meta = PAGE_META[activeMenu];
 
   return (
-    <main className="flex-1 bg-[#f7f8fa] p-8 overflow-y-auto">
-      <div className="flex items-start justify-between mb-8">
+    <main className="flex-1 overflow-y-auto bg-[#f7f8fa] px-8 py-4">
+      <div className="mb-4 flex items-start justify-between leading-snug">
         <div>
-          <h1 className="text-3xl font-bold text-[#1a1a1a] mb-1">
+          <h1 className="text-xl font-bold text-[#1a1a1a] uppercase">
             {meta.title}
           </h1>
-          <p className="text-[#9aa5b4] text-sm">{meta.subtitle}</p>
+          <p className="text-sm text-[#44474d]">{meta.subtitle}</p>
         </div>
-        {meta.action && (
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 bg-[#1a4e8f] hover:bg-[#153d7a] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-              <span className="text-lg leading-none">+</span>
-              {meta.action.label}
-            </button>
-          </div>
-        )}
       </div>
-      <EmptyContent label={meta.title} />
+      {activeMenu === "ajukan-permohonan" ? (
+        <AjukanPermohonanWizard />
+      ) : (
+        <EmptyContent label={meta.title} />
+      )}
     </main>
   );
 };
@@ -608,7 +633,7 @@ export default function DonezoPage() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f7f8fa] font-sans">
       <Sidebar role={role} active={activeMenu} onNavigate={setActiveMenu} />
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header role={role} onRoleChange={handleRoleChange} />
         <MainContent activeMenu={activeMenu} />
       </div>
