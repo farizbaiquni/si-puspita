@@ -118,6 +118,12 @@ export interface WizardStateNonPUPN {
    * Key adalah kode opsi ("A"–"F"); value null berarti belum diupload.
    */
   dokumenKetidakmampuan: Record<string, DokumenUpload | null>;
+
+  // P4 — data penanggung utang
+  namaWP: string;
+  alamatWP: string;
+  nik: string;
+  sebabPiutangMacet: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ import type {
   DokumenUpload,
   JenisPiutang,
   JalurPengajuan,
+  Pengajuan,
 } from "@/types/types";
 import {
   BATAS_WAKTU_NON_PUPN,
@@ -114,6 +115,126 @@ async function validatePDF(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Generator Nomor Registrasi
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Menghasilkan Nomor Registrasi unik untuk setiap pengajuan yang berhasil
+ * diinput. Format: PGJ-<tahun>-<timestamp 6 digit terakhir><random 3 digit>
+ * Kombinasi timestamp + random mencegah duplikasi meski dua pengajuan
+ * dibuat pada milidetik yang sama.
+ */
+function generateNomorRegistrasi(): string {
+  const tahun = new Date().getFullYear();
+  const timestampPart = String(Date.now()).slice(-6);
+  const randomPart = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `PGJ-${tahun}-${timestampPart}${randomPart}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Builder — konversi WizardState ke Pengajuan
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tandai dokumen dengan keterangan jenis — disimpan di field id dengan prefix "keterangan||" */
+function tagDok(dok: DokumenUpload, keterangan: string): DokumenUpload {
+  return { ...dok, id: `keterangan||${keterangan}||${dok.id}` };
+}
+
+function buildPengajuan(state: WizardState): Pengajuan {
+  const isPUPN = state.jalur === "PUPN";
+  const nominal = parseNominal(state.nominalUtang);
+
+  // Kumpulkan semua dokumen yang valid, tandai dengan keterangan jenisnya
+  const dokumen: DokumenUpload[] = [];
+  if (isPUPN) {
+    if (state.pupn.dokumenSKRD)
+      dokumen.push(
+        tagDok(
+          state.pupn.dokumenSKRD,
+          `SKRD — No. ${state.pupn.nomorSKRD || "-"}`,
+        ),
+      );
+    if (state.pupn.dokumenSTRD)
+      dokumen.push(
+        tagDok(
+          state.pupn.dokumenSTRD,
+          `STRD — No. ${state.pupn.nomorSTRD || "-"}`,
+        ),
+      );
+    const LABEL_DOK_PUPN: Record<string, string> = {
+      beritaAcaraIdentifikasi: "Berita Acara Identifikasi Lapangan",
+      suratKematian: "Surat Keterangan Kematian / Akte Kematian",
+      suratUsahaTidakBeroperasi: "Surat Keterangan Usaha Tidak Beroperasi",
+      suratJaminanTidakCukup: "Surat Keterangan Jaminan Tidak Cukup",
+      suratKeberadaanTidakDiketahui:
+        "Surat Keterangan Keberadaan Tidak Diketahui",
+      suratTidakMampu: "Surat Keterangan Tidak Mampu",
+      suratAhliWarisTidakMampu:
+        "Surat Keterangan Ahli Waris / Penjamin Tidak Mampu",
+    };
+    Object.entries(state.pupn.dokumenPendukung).forEach(([key, d]) => {
+      if (d) dokumen.push(tagDok(d, LABEL_DOK_PUPN[key] ?? key));
+    });
+  } else {
+    // Non-PUPN: tandai dokumen penagihan dengan label opsi yang dipilih
+    const labelPenagihan = state.nonPupn.upayaPenagihanDipilih
+      .map((kode) => {
+        const found = OPSI_PENAGIHAN_OPTIMAL.find((o) => o.kode === kode);
+        return found ? `${kode}. ${found.label}` : kode;
+      })
+      .join(", ");
+    state.nonPupn.dokumenPenagihanOptimal.forEach((d, i) =>
+      dokumen.push(
+        tagDok(
+          d,
+          `Bukti Penagihan Optimal${state.nonPupn.dokumenPenagihanOptimal.length > 1 ? ` (${i + 1})` : ""} — ${labelPenagihan}`,
+        ),
+      ),
+    );
+    // Non-PUPN: tandai dokumen ketidakmampuan dengan label opsi
+    Object.entries(state.nonPupn.dokumenKetidakmampuan).forEach(([kode, d]) => {
+      if (!d) return;
+      const found = OPSI_KETIDAKMAMPUAN.find((o) => o.kode === kode);
+      const label = found ? `${kode}. ${found.label}` : kode;
+      dokumen.push(tagDok(d, `Bukti Ketidakmampuan — ${label}`));
+    });
+  }
+
+  return {
+    id: generateNomorRegistrasi(),
+    tanggalDibuat: new Date().toISOString(),
+    status: "DIAJUKAN",
+    jalur: state.jalur,
+    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
+    dokumen,
+    dataPenanggung: isPUPN
+      ? {
+          namaWP: state.pupn.namaWP,
+          alamatWP: state.pupn.alamatWP,
+          nik: state.pupn.nik,
+          pekerjaan: state.pupn.pekerjaan,
+          jenisPiutang: state.jenisPiutang,
+          nominalUtang: nominal,
+          nomorSKRD: state.pupn.nomorSKRD,
+          nomorSTRD: state.pupn.nomorSTRD,
+          sebabPiutangMacet: state.pupn.sebabPiutangMacet,
+          adaBLUD: state.pupn.adaBLUD ?? false,
+        }
+      : {
+          namaWP: state.nonPupn.namaWP,
+          alamatWP: state.nonPupn.alamatWP,
+          nik: state.nonPupn.nik,
+          pekerjaan: "",
+          jenisPiutang: state.jenisPiutang,
+          nominalUtang: nominal,
+          sebabPiutangMacet: state.nonPupn.sebabPiutangMacet,
+        },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Initial state
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -150,6 +271,10 @@ const initialState: WizardState = {
     dokumenPenagihanOptimal: [],
     dokumenKetidakmampuan: {},
     opsiKetidakmampuanDipilih: [],
+    namaWP: "",
+    alamatWP: "",
+    nik: "",
+    sebabPiutangMacet: "",
   },
   selesai: false,
   berhenti: false,
@@ -925,7 +1050,8 @@ const ModalBerhenti: React.FC<{
 const ModalSelesai: React.FC<{
   jalur: JalurPengajuan;
   onReset: () => void;
-}> = ({ jalur, onReset }) => (
+  onLihatDaftar?: () => void;
+}> = ({ jalur, onReset, onLihatDaftar }) => (
   <div
     style={{
       position: "fixed",
@@ -1005,6 +1131,23 @@ const ModalSelesai: React.FC<{
         <strong>Lihat Daftar Pengajuan</strong>.
       </p>
       <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+        {onLihatDaftar && (
+          <button
+            onClick={onLihatDaftar}
+            style={{
+              background: C.accentLight,
+              color: C.accent,
+              border: `1.5px solid ${C.accent}`,
+              borderRadius: 10,
+              padding: "11px 24px",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Lihat Daftar Pengajuan
+          </button>
+        )}
         <button
           onClick={onReset}
           style={{
@@ -1065,7 +1208,7 @@ const StepJenisPiutang: React.FC<{
     <QuestionCard
       nomor="1"
       judul="Apa jenis piutang daerah yang akan diproses ?"
-      deskripsi="Pilih jenis piutang daerah sesuai sumber kewajiban yang akan diajukan untuk proses penyelesaian."
+      deskripsi="Pilih jenis piutang daerah yang akan diproses sesuai dengan asal mula kewajiban/utang tersebut."
     >
       <div className="space-y-2">
         {JENIS_PIUTANG_OPTIONS.map((opt) => (
@@ -1607,7 +1750,12 @@ const PupnP4: React.FC<{
 // Jalur Non-PUPN
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NONPUPN_STEPS = ["Usia Piutang", "Bukti Penagihan", "Ketidakmampuan"];
+const NONPUPN_STEPS = [
+  "Usia Piutang",
+  "Bukti Penagihan",
+  "Ketidakmampuan",
+  "Data Penanggung",
+];
 
 const NonPupnP1: React.FC<{
   state: WizardState;
@@ -1861,12 +2009,12 @@ const NonPupnP2: React.FC<{
 
 const NonPupnP3: React.FC<{
   state: WizardState;
-  onSubmit: (data: {
+  onNext: (data: {
     dipilih: string[];
     dokumen: Record<string, DokumenUpload | null>;
   }) => void;
   onBack: () => void;
-}> = ({ state, onSubmit, onBack }) => {
+}> = ({ state, onNext, onBack }) => {
   const nominal = parseNominal(state.nominalUtang);
   const diatasMiliar = nominal > 1_000_000_000;
   const [dipilih, setDipilih] = useState<string[]>(
@@ -1938,9 +2086,197 @@ const NonPupnP3: React.FC<{
       >
         <BtnSecondary label="← Kembali" onClick={onBack} />
         <Btn
-          label="Kirim Pengajuan ✓"
+          label="Lanjut →"
           disabled={!allOk}
-          onClick={() => onSubmit({ dipilih, dokumen })}
+          onClick={() => onNext({ dipilih, dokumen })}
+        />
+      </div>
+    </QuestionCard>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NonPupnP4 — Pertanyaan 4: Data Penanggung Utang (Non-PUPN)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NonPupnP4: React.FC<{
+  state: WizardState;
+  onSubmit: (data: {
+    namaWP: string;
+    alamatWP: string;
+    nik: string;
+    sebabPiutangMacet: string;
+  }) => void;
+  onBack: () => void;
+}> = ({ state, onSubmit, onBack }) => {
+  const [namaWP, setNamaWP] = useState(state.nonPupn.namaWP ?? "");
+  const [alamatWP, setAlamatWP] = useState(state.nonPupn.alamatWP ?? "");
+  const [nik, setNik] = useState(state.nonPupn.nik ?? "");
+  const [sebabPiutangMacet, setSebabPiutangMacet] = useState(
+    state.nonPupn.sebabPiutangMacet ?? "",
+  );
+
+  const canSubmit =
+    (namaWP ?? "").trim().length >= 3 &&
+    (alamatWP ?? "").trim().length >= 5 &&
+    (nik ?? "").trim().length === 16 &&
+    (sebabPiutangMacet ?? "").trim().length >= 10;
+
+  // Format tanggal untuk tampilan
+  const tgl = state.nonPupn.tanggalTerjadi;
+  const tglDisplay = tgl
+    ? new Date(tgl).toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "-";
+
+  // Label jenis piutang
+  const jenisPiutangDisplay = labelJenis(state.jenisPiutang);
+
+  return (
+    <QuestionCard
+      nomor="4"
+      judul="Silahkan mengisi formulir data penanggung utang berikut ini"
+      deskripsi="Lengkapi identitas dan keterangan penanggung utang. Data bertanda * wajib diisi."
+      jalur="NON_PUPN"
+    >
+      {/* Info otomatis dari sistem */}
+      <div
+        style={{
+          background: "#f8fafc",
+          border: `1px solid ${C.border}`,
+          borderRadius: 10,
+          padding: "14px 16px",
+          marginBottom: 20,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: C.muted,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
+        >
+          Data Otomatis dari Sistem
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: "10px 16px",
+          }}
+        >
+          {[
+            {
+              label: "Tanggal Terjadinya Piutang",
+              value: tglDisplay,
+              icon: "📅",
+            },
+            {
+              label: "Jenis Piutang",
+              value: jenisPiutangDisplay,
+              icon: "📋",
+            },
+            {
+              label: "Sisa Piutang",
+              value: formatRupiah(state.nominalUtang),
+              icon: "💰",
+            },
+          ].map(({ label, value, icon }) => (
+            <div key={label}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: C.muted,
+                  marginBottom: 3,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <span>{icon}</span>
+                {label}
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: C.text,
+                  background: C.white,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 6,
+                  padding: "5px 10px",
+                }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Form input pengguna */}
+      <InputField
+        label="Nama Penanggung Utang"
+        value={namaWP}
+        placeholder="Masukkan nama lengkap sesuai KTP"
+        wajib
+        hint="Minimal 3 karakter."
+        onChange={setNamaWP}
+      />
+
+      <InputField
+        label="NIK"
+        value={nik}
+        placeholder="16 digit NIK"
+        wajib
+        hint="Sesuai KTP, 16 digit angka."
+        onChange={(v) => setNik(v.replace(/\D/g, "").slice(0, 16))}
+      />
+
+      <InputField
+        label="Alamat Penanggung Utang"
+        value={alamatWP}
+        placeholder="Jl. / Desa / Kelurahan, Kecamatan, Kabupaten"
+        wajib
+        hint="Alamat sesuai domisili penanggung utang."
+        onChange={setAlamatWP}
+      />
+
+      <TextAreaField
+        label="Keterangan Sebab Piutang Macet"
+        value={sebabPiutangMacet}
+        placeholder="Jelaskan secara singkat penyebab piutang tidak dapat ditagih, misalnya: meninggal dunia / bangkrut / tidak diketahui keberadaannya…"
+        wajib
+        onChange={setSebabPiutangMacet}
+      />
+
+      {!canSubmit && (namaWP || alamatWP || sebabPiutangMacet) && (
+        <Alert type="warning">
+          Pastikan semua kolom wajib telah terisi dengan benar sebelum mengirim
+          pengajuan.
+        </Alert>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: 20,
+          borderTop: `1px solid ${C.border}`,
+          paddingTop: 16,
+        }}
+      >
+        <BtnSecondary label="← Kembali" onClick={onBack} />
+        <Btn
+          label="Kirim Pengajuan ✓"
+          disabled={!canSubmit}
+          onClick={() => onSubmit({ namaWP, alamatWP, nik, sebabPiutangMacet })}
           success
         />
       </div>
@@ -2085,10 +2421,16 @@ const JalurBanner: React.FC<{ jalur: JalurPengajuan }> = ({ jalur }) => {
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function AjukanPermohonan() {
+export default function AjukanPermohonan({
+  onPengajuanBaru,
+  onLihatDaftar,
+}: {
+  onPengajuanBaru?: (p: Pengajuan) => void;
+  onLihatDaftar?: () => void;
+}) {
   const [state, setState] = useState<WizardState>(initialState);
   // phase: "umum-1" | "umum-2" | "pupn-1" | "pupn-2" | "pupn-3" | "pupn-4"
-  //        "nonpupn-1" | "nonpupn-2" | "nonpupn-3"
+  //        "nonpupn-1" | "nonpupn-2" | "nonpupn-3" | "nonpupn-4"
   const [phase, setPhase] = useState<string>("umum-1");
 
   const reset = useCallback(() => {
@@ -2136,7 +2478,9 @@ export default function AjukanPermohonan() {
                 ? 1
                 : phase === "nonpupn-3"
                   ? 2
-                  : -1;
+                  : phase === "nonpupn-4"
+                    ? 3
+                    : -1;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -2145,7 +2489,13 @@ export default function AjukanPermohonan() {
       {state.berhenti && (
         <ModalBerhenti pesan={state.pesanBerhenti} onClose={closeBerhenti} />
       )}
-      {state.selesai && <ModalSelesai jalur={state.jalur} onReset={reset} />}
+      {state.selesai && (
+        <ModalSelesai
+          jalur={state.jalur}
+          onReset={reset}
+          onLihatDaftar={onLihatDaftar}
+        />
+      )}
 
       {/* Header section */}
       <div className="mb-6">
@@ -2245,6 +2595,14 @@ export default function AjukanPermohonan() {
           state={state}
           onBack={() => setPhase("pupn-3")}
           onSubmit={(data) => {
+            const nextState: WizardState = {
+              ...state,
+              pupn: {
+                ...state.pupn,
+                ...(data as Partial<WizardState["pupn"]>),
+              },
+            };
+            onPengajuanBaru?.(buildPengajuan(nextState));
             updatePupn(data as Partial<WizardState["pupn"]>);
             update({ selesai: true });
           }}
@@ -2282,10 +2640,38 @@ export default function AjukanPermohonan() {
         <NonPupnP3
           state={state}
           onBack={() => setPhase("nonpupn-2")}
-          onSubmit={(data) => {
+          onNext={(data) => {
             updateNonPupn({
               opsiKetidakmampuanDipilih: data.dipilih,
               dokumenKetidakmampuan: data.dokumen,
+            });
+            setPhase("nonpupn-4");
+          }}
+        />
+      )}
+
+      {phase === "nonpupn-4" && (
+        <NonPupnP4
+          state={state}
+          onBack={() => setPhase("nonpupn-3")}
+          onSubmit={(data) => {
+            const updatedNonPupn = {
+              ...state.nonPupn,
+              namaWP: data.namaWP ?? "",
+              alamatWP: data.alamatWP ?? "",
+              nik: data.nik ?? "",
+              sebabPiutangMacet: data.sebabPiutangMacet ?? "",
+            };
+            const nextState: WizardState = {
+              ...state,
+              nonPupn: updatedNonPupn,
+            };
+            onPengajuanBaru?.(buildPengajuan(nextState));
+            updateNonPupn({
+              namaWP: data.namaWP ?? "",
+              alamatWP: data.alamatWP ?? "",
+              nik: data.nik ?? "",
+              sebabPiutangMacet: data.sebabPiutangMacet ?? "",
             });
             update({ selesai: true });
           }}

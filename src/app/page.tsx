@@ -2,8 +2,12 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import AjukanPermohonanWizard from "./dashboard/contents/opd/ajukan-permohonan/AjukanPermohonan";
-import Image from "next/image";
+import LihatDaftarPengajuan, {
+  MOCK_PENGAJUAN,
+} from "./dashboard/contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
+import VerifikasiPengajuan from "./dashboard/contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
 import Link from "next/link";
+import type { Pengajuan } from "@/types/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,7 +253,6 @@ const OPD_MENUS: MenuItem[] = [
     key: "lihat-daftar-pengajuan",
     icon: <IconList />,
     label: "Lihat Daftar Pengajuan",
-    badge: 5,
   },
 ];
 
@@ -258,7 +261,6 @@ const BPKAD_MENUS: MenuItem[] = [
     key: "verifikasi-pengajuan",
     icon: <IconChecklist />,
     label: "Verifikasi Pengajuan",
-    badge: 8,
   },
   {
     key: "lihat-pengajuan",
@@ -592,9 +594,23 @@ const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
 
 interface MainContentProps {
   activeMenu: MenuKey;
+  semuaPengajuan: Pengajuan[];
+  onPengajuanBaru: (p: Pengajuan) => void;
+  onStatusUpdate: (
+    id: string,
+    status: Pengajuan["status"],
+    catatan?: string,
+  ) => void;
+  onLihatDaftar: () => void;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ activeMenu }) => {
+const MainContent: React.FC<MainContentProps> = ({
+  activeMenu,
+  semuaPengajuan,
+  onPengajuanBaru,
+  onStatusUpdate,
+  onLihatDaftar,
+}) => {
   const meta = PAGE_META[activeMenu];
 
   return (
@@ -604,11 +620,20 @@ const MainContent: React.FC<MainContentProps> = ({ activeMenu }) => {
           <h1 className="text-xl font-bold text-[#1a1a1a] uppercase">
             {meta.title}
           </h1>
-          <p className="text-sm text-[#44474d]">{meta.subtitle}</p>
         </div>
       </div>
       {activeMenu === "ajukan-permohonan" ? (
-        <AjukanPermohonanWizard />
+        <AjukanPermohonanWizard
+          onPengajuanBaru={onPengajuanBaru}
+          onLihatDaftar={onLihatDaftar}
+        />
+      ) : activeMenu === "lihat-daftar-pengajuan" ? (
+        <LihatDaftarPengajuan semuaPengajuan={semuaPengajuan} />
+      ) : activeMenu === "verifikasi-pengajuan" ? (
+        <VerifikasiPengajuan
+          semuaPengajuan={semuaPengajuan}
+          onStatusUpdate={onStatusUpdate}
+        />
       ) : (
         <EmptyContent label={meta.title} />
       )}
@@ -622,6 +647,12 @@ export default function DonezoPage() {
   const [role, setRole] = useState<UserRole>("OPD");
   const [activeMenu, setActiveMenu] = useState<MenuKey>("ajukan-permohonan");
 
+  // ── Single source of truth untuk semua pengajuan ──────────────────────────
+  // Dimulai dari MOCK_PENGAJUAN yang di-import dari LihatDaftarPengajuan
+  const [semuaPengajuan, setSemuaPengajuan] = useState<Pengajuan[]>(() => [
+    ...MOCK_PENGAJUAN,
+  ]);
+
   // Reset active menu when role changes
   const handleRoleChange = (newRole: UserRole) => {
     setRole(newRole);
@@ -630,12 +661,38 @@ export default function DonezoPage() {
     );
   };
 
+  // Tambah pengajuan baru dari wizard OPD — status DIAJUKAN langsung masuk antrean
+  const handlePengajuanBaru = (p: Pengajuan) => {
+    setSemuaPengajuan((prev) => [p, ...prev]);
+  };
+
+  // Update status setelah verifikasi BPKAD (DISETUJUI / DITOLAK)
+  const handleStatusUpdate = (
+    id: string,
+    status: Pengajuan["status"],
+    catatan?: string,
+  ) => {
+    setSemuaPengajuan((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, status, catatanReviewer: catatan || p.catatanReviewer }
+          : p,
+      ),
+    );
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f7f8fa] font-sans">
       <Sidebar role={role} active={activeMenu} onNavigate={setActiveMenu} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header role={role} onRoleChange={handleRoleChange} />
-        <MainContent activeMenu={activeMenu} />
+        <MainContent
+          activeMenu={activeMenu}
+          semuaPengajuan={semuaPengajuan}
+          onPengajuanBaru={handlePengajuanBaru}
+          onStatusUpdate={handleStatusUpdate}
+          onLihatDaftar={() => setActiveMenu("lihat-daftar-pengajuan")}
+        />
       </div>
     </div>
   );
