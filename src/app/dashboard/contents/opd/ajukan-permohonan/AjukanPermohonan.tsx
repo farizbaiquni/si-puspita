@@ -1447,7 +1447,7 @@ const PupnP2: React.FC<{
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
           <InputField
-            label="Nomor SKRD"
+            label="Nomor Surat Ketetapan Retribusi Daerah (SKRD)"
             value={nomorSKRD}
             placeholder="No. SKRD/..."
             wajib
@@ -1463,7 +1463,7 @@ const PupnP2: React.FC<{
         </div>
         <div>
           <InputField
-            label="Nomor STRD Ketiga"
+            label="Nomor Surat Tagihan Retribusi Daerah (STRD) Ketiga"
             value={nomorSTRD}
             placeholder="No. STRD/..."
             wajib
