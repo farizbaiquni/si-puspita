@@ -103,7 +103,7 @@ export const MOCK_PENGAJUAN: Pengajuan[] = [
   {
     id: "PGJ-2025-005",
     tanggalDibuat: "2025-03-01T09:10:00Z",
-    status: "DRAFT",
+    status: "DIAJUKAN",
     jalur: "NON_PUPN",
     dataPenanggung: {
       namaWP: "Dewi Kusumawati",
@@ -235,7 +235,7 @@ export const MOCK_PENGAJUAN: Pengajuan[] = [
   {
     id: "PGJ-2025-012",
     tanggalDibuat: "2025-06-02T11:00:00Z",
-    status: "DRAFT",
+    status: "DIAJUKAN",
     jalur: "PUPN",
     dataPenanggung: {
       namaWP: "Hendra Wijaya",

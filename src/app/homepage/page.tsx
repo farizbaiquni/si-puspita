@@ -26,7 +26,673 @@ import {
   KeyRound,
   User,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+
+// ─── Bunga Menu — Data & Types ────────────────────────────────────────────────
+
+type KelopakId = "sop" | "flowchart" | "pengajuan" | "lacak" | "faq" | "daftar";
+
+interface KelopakItem {
+  id: KelopakId;
+  label: string;
+  icon: string;
+  tooltip: string;
+  modalTitle: string;
+  modalContent: React.ReactNode;
+}
+
+const FAQ_LIST = [
+  {
+    q: "Berapa nilai piutang minimal untuk jalur PUPN?",
+    a: "Piutang dengan nilai di atas Rp8.000.000 diarahkan ke jalur PUPN (Panitia Urusan Piutang Negara).",
+  },
+  {
+    q: "Dokumen apa saja yang perlu dilampirkan?",
+    a: "Surat permohonan, bukti piutang, laporan upaya penagihan, dan dokumen pendukung lainnya sesuai SOP.",
+  },
+  {
+    q: "Berapa lama proses verifikasi berlangsung?",
+    a: "Proses verifikasi BPKAD memakan waktu 5–10 hari kerja, tergantung kelengkapan dokumen.",
+  },
+  {
+    q: "Apakah OPD bisa memantau status pengajuan?",
+    a: "Ya, OPD dapat memantau status secara real-time melalui fitur Lacak Status Berkas di sistem ini.",
+  },
+];
+
+const ALUR_FLOWCHART_BUNGA = [
+  {
+    step: "1",
+    label: "OPD Ajukan Permohonan",
+    sub: "Input data & upload dokumen",
+  },
+  {
+    step: "2",
+    label: "Verifikasi BPKAD",
+    sub: "Pemeriksaan kelengkapan berkas",
+  },
+  { step: "3", label: "Review Bagian Hukum", sub: "Kajian aspek legalitas" },
+  {
+    step: "4",
+    label: "Pemeriksaan Inspektorat",
+    sub: "Audit & validasi internal",
+  },
+  {
+    step: "5",
+    label: "Persetujuan Pimpinan",
+    sub: "Keputusan akhir penghapusan",
+  },
+];
+
+const SOP_STEPS_BUNGA = [
+  {
+    no: "01",
+    judul: "Identifikasi Piutang Macet",
+    isi: "OPD mengidentifikasi piutang yang tidak tertagih selama lebih dari 3 tahun berturut-turut.",
+  },
+  {
+    no: "02",
+    judul: "Penyusunan Berkas Permohonan",
+    isi: "Lengkapi dokumen sesuai checklist: surat permohonan, bukti piutang, dan laporan upaya penagihan.",
+  },
+  {
+    no: "03",
+    judul: "Pengajuan ke BPKAD",
+    isi: "Submit permohonan melalui SI PUSPITA. Sistem akan otomatis menentukan jalur PUPN atau Non-PUPN.",
+  },
+  {
+    no: "04",
+    judul: "Proses Verifikasi",
+    isi: "BPKAD, Bagian Hukum, dan Inspektorat melakukan verifikasi bertahap sesuai ketentuan yang berlaku.",
+  },
+  {
+    no: "05",
+    judul: "Penerbitan SK Penghapusan",
+    isi: "Setelah disetujui Pimpinan BPKAD, Surat Keputusan Penghapusan Piutang diterbitkan dan didistribusikan ke OPD.",
+  },
+];
+
+const DAFTAR_PENGAJUAN_BUNGA = [
+  {
+    no: "001/PP/2025",
+    opd: "Dinas Kesehatan",
+    nilai: "Rp 12.500.000",
+    jalur: "PUPN",
+    status: "Verifikasi BPKAD",
+    warna: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  {
+    no: "002/PP/2025",
+    opd: "Dinas Pendidikan",
+    nilai: "Rp 4.750.000",
+    jalur: "Non-PUPN",
+    status: "Review Hukum",
+    warna: "bg-amber-100 text-amber-700 border-amber-200",
+  },
+  {
+    no: "003/PP/2025",
+    opd: "DPUPR",
+    nilai: "Rp 28.000.000",
+    jalur: "PUPN",
+    status: "Inspektorat",
+    warna: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  {
+    no: "004/PP/2025",
+    opd: "Dinas Perhubungan",
+    nilai: "Rp 3.200.000",
+    jalur: "Non-PUPN",
+    status: "Selesai ✓",
+    warna: "bg-green-100 text-green-700 border-green-200",
+  },
+];
+
+const WARNA_KELOPAK = ["#e85d04", "#f97316", "#fbbf24", "#f59e0b", "#f97316"];
+const SUDUT_KELOPAK = [0, 72, 144, 216, 288];
+
+// ─── Bunga Modal — Content Components ────────────────────────────────────────
+
+function ModalSOP() {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm leading-relaxed text-gray-500">
+        Standar Operasional Prosedur penghapusan piutang daerah di lingkungan
+        Pemerintah Kabupaten Kendal berdasarkan Permendagri dan regulasi yang
+        berlaku.
+      </p>
+      <div className="space-y-3">
+        {SOP_STEPS_BUNGA.map((s) => (
+          <div
+            key={s.no}
+            className="flex gap-4 rounded-xl border border-gray-100 bg-orange-50/60 p-4"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">
+              {s.no}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">{s.judul}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                {s.isi}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <p className="text-xs text-amber-700">
+          📌 Dasar hukum: PP No. 14 Tahun 2005, Permendagri No. 73 Tahun 2015,
+          dan Perbup Kendal terkait.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ModalFlowchart() {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm leading-relaxed text-gray-500">
+        Alur proses pengajuan penghapusan piutang dari OPD hingga persetujuan
+        akhir.
+      </p>
+      <div className="relative space-y-2">
+        {ALUR_FLOWCHART_BUNGA.map((item, i) => (
+          <div key={item.step} className="relative">
+            <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-600">
+                {item.step}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  {item.label}
+                </p>
+                <p className="text-xs text-gray-500">{item.sub}</p>
+              </div>
+            </div>
+            {i < ALUR_FLOWCHART_BUNGA.length - 1 && (
+              <div className="ml-[22px] h-3 w-0.5 bg-orange-200" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ModalPengajuan() {
+  const [jalur, setJalur] = useState<"pupn" | "non-pupn" | null>(null);
+  const [nilai, setNilai] = useState("");
+
+  const formatRupiah = (val: string) => {
+    const num = val.replace(/\D/g, "");
+    if (!num) return "";
+    return "Rp " + parseInt(num).toLocaleString("id-ID");
+  };
+
+  const handleNilai = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "");
+    setNilai(raw);
+    if (raw) {
+      setJalur(parseInt(raw) >= 8000000 ? "pupn" : "non-pupn");
+    } else {
+      setJalur(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm leading-relaxed text-gray-500">
+        Isi formulir di bawah untuk memulai pengajuan. Sistem akan otomatis
+        menentukan jalur proses berdasarkan nilai piutang.
+      </p>
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">
+            Nama OPD
+          </label>
+          <input
+            type="text"
+            placeholder="Contoh: Dinas Kesehatan Kab. Kendal"
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">
+            Nilai Piutang
+          </label>
+          <input
+            type="text"
+            placeholder="Rp 0"
+            value={nilai ? formatRupiah(nilai) : ""}
+            onChange={handleNilai}
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+          />
+        </div>
+        {jalur && (
+          <div
+            className={`rounded-lg border p-3 text-xs font-medium ${jalur === "pupn" ? "border-blue-200 bg-blue-50 text-blue-700" : "border-green-200 bg-green-50 text-green-700"}`}
+          >
+            {jalur === "pupn"
+              ? "⚡ Jalur PUPN — nilai ≥ Rp8.000.000, diteruskan ke Panitia Urusan Piutang Negara."
+              : "✅ Jalur Non-PUPN — nilai < Rp8.000.000, diproses langsung oleh BPKAD."}
+          </div>
+        )}
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-600">
+            Keterangan Singkat
+          </label>
+          <textarea
+            rows={3}
+            placeholder="Jelaskan latar belakang pengajuan penghapusan piutang..."
+            className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+          />
+        </div>
+      </div>
+      <button className="w-full rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-[#0b1f3a] transition hover:bg-amber-400 active:scale-[0.98]">
+        Ajukan Permohonan →
+      </button>
+    </div>
+  );
+}
+
+function ModalLacak() {
+  const [noRef, setNoRef] = useState("");
+  const [hasil, setHasil] = useState<
+    (typeof DAFTAR_PENGAJUAN_BUNGA)[0] | null | "not-found"
+  >(null);
+
+  const handleCari = () => {
+    if (!noRef.trim()) return;
+    const found = DAFTAR_PENGAJUAN_BUNGA.find((d) =>
+      d.no.toLowerCase().includes(noRef.toLowerCase()),
+    );
+    setHasil(found ?? "not-found");
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm leading-relaxed text-gray-500">
+        Masukkan nomor referensi pengajuan untuk memantau status berkas Anda.
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Contoh: 001/PP/2025"
+          value={noRef}
+          onChange={(e) => setNoRef(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleCari()}
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+        />
+        <button
+          onClick={handleCari}
+          className="rounded-lg bg-amber-500 px-4 text-sm font-semibold text-[#0b1f3a] transition hover:bg-amber-400 active:scale-[0.98]"
+        >
+          Cari
+        </button>
+      </div>
+      {hasil === "not-found" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-600">
+          ❌ Nomor referensi tidak ditemukan. Periksa kembali nomor yang Anda
+          masukkan.
+        </div>
+      )}
+      {hasil && hasil !== "not-found" && (
+        <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+          {[
+            ["No. Referensi", hasil.no],
+            ["OPD", hasil.opd],
+            ["Nilai Piutang", hasil.nilai],
+            ["Jalur", hasil.jalur],
+          ].map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">{k}</span>
+              <span className="text-sm text-gray-700">{v}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">Status</span>
+            <span
+              className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold ${hasil.warna}`}
+            >
+              {hasil.status}
+            </span>
+          </div>
+        </div>
+      )}
+      <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+        <p className="mb-2 text-xs font-semibold text-gray-500">
+          Pengajuan Terbaru
+        </p>
+        <div className="space-y-2">
+          {DAFTAR_PENGAJUAN_BUNGA.slice(0, 3).map((d) => (
+            <div
+              key={d.no}
+              className="flex cursor-pointer items-center justify-between text-xs"
+              onClick={() => {
+                setNoRef(d.no);
+                setHasil(d);
+              }}
+            >
+              <span className="text-gray-500">
+                {d.no} — {d.opd}
+              </span>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${d.warna}`}
+              >
+                {d.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalFAQ() {
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  return (
+    <div className="space-y-2">
+      <p className="mb-3 text-sm leading-relaxed text-gray-500">
+        Pertanyaan yang sering diajukan seputar proses penghapusan piutang
+        daerah.
+      </p>
+      {FAQ_LIST.map((f, i) => (
+        <div
+          key={i}
+          className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm"
+        >
+          <button
+            className="flex w-full items-center justify-between px-4 py-3 text-left"
+            onClick={() => setOpenIdx(openIdx === i ? null : i)}
+          >
+            <span className="text-sm font-medium text-gray-800">{f.q}</span>
+            <span className="ml-3 shrink-0 text-lg leading-none text-amber-500">
+              {openIdx === i ? "−" : "+"}
+            </span>
+          </button>
+          {openIdx === i && (
+            <div className="border-t border-gray-100 px-4 py-3">
+              <p className="text-xs leading-relaxed text-gray-500">{f.a}</p>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModalDaftarPengajuan() {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm leading-relaxed text-gray-500">
+        Daftar seluruh pengajuan penghapusan piutang yang sedang berjalan di
+        semua OPD.
+      </p>
+      <div className="space-y-2">
+        {DAFTAR_PENGAJUAN_BUNGA.map((d) => (
+          <div
+            key={d.no}
+            className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{d.opd}</p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {d.no} · Jalur {d.jalur}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${d.warna}`}
+              >
+                {d.status}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs text-gray-400">Nilai:</span>
+              <span className="text-xs font-medium text-amber-600">
+                {d.nilai}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-center text-xs text-gray-400">
+        Menampilkan 4 dari 4 pengajuan aktif · TA 2025
+      </p>
+    </div>
+  );
+}
+
+// ─── Bunga Menu — Kelopak Config ──────────────────────────────────────────────
+
+const KELOPAK_LIST: KelopakItem[] = [
+  {
+    id: "sop",
+    label: "SOP",
+    icon: "📄",
+    tooltip: "Standar Operasional Prosedur",
+    modalTitle: "Standar Operasional Prosedur",
+    modalContent: <ModalSOP />,
+  },
+  {
+    id: "flowchart",
+    label: "Flowchart",
+    icon: "🗂️",
+    tooltip: "Alur & Diagram Proses",
+    modalTitle: "Alur Proses Pengajuan",
+    modalContent: <ModalFlowchart />,
+  },
+  {
+    id: "pengajuan",
+    label: "Pengajuan",
+    icon: "📝",
+    tooltip: "Formulir Pengajuan Online",
+    modalTitle: "Formulir Pengajuan Baru",
+    modalContent: <ModalPengajuan />,
+  },
+  {
+    id: "lacak",
+    label: "Lacak",
+    icon: "🔍",
+    tooltip: "Lacak Status Berkas",
+    modalTitle: "Lacak Status Berkas",
+    modalContent: <ModalLacak />,
+  },
+  {
+    id: "faq",
+    label: "FAQ",
+    icon: "❓",
+    tooltip: "Pertanyaan Umum",
+    modalTitle: "Pertanyaan yang Sering Diajukan",
+    modalContent: <ModalFAQ />,
+  },
+];
+
+const KELOPAK_DAFTAR: KelopakItem = {
+  id: "daftar",
+  label: "Daftar",
+  icon: "☑️",
+  tooltip: "Daftar Pengajuan",
+  modalTitle: "Daftar Pengajuan",
+  modalContent: <ModalDaftarPengajuan />,
+};
+
+// ─── Bunga Modal ──────────────────────────────────────────────────────────────
+
+function ModalBunga({
+  item,
+  onClose,
+}: {
+  item: KelopakItem;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-end justify-center p-4 sm:items-center"
+      style={{
+        backgroundColor: "rgba(15,45,94,0.55)",
+        backdropFilter: "blur(6px)",
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        {/* Accent top bar */}
+        <div className="h-[3px] bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400" />
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-lg">
+              {item.icon}
+            </div>
+            <h2 className="text-base font-semibold text-gray-900">
+              {item.modalTitle}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-lg leading-none text-gray-400 transition hover:bg-gray-200 hover:text-gray-600"
+          >
+            ×
+          </button>
+        </div>
+        {/* Body */}
+        <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
+          {item.modalContent}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bunga SVG Component ──────────────────────────────────────────────────────
+
+function BungaSVG({
+  activeId,
+  centerActive,
+  onKelopakClick,
+  onCenterClick,
+}: {
+  activeId: KelopakId | null;
+  centerActive: boolean;
+  onKelopakClick: (id: KelopakId) => void;
+  onCenterClick: () => void;
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="-120 -120 240 240"
+      className="h-full w-full"
+    >
+      <defs>
+        <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow
+            dx="0"
+            dy="1"
+            stdDeviation="1.5"
+            floodColor="#000"
+            floodOpacity="0.3"
+          />
+        </filter>
+        <linearGradient id="textGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#fde68a" />
+        </linearGradient>
+      </defs>
+      <g>
+        {KELOPAK_LIST.map((item, index) => {
+          const isActive = activeId === item.id;
+          const angle = SUDUT_KELOPAK[index];
+          const flip = angle >= 90 && angle <= 270 ? 180 : 0;
+          return (
+            <g key={item.id}>
+              <ellipse
+                rx="20"
+                ry="44"
+                fill={WARNA_KELOPAK[index]}
+                stroke={isActive ? "#ffffff" : "rgba(255,255,255,0.3)"}
+                strokeWidth={isActive ? 2 : 1.5}
+                opacity={isActive ? 1 : 0.85}
+                transform={`rotate(${angle}) translate(0,-52)`}
+                style={{
+                  cursor: "pointer",
+                  transition: "stroke 0.2s, opacity 0.2s",
+                }}
+                onClick={() => onKelopakClick(item.id)}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.opacity = isActive ? "1" : "0.85")
+                }
+              >
+                <title>{item.tooltip}</title>
+              </ellipse>
+              <text
+                x="0"
+                y="-108"
+                transform={`rotate(${angle}) rotate(${flip}, 0, -108)`}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontFamily="Segoe UI, system-ui, sans-serif"
+                fontSize="13"
+                fontWeight="500"
+                letterSpacing="0.5"
+                fill="url(#textGradient)"
+                filter="url(#softShadow)"
+                stroke="rgba(0,0,0,0.25)"
+                strokeWidth="0.6"
+                paintOrder="stroke fill"
+                style={{ pointerEvents: "none", userSelect: "none" }}
+              >
+                {item.label}
+              </text>
+            </g>
+          );
+        })}
+        {/* Pusat */}
+        <circle
+          r="20"
+          fill="#1f2937"
+          stroke={centerActive ? "#f59e0b" : "rgba(255,255,255,0.25)"}
+          strokeWidth={centerActive ? 2.5 : 2}
+          style={{ cursor: "pointer", transition: "stroke 0.2s" }}
+          onClick={onCenterClick}
+        >
+          <title>Daftar Pengajuan</title>
+        </circle>
+        <text
+          x="0"
+          y="7"
+          fontFamily="Arial,sans-serif"
+          fontSize="18"
+          fontWeight="900"
+          fill={centerActive ? "#f59e0b" : "#d1d5db"}
+          textAnchor="middle"
+          style={{
+            cursor: "pointer",
+            userSelect: "none",
+            transition: "fill 0.2s",
+          }}
+          onClick={onCenterClick}
+        >
+          &#10003;
+        </text>
+      </g>
+    </svg>
+  );
+}
 
 const NAV_LINKS = [
   { label: "Beranda", hasDropdown: false, href: "#beranda" },
@@ -223,6 +889,29 @@ export default function SiPuspitaLandingPage() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // Bunga menu state
+  const [bungaActiveId, setBungaActiveId] = useState<KelopakId | null>(null);
+  const [bungaCenterActive, setBungaCenterActive] = useState(false);
+  const [modalItem, setModalItem] = useState<KelopakItem | null>(null);
+
+  const handleKelopakClick = (id: KelopakId) => {
+    setBungaCenterActive(false);
+    setBungaActiveId(id);
+    setModalItem(KELOPAK_LIST.find((k) => k.id === id) ?? null);
+  };
+
+  const handleCenterClick = () => {
+    setBungaActiveId(null);
+    setBungaCenterActive(true);
+    setModalItem(KELOPAK_DAFTAR);
+  };
+
+  const handleCloseModal = () => {
+    setModalItem(null);
+    setBungaActiveId(null);
+    setBungaCenterActive(false);
+  };
+
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoginError("");
@@ -241,71 +930,16 @@ export default function SiPuspitaLandingPage() {
     <div className="overflow-x-hidden bg-white font-sans text-gray-900">
       {/* ══════════════════ NAVBAR ══════════════════ */}
       <header className="sticky top-0 z-50">
-        {/* Top bar institusi */}
-        <div className="bg-[#1a4e8f] text-white">
-          <div className="mx-auto flex h-10 max-w-[1200px] items-center justify-between px-6">
-            <div className="flex items-center gap-3 text-[11px] text-blue-100">
-              <span className="font-semibold">Pemerintah Kabupaten Kendal</span>
-              <span className="h-3 w-px bg-blue-400/50" />
-              <span>Badan Pengelolaan Keuangan & Aset Daerah</span>
-            </div>
-            <div className="hidden items-center gap-4 text-[11px] text-blue-200 sm:flex">
-              <a
-                href="#kontak"
-                className="flex items-center gap-1.5 transition-colors hover:text-white"
-              >
-                <svg
-                  width="11"
-                  height="11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-                (0294) 381124
-              </a>
-              <span className="h-3 w-px bg-blue-400/50" />
-              <span className="flex items-center gap-1.5">
-                <svg
-                  width="11"
-                  height="11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" d="M12 6v6l4 2" />
-                </svg>
-                Senin–Jumat 08.00–16.00 WIB
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Main nav */}
-        <nav className="border-b border-gray-200 bg-white shadow-sm">
+        <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="mx-auto flex h-[68px] max-w-[1200px] items-center justify-between px-6">
             {/* Logo */}
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#1a4e8f] shadow-sm">
-                <FileSearch className="h-5 w-5 text-white" strokeWidth={2} />
-              </div>
-              <div className="leading-tight">
-                <div className="text-[16px] leading-none font-extrabold tracking-tight text-[#1a4e8f]">
-                  <span className="text-blue-500">SI</span> PUSPITA
-                </div>
-                <div className="mt-0.5 text-[10px] leading-none font-medium text-gray-400">
-                  BPKAD Kab. Kendal
-                </div>
-              </div>
-            </div>
+            <Image
+              src="/SiPuspita_Fix.png"
+              alt="Logo"
+              width={100}
+              height={100}
+              className="w-40"
+            />
 
             {/* Desktop links */}
             <div className="hidden items-center gap-1 lg:flex">
@@ -313,29 +947,34 @@ export default function SiPuspitaLandingPage() {
                 <a
                   key={label}
                   href={href}
-                  className="rounded-lg px-3.5 py-2 text-[13.5px] font-medium text-gray-600 transition-colors hover:bg-blue-50 hover:text-[#1a4e8f]"
+                  className="group relative px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:text-[#1a4e8f] focus-visible:outline-2 focus-visible:outline-blue-500"
                 >
                   {label}
+                  {/* Underline animasi */}
+                  <span className="absolute inset-x-3.5 bottom-1.5 h-[2px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 </a>
               ))}
             </div>
 
             {/* CTA */}
-            <div className="hidden items-center gap-2.5 lg:flex">
+            <div className="hidden items-center gap-3 lg:flex">
               <button
                 onClick={() => setLoginOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-[#1a4e8f] px-4 py-2 text-[13.5px] font-semibold text-[#1a4e8f] transition-colors hover:bg-blue-50"
+                className="group relative flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:text-[#1a4e8f]"
               >
                 <LogIn className="h-3.5 w-3.5" /> Masuk
+                <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
               </button>
-              <button className="rounded-lg bg-[#1a4e8f] px-5 py-2 text-[13.5px] font-semibold text-white shadow-sm transition-colors hover:bg-[#153e78]">
+              <button className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md">
                 Ajukan Sekarang
               </button>
             </div>
 
+            {/* Mobile toggler */}
             <button
-              className="p-2 text-gray-600 lg:hidden"
+              className="rounded-lg p-2 text-gray-600 transition-colors hover:text-[#1a4e8f] lg:hidden"
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
             >
               {mobileOpen ? (
                 <X className="h-5 w-5" />
@@ -345,291 +984,142 @@ export default function SiPuspitaLandingPage() {
             </button>
           </div>
 
-          {mobileOpen && (
-            <div className="flex flex-col gap-3 border-t border-gray-100 bg-white px-6 py-5 lg:hidden">
+          {/* Mobile menu */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out lg:hidden ${
+              mobileOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <div className="flex flex-col gap-3 border-t border-gray-100 bg-white/90 px-6 py-5 backdrop-blur-md">
               {NAV_LINKS.map(({ label, href }) => (
                 <a
                   key={label}
                   href={href}
-                  className="py-1 text-[15px] font-medium text-gray-700"
+                  className="group relative py-1 text-[14px] font-medium text-gray-700 transition-colors duration-200 hover:text-[#1a4e8f]"
                   onClick={() => setMobileOpen(false)}
                 >
                   {label}
+                  <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-[#1a4e8f] transition-all duration-300 ease-out group-hover:w-full" />
                 </a>
               ))}
-              <hr className="my-1 border-gray-100" />
-              <button className="w-fit rounded-lg bg-[#1a4e8f] px-5 py-2.5 text-[14px] font-semibold text-white">
+              <hr className="my-1 border-gray-200" />
+              <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:bg-yellow-300 hover:text-[#0a2342]">
                 Ajukan Sekarang
               </button>
+              <button
+                onClick={() => {
+                  setLoginOpen(true);
+                  setMobileOpen(false);
+                }}
+                className="group relative w-fit rounded-lg px-4 py-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-[#1a4e8f]"
+              >
+                Masuk
+                <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              </button>
             </div>
-          )}
+          </div>
         </nav>
       </header>
 
       {/* ══════════════════ HERO ══════════════════ */}
       <section
         id="beranda"
-        className="relative flex min-h-[480px] flex-col justify-end overflow-hidden bg-[#1a4e8f] text-white"
+        className="relative flex flex-col justify-center overflow-hidden bg-[#0f2d5e] text-white"
       >
-        {/* Background pattern — subtle grid */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "32px 32px",
-          }}
-        />
+        {/* Background glows */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-32 -right-32 h-[600px] w-[600px] rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 h-[400px] w-[400px] rounded-full bg-blue-800/30 blur-2xl" />
+        </div>
 
-        {/* Gradient overlay bottom */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0f2d5e]/90 via-[#1a4e8f]/60 to-transparent" />
+        {/* Left accent bar */}
+        <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
 
-        {/* Accent shapes */}
-        <div className="absolute top-0 right-0 h-[400px] w-[600px] rounded-bl-full bg-gradient-to-bl from-blue-400/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 h-[300px] w-[400px] rounded-tr-full bg-gradient-to-tr from-blue-900/40 to-transparent" />
-
-        <div className="relative mx-auto w-full max-w-[1200px] px-6 pt-14 pb-10">
-          <div className="grid items-center gap-10 lg:grid-cols-[1fr_380px]">
-            {/* Kiri — konten utama */}
-            <div>
+        {/* Content wrapper (no duplication) */}
+        <div className="relative mx-auto w-full max-w-[1100px] px-8 py-5">
+          <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
+            {/* ── Kiri: teks utama ── */}
+            <div className="flex-1">
               {/* Eyebrow */}
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/30 bg-white/15 backdrop-blur-sm">
-                  <FileSearch className="h-5 w-5 text-white" strokeWidth={2} />
-                </div>
-                <div>
-                  <div className="text-[12px] leading-none font-bold tracking-wide text-yellow-300 uppercase">
-                    Selamat Datang di
-                  </div>
-                  <div className="mt-0.5 text-[14px] leading-tight font-extrabold text-white">
-                    Portal SI PUSPITA — BPKAD Kabupaten Kendal
-                  </div>
-                </div>
-              </div>
-
-              <h1 className="mb-4 text-[32px] leading-[1.1] font-extrabold tracking-tight sm:text-[42px] lg:text-[48px]">
-                Sistem Pengajuan
-                <br />
-                <span className="text-yellow-300">Penghapusan Piutang</span>
-                <br />
-                Terintegrasi
-              </h1>
-              <p className="mb-7 max-w-[500px] text-[14px] leading-[1.8] text-blue-100">
-                Layanan digital untuk seluruh OPD Kabupaten Kendal — lebih
-                cepat, transparan, dan terintegrasi dengan BPKAD, Bagian Hukum,
-                serta Inspektorat.
+              <p className="mb-4 text-[11px] font-bold tracking-[0.2em] text-yellow-400 uppercase">
+                BPKAD Kabupaten Kendal
               </p>
 
-              {/* Search bar */}
-              <div className="flex max-w-[560px] flex-col gap-2.5 sm:flex-row">
-                <div className="flex flex-1 items-center gap-3 rounded-xl bg-white px-5 py-3 shadow-xl">
-                  <Search className="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari informasi atau lacak nomor registrasi…"
-                    className="flex-1 bg-transparent text-[13.5px] text-gray-700 outline-none placeholder:text-gray-400"
-                  />
-                </div>
-                <button className="flex items-center gap-2 rounded-xl bg-yellow-400 px-6 py-3 text-[13.5px] font-bold whitespace-nowrap text-[#0f2d5e] shadow-xl transition-all hover:bg-yellow-300">
-                  <Search className="h-4 w-4" /> Cari
-                </button>
-              </div>
+              {/* Headline */}
+              <h1 className="mb-5 text-[40px] leading-[1.1] font-extrabold tracking-tight lg:text-[52px]">
+                <span className="text-orange-400">SI </span>
+                <span className="text-purple-400">PUS</span>
+                <span className="text-green-400">PI</span>
+                <span className="text-red-400">TA</span>
+                <span className="mt-1 block text-[22px] font-normal text-blue-100 lg:text-[26px]">
+                  <span className="text-orange-400">Si</span>stem Pengajuan
+                  Pengha<span className="text-purple-400">pus</span>an{" "}
+                  <span className="text-green-400">Pi</span>utang{" "}
+                  <span className="text-red-400">T</span>erintegr
+                  <span className="text-red-400">a</span>si
+                </span>
+              </h1>
 
-              {/* Quick links */}
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[
-                  { label: "Ajukan Permohonan", href: "#formulir" },
-                  { label: "SOP & Flowchart", href: "#sop" },
-                  { label: "Lacak Status Berkas", href: "#tracking" },
-                  { label: "Kontak Layanan", href: "#kontak" },
-                ].map(({ label, href }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-[12px] font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/25"
-                  >
-                    {label} <ArrowRight className="h-3 w-3" />
-                  </a>
-                ))}
+              <p className="mb-10 text-[14px] leading-[1.9] text-blue-100">
+                Platform digital terintegrasi untuk OPD Kabupaten Kendal —
+                mempercepat proses penghapusan piutang secara transparan bersama
+                BPKAD, Bagian Hukum, dan Inspektorat.
+              </p>
+
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href="#formulir"
+                  className="inline-flex items-center gap-2 rounded-lg bg-yellow-400 px-6 py-3 text-[13px] font-bold text-[#0f2d5e] transition hover:bg-yellow-300"
+                >
+                  Ajukan Permohonan
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </a>
+
+                <a
+                  href="#tracking"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-6 py-3 text-[13px] font-semibold text-white/80 transition hover:border-white/40 hover:text-white"
+                >
+                  Lacak Status Berkas
+                </a>
               </div>
             </div>
 
-            {/* Kanan — mockup status pengajuan */}
-            <div className="hidden items-start justify-end pt-2 lg:flex">
-              <div className="w-[360px] overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-md">
-                {/* Card header */}
-                <div className="flex items-center justify-between border-b border-white/10 bg-white/10 px-5 py-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-600 bg-[#1a4e8f]">
-                      <FileSearch
-                        className="h-3.5 w-3.5 text-white"
-                        strokeWidth={2}
-                      />
-                    </div>
-                    <span className="text-[13px] font-bold text-white">
-                      Status Pengajuan
-                    </span>
-                  </div>
-                  <span className="rounded-full border border-yellow-400/20 bg-yellow-400/15 px-2.5 py-1 font-mono text-[10px] font-bold text-yellow-300">
-                    REG-2025-0042
-                  </span>
-                </div>
-
-                {/* Timeline */}
-                <div className="flex flex-col gap-0 px-5 py-4">
-                  {[
-                    {
-                      label: "Berkas Diterima",
-                      done: true,
-                      date: "10 Jun 2025",
-                      unit: "Sistem",
-                    },
-                    {
-                      label: "Verifikasi BPKAD",
-                      done: true,
-                      date: "13 Jun 2025",
-                      unit: "BPKAD",
-                    },
-                    {
-                      label: "Proses Telaah",
-                      done: true,
-                      date: "18 Jun 2025",
-                      unit: "BPKAD",
-                    },
-                    {
-                      label: "Proses Bagian Hukum",
-                      done: false,
-                      date: "Menunggu…",
-                      unit: "Bag. Hukum",
-                    },
-                    {
-                      label: "Proses Inspektorat",
-                      done: false,
-                      date: "—",
-                      unit: "Inspektorat",
-                    },
-                    {
-                      label: "Selesai",
-                      done: false,
-                      date: "—",
-                      unit: "Pimpinan",
-                    },
-                  ].map((item, i, arr) => (
-                    <div key={item.label} className="flex items-start gap-3">
-                      <div className="flex flex-shrink-0 flex-col items-center">
-                        <div
-                          className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full ${
-                            item.done
-                              ? "bg-white shadow-sm"
-                              : i === arr.findIndex((x) => !x.done)
-                                ? "bg-amber-400 shadow-sm"
-                                : "border border-white/20 bg-white/10"
-                          }`}
-                        >
-                          {item.done ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-[#1a4e8f]" />
-                          ) : i === arr.findIndex((x) => !x.done) ? (
-                            <Clock className="h-3 w-3 text-white" />
-                          ) : (
-                            <div className="h-2 w-2 rounded-full bg-white/30" />
-                          )}
-                        </div>
-                        {i < arr.length - 1 && (
-                          <div
-                            className={`h-6 w-px ${item.done ? "bg-white/40" : "bg-white/10"}`}
-                          />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 pb-0.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <p
-                            className={`text-[12.5px] leading-tight font-semibold ${item.done ? "text-white" : i === arr.findIndex((x) => !x.done) ? "text-yellow-300" : "text-white/35"}`}
-                          >
-                            {item.label}
-                          </p>
-                          <span
-                            className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${item.done ? "bg-white/15 text-white/70" : "bg-white/5 text-white/25"}`}
-                          >
-                            {item.unit}
-                          </span>
-                        </div>
-                        <p
-                          className={`mt-0.5 text-[10.5px] ${item.done ? "text-blue-200" : i === arr.findIndex((x) => !x.done) ? "text-yellow-400/80" : "text-white/25"}`}
-                        >
-                          {item.date}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Info pemohon */}
-                <div className="mx-4 mb-4 rounded-xl border border-white/10 bg-black/20 p-3.5">
-                  <p className="mb-2 text-[9px] font-bold tracking-widest text-white/40 uppercase">
-                    Pemohon
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      ["OPD", "Dinas Kesehatan"],
-                      ["Piutang", "Rp 142,5 Jt"],
-                      ["Tahun", "2022"],
-                    ].map(([k, v]) => (
-                      <div key={k}>
-                        <p className="text-[9px] text-white/35">{k}</p>
-                        <p className="text-[11px] leading-tight font-bold text-white/85">
-                          {v}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            {/* ── Kanan: bunga menu interaktif ── */}
+            <div className="flex w-full flex-col items-center lg:w-auto lg:shrink-0">
+              <div className="h-72 w-72 sm:h-80 sm:w-80">
+                <BungaSVG
+                  activeId={bungaActiveId}
+                  centerActive={bungaCenterActive}
+                  onKelopakClick={handleKelopakClick}
+                  onCenterClick={handleCenterClick}
+                />
               </div>
+              <p className="mt-2 text-center text-[13px] text-blue-100">
+                Klik kelopak untuk menu layanan
+              </p>
             </div>
           </div>
         </div>
 
         {/* Stats bar */}
-        <div className="relative border-t border-white/10 bg-[#0f2d5e]/80 backdrop-blur-sm">
-          <div className="mx-auto max-w-[1200px] px-6 py-4">
-            <div className="flex flex-wrap items-center gap-x-10 gap-y-2">
+        <div className="relative border-t border-white/10 bg-white/5 backdrop-blur-sm">
+          <div className="mx-auto max-w-[1100px] px-8 py-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[
                 { num: "24+", label: "OPD Terdaftar" },
                 { num: "100%", label: "Proses Digital" },
                 { num: "6", label: "Tahap Verifikasi" },
                 { num: "Real-time", label: "Pemantauan Status" },
               ].map(({ num, label }) => (
-                <div key={label} className="flex items-center gap-2.5">
-                  <span className="text-[18px] leading-none font-extrabold text-yellow-300">
+                <div key={label} className="flex flex-col gap-0.5">
+                  <span className="text-[20px] leading-none font-extrabold text-yellow-400">
                     {num}
                   </span>
-                  <span className="max-w-[90px] text-[12px] leading-snug text-blue-200">
-                    {label}
-                  </span>
-                  <span className="ml-2.5 hidden h-6 w-px bg-white/10 last:hidden" />
+                  <span className="text-[12px] text-blue-300">{label}</span>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════ TERINTEGRASI DENGAN ══════════════════ */}
-      <section className="border-b border-gray-200">
-        <div className="mx-auto max-w-[1200px] px-6 py-8">
-          <div className="mb-6 inline-flex items-center rounded-full border border-gray-300 px-4 py-1.5">
-            <span className="text-[13px] font-medium text-gray-600">
-              Terintegrasi dengan Unit Kerja
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
-            {STAKEHOLDERS.map((s, i) => (
-              <span
-                key={i}
-                className="text-[13px] font-bold tracking-wide text-gray-400"
-              >
-                {s}
-              </span>
-            ))}
           </div>
         </div>
       </section>
@@ -733,32 +1223,14 @@ export default function SiPuspitaLandingPage() {
               </div>
             ))}
           </div>
-
-          {/* Bottom CTA */}
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <a
-              href="#formulir"
-              className="inline-flex items-center gap-2.5 rounded-xl bg-[#1a4e8f] px-7 py-3 text-[14px] font-semibold text-white shadow-md transition-all hover:bg-[#153e78]"
-            >
-              Mulai Pengajuan Sekarang
-              <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href="#sop"
-              className="flex items-center gap-1.5 text-[14px] font-medium text-gray-500 transition-colors hover:text-[#1a4e8f]"
-            >
-              Lihat SOP <ArrowRight className="h-3.5 w-3.5" />
-            </a>
-          </div>
         </div>
       </section>
 
       {/* ══════════════════ KEUNGGULAN ══════════════════ */}
-      <section className="bg-white py-12 sm:py-16">
+      <section className="bg-white py-6 sm:py-8">
         <div className="mx-auto max-w-[1200px] px-6">
-          <h2 className="mb-8 text-center text-[28px] leading-[1.2] font-bold text-gray-900 sm:text-[36px]">
-            Mengapa SI PUSPITA Lebih Efektif
-            <br className="hidden sm:block" /> dari Proses Manual?
+          <h2 className="mb-8 text-center text-[25px] leading-[1.2] font-bold text-gray-900 sm:text-[36px]">
+            Mengapa SI PUSPITA Lebih Efektif dari Proses Manual?
           </h2>
 
           <div className="grid items-center gap-12 lg:grid-cols-2 xl:gap-20">
@@ -840,26 +1312,22 @@ export default function SiPuspitaLandingPage() {
       </section>
 
       {/* ══════════════════ ALUR PENGAJUAN ══════════════════ */}
-      <section id="sop" className="bg-[#f7faff] py-14 sm:py-20">
+      <section id="sop" className="bg-[#f7faff] py-7 sm:py-10">
         <div className="mx-auto max-w-[1200px] px-6">
           {/* ── Heading ── */}
           <div className="mb-14 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-1.5 text-[12px] font-semibold text-blue-600 shadow-sm">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
-              Proses Terstandar & Terintegrasi
-            </div>
             <h2 className="text-[32px] leading-[1.15] font-bold text-[#0f2d5e] sm:text-[42px]">
               Alur Pengajuan
-              <span className="text-[#2563eb]"> Penghapusan Piutang</span>
+              <span className="text-orange-700"> Penghapusan Piutang</span>
             </h2>
-            <p className="mx-auto mt-3 max-w-[480px] text-[15px] leading-[1.8] text-[#4a6fa5]">
+            <p className="mx-auto mt-3 text-[15px] leading-[1.8] text-[#29323e]">
               Empat langkah terstandar menghubungkan OPD, BPKAD, Bagian Hukum,
               dan Inspektorat dalam satu sistem terpadu.
             </p>
           </div>
 
           {/* ── Step Cards — redesigned with large numbered lanes ── */}
-          <div className="relative mb-16">
+          <div className="relative mb-8">
             {/* Connector dashed line desktop */}
             <div className="absolute top-[44px] right-[10%] left-[10%] z-0 hidden h-px border-t-2 border-dashed border-blue-200 lg:block" />
 
@@ -869,25 +1337,25 @@ export default function SiPuspitaLandingPage() {
                 const colors = [
                   {
                     ring: "ring-blue-500",
-                    bg: "bg-blue-600",
+                    bg: "bg-lime-900",
                     light: "bg-blue-50",
-                    text: "text-blue-600",
+                    text: "text-lime-900",
                     border: "border-blue-200",
                     numBg: "bg-blue-600",
                   },
                   {
                     ring: "ring-indigo-400",
-                    bg: "bg-indigo-600",
+                    bg: "bg-sky-900",
                     light: "bg-indigo-50",
-                    text: "text-indigo-600",
+                    text: "text-sky-900",
                     border: "border-indigo-200",
                     numBg: "bg-indigo-600",
                   },
                   {
                     ring: "ring-violet-400",
-                    bg: "bg-violet-600",
+                    bg: "bg-violet-900",
                     light: "bg-violet-50",
-                    text: "text-violet-600",
+                    text: "text-violet-900",
                     border: "border-violet-200",
                     numBg: "bg-violet-600",
                   },
@@ -915,7 +1383,7 @@ export default function SiPuspitaLandingPage() {
                       <div
                         className={`relative flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full border-4 border-white ${colors.bg} shadow-xl transition-transform duration-300 group-hover:scale-105`}
                       >
-                        <span className="mb-0.5 text-[10px] font-black tracking-widest text-white/60 uppercase">
+                        <span className="mb-0.5 text-[13px] font-black tracking-widest text-white uppercase">
                           {step.num}
                         </span>
                         <span className="[&>svg]:h-7 [&>svg]:w-7 [&>svg]:text-white">
@@ -946,18 +1414,18 @@ export default function SiPuspitaLandingPage() {
 
                     {/* Card */}
                     <div
-                      className={`w-full flex-1 rounded-2xl border ${colors.border} ${colors.light} p-5 transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md`}
+                      className={`w-full flex-1 rounded-md border ${colors.border} ${colors.light} p-5 transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md`}
                     >
                       {/* Step label */}
                       <div
-                        className={`mb-2 text-[10px] font-black tracking-[0.15em] ${colors.text} uppercase`}
+                        className={`mb-2 text-[15px] font-black tracking-[0.15em] ${colors.text} uppercase`}
                       >
                         Langkah {step.num}
                       </div>
                       <h3 className="mb-2 text-[15px] leading-snug font-bold text-[#0f2d5e]">
                         {step.title}
                       </h3>
-                      <p className="text-[12.5px] leading-[1.7] text-[#4a6fa5]">
+                      <p className="text-[13px] leading-snug text-[#474747]">
                         {step.desc}
                       </p>
                     </div>
@@ -966,217 +1434,18 @@ export default function SiPuspitaLandingPage() {
               })}
             </div>
           </div>
-
-          {/* ── Pipeline Status Tracker — redesigned as horizontal card strip ── */}
-          <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-lg sm:p-8">
-            {/* Header row */}
-            <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-              <div>
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-bold tracking-wide text-emerald-700 uppercase">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                  Pemantauan Status Real-Time
-                </div>
-                <h3 className="text-[20px] font-bold text-[#0f2d5e]">
-                  6 Tahap Proses Verifikasi
-                </h3>
-                <p className="mt-0.5 text-[13px] text-[#4a6fa5]">
-                  Pantau posisi berkas Anda di setiap tahap tanpa perlu ke
-                  kantor.
-                </p>
-              </div>
-              <button className="flex w-fit shrink-0 items-center gap-2 rounded-xl bg-[#1a4e8f] px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-md shadow-blue-900/15 transition-all hover:bg-[#153e78] active:scale-[0.98]">
-                Cek Status Berkas
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M2 7h10M7 2l5 5-5 5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Progress bar */}
-            <div className="mb-6 flex items-center gap-2">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-400 to-amber-400 transition-all"
-                  style={{ width: "41.6%" }}
-                />
-              </div>
-              <span className="shrink-0 text-[12px] font-bold text-[#0f2d5e]">
-                Tahap 3/6
-              </span>
-            </div>
-
-            {/* Status strip */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {STATUS_LIST.map((s, i) => {
-                const isActive = i === 2;
-                const isDone = i < 2;
-                const isPending = i > 2;
-                return (
-                  <div
-                    key={s.label}
-                    className={`group relative flex flex-col rounded-xl border p-3 transition-all ${
-                      isDone
-                        ? `border-transparent ${s.track}`
-                        : isActive
-                          ? `border-transparent ${s.track} shadow-md`
-                          : "border-gray-100 bg-gray-50"
-                    }`}
-                  >
-                    {/* Status icon */}
-                    <div
-                      className={`mb-2.5 flex h-9 w-9 items-center justify-center rounded-full ${
-                        isDone ? s.dot : isActive ? s.dot : "bg-gray-200"
-                      }`}
-                    >
-                      {isDone ? (
-                        <svg
-                          className="h-4 w-4 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          className={`h-3.5 w-3.5 ${isActive ? "text-white" : "text-gray-400"}`}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d={s.icon}
-                          />
-                        </svg>
-                      )}
-                      {isActive && (
-                        <span
-                          className={`absolute inset-0 rounded-full ${s.dot} animate-ping opacity-25`}
-                        />
-                      )}
-                    </div>
-
-                    {/* Status number */}
-                    <div
-                      className={`mb-0.5 text-[10px] font-bold tracking-wider ${isDone || isActive ? s.text : "text-gray-400"} uppercase`}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </div>
-
-                    {/* Label */}
-                    <div
-                      className={`text-[12px] leading-tight font-bold ${isDone || isActive ? s.text : "text-gray-400"}`}
-                    >
-                      {s.label}
-                    </div>
-
-                    {/* Unit */}
-                    <div
-                      className={`mt-1 text-[10.5px] font-medium ${isDone || isActive ? s.text : "text-gray-400"} opacity-80`}
-                    >
-                      {s.unit}
-                    </div>
-
-                    {/* Active badge */}
-                    {isActive && (
-                      <span
-                        className={`mt-2 self-start rounded-full ${s.dot} px-2 py-0.5 text-[9px] font-bold text-white`}
-                      >
-                        ● Aktif
-                      </span>
-                    )}
-                    {isDone && (
-                      <span
-                        className={`mt-2 self-start rounded-full ${s.track} ${s.text} px-2 py-0.5 text-[9px] font-bold`}
-                      >
-                        ✓ Selesai
-                      </span>
-                    )}
-                    {isPending && (
-                      <span className="mt-2 self-start rounded-full bg-gray-200 px-2 py-0.5 text-[9px] font-bold text-gray-400">
-                        Menunggu
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Active status detail */}
-            <div className="mt-5 flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500 shadow-md">
-                <svg
-                  className="h-5 w-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="mb-1 flex flex-wrap items-center gap-2">
-                  <span className="text-[13px] font-bold text-amber-900">
-                    Berkas sedang dalam Proses Telaah
-                  </span>
-                  <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                    BPKAD
-                  </span>
-                </div>
-                <p className="text-[12.5px] leading-relaxed text-amber-700">
-                  Analisis mendalam sedang dilakukan atas data piutang. Estimasi
-                  selesai <strong>3–5 hari kerja</strong>. Notifikasi akan
-                  dikirim saat status berubah.
-                </p>
-              </div>
-              <div className="hidden shrink-0 text-right sm:flex sm:flex-col sm:items-end">
-                <div className="rounded-xl bg-amber-100 px-4 py-2.5 text-center">
-                  <div className="text-[10px] font-semibold tracking-wide text-amber-600 uppercase">
-                    Progress
-                  </div>
-                  <div className="text-[26px] leading-none font-black text-amber-700">
-                    3/6
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* ══════════════════ KONTAK ══════════════════ */}
-      <section id="kontak" className="bg-gray-50 py-12 sm:py-16">
+      <section id="kontak" className="bg-gray-50 py-6 sm:py-8">
         <div className="mx-auto max-w-[1200px] px-6">
           <div className="grid items-start gap-16 lg:grid-cols-2">
             <div>
-              <h2 className="mb-4 text-[34px] leading-[1.2] font-bold text-gray-900 sm:text-[40px]">
+              <h2 className="mb-2 text-[20px] leading-snug font-bold text-gray-900 sm:text-[40px]">
                 Kontak Layanan SI PUSPITA
               </h2>
-              <p className="mb-8 text-[15px] leading-[1.75] text-gray-500">
+              <p className="mb-8 text-[15px] text-gray-500">
                 Hubungi Admin BPKAD Kabupaten Kendal untuk informasi lebih
                 lanjut mengenai proses pengajuan penghapusan piutang daerah.
               </p>
@@ -1200,7 +1469,7 @@ export default function SiPuspitaLandingPage() {
                 ].map(({ icon, label, val }) => (
                   <div
                     key={label}
-                    className="flex items-start gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4"
+                    className="flex items-start gap-4 rounded-md border border-gray-200 bg-white px-5 py-4"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50">
                       {icon}
@@ -1244,7 +1513,7 @@ export default function SiPuspitaLandingPage() {
                 ].map(({ q, a }, i) => (
                   <div
                     key={i}
-                    className="rounded-2xl border border-gray-200 bg-white px-5 py-4"
+                    className="rounded-md border border-gray-200 bg-white px-5 py-4"
                   >
                     <p className="mb-2 text-[14px] font-bold text-gray-900">
                       {q}
@@ -1261,36 +1530,37 @@ export default function SiPuspitaLandingPage() {
       </section>
 
       {/* ══════════════════ FOOTER ══════════════════ */}
+      {/* ══════════════════ FOOTER ══════════════════ */}
       <footer className="bg-[#0d1f3c] text-gray-400">
         {/* Main footer content */}
-        <div className="mx-auto max-w-[1200px] px-6 py-14">
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto max-w-[1200px] px-6 py-16">
+          <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
             {/* Col 1 — Brand + alamat */}
             <div className="lg:col-span-1">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-blue-700 bg-[#1a4e8f]">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1a4e8f] to-blue-600 shadow-md">
                   <FileSearch className="h-5 w-5 text-white" strokeWidth={2} />
                 </div>
                 <div>
-                  <div className="text-[16px] leading-none font-extrabold text-white">
+                  <div className="text-[17px] leading-none font-bold text-white">
                     <span className="text-blue-400">SI</span> PUSPITA
                   </div>
-                  <div className="mt-0.5 text-[10px] leading-none font-medium text-blue-400">
+                  <div className="mt-0.5 text-[11px] font-medium tracking-wide text-blue-400/80">
                     BPKAD Kab. Kendal
                   </div>
                 </div>
               </div>
-              <p className="mb-4 text-[12.5px] leading-[1.8] text-gray-400">
+              <p className="mb-6 text-[13px] leading-relaxed text-gray-400">
                 Sistem Pengajuan Penghapusan Piutang Terintegrasi — platform
                 digital layanan BPKAD Kabupaten Kendal.
               </p>
-              <div className="flex flex-col gap-2.5 text-[12px]">
-                <div className="flex items-start gap-2 text-gray-400">
+              <div className="flex flex-col gap-3 text-[13px]">
+                <div className="flex items-start gap-2.5 text-gray-400">
                   <svg
-                    className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-blue-400"
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.5"
                     viewBox="0 0 24 24"
                   >
                     <path
@@ -1308,12 +1578,12 @@ export default function SiPuspitaLandingPage() {
                     Jl. Soekarno Hatta No.1, Kendal, Jawa Tengah 51311
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-400">
+                <div className="flex items-center gap-2.5 text-gray-400">
                   <svg
-                    className="h-3.5 w-3.5 flex-shrink-0 text-blue-400"
+                    className="h-4 w-4 flex-shrink-0 text-blue-400"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.5"
                     viewBox="0 0 24 24"
                   >
                     <path
@@ -1332,7 +1602,7 @@ export default function SiPuspitaLandingPage() {
               <h4 className="mb-5 text-[13px] font-bold tracking-widest text-white uppercase">
                 Layanan
               </h4>
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-2.5">
                 {[
                   { label: "Ajukan Permohonan", href: "#formulir" },
                   { label: "Lacak Status Berkas", href: "#tracking" },
@@ -1343,22 +1613,10 @@ export default function SiPuspitaLandingPage() {
                   <li key={label}>
                     <a
                       href={href}
-                      className="flex items-center gap-2 text-[13px] text-gray-400 transition-colors hover:text-white"
+                      className="group relative inline-block text-[13px] text-gray-400 transition-colors duration-200 hover:text-white"
                     >
-                      <svg
-                        className="h-3 w-3 text-blue-500"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
                       {label}
+                      <span className="absolute bottom-0 left-0 h-[1px] w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
                     </a>
                   </li>
                 ))}
@@ -1370,7 +1628,7 @@ export default function SiPuspitaLandingPage() {
               <h4 className="mb-5 text-[13px] font-bold tracking-widest text-white uppercase">
                 Informasi
               </h4>
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-2.5">
                 {[
                   { label: "Tentang SI PUSPITA", href: "#" },
                   { label: "Dasar Hukum", href: "#" },
@@ -1381,29 +1639,17 @@ export default function SiPuspitaLandingPage() {
                   <li key={label}>
                     <a
                       href={href}
-                      className="flex items-center gap-2 text-[13px] text-gray-400 transition-colors hover:text-white"
+                      className="group relative inline-block text-[13px] text-gray-400 transition-colors duration-200 hover:text-white"
                     >
-                      <svg
-                        className="h-3 w-3 text-blue-500"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
                       {label}
+                      <span className="absolute bottom-0 left-0 h-[1px] w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
                     </a>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Col 4 — Kontak & jam layanan */}
+            {/* Col 4 — Jam Layanan + Email */}
             <div>
               <h4 className="mb-5 text-[13px] font-bold tracking-widest text-white uppercase">
                 Jam Layanan
@@ -1414,27 +1660,25 @@ export default function SiPuspitaLandingPage() {
                   { hari: "Jumat", jam: "08.00 — 11.00 WIB" },
                   { hari: "Sabtu — Minggu", jam: "Tutup" },
                 ].map(({ hari, jam }) => (
-                  <div
-                    key={hari}
-                    className="flex justify-between text-[12.5px]"
-                  >
+                  <div key={hari} className="flex justify-between text-[13px]">
                     <span className="text-gray-400">{hari}</span>
                     <span
-                      className={`font-semibold ${jam === "Tutup" ? "text-red-400" : "text-white"}`}
+                      className={`font-medium ${jam === "Tutup" ? "text-red-400" : "text-white"}`}
                     >
                       {jam}
                     </span>
                   </div>
                 ))}
               </div>
-              {/* Email */}
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3.5">
-                <div className="mb-1 text-[10px] font-bold tracking-wider text-blue-400 uppercase">
-                  Email
+
+              {/* Email card */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
+                <div className="mb-1 text-[10px] font-semibold tracking-widest text-blue-400 uppercase">
+                  Email Resmi
                 </div>
                 <a
                   href="mailto:bpkad@kendalkab.go.id"
-                  className="text-[13px] font-medium text-white transition-colors hover:text-yellow-300"
+                  className="text-[13px] font-medium text-white transition-colors duration-200 hover:text-yellow-300"
                 >
                   bpkad@kendalkab.go.id
                 </a>
@@ -1447,18 +1691,21 @@ export default function SiPuspitaLandingPage() {
         <div className="border-t border-white/5 bg-[#07111f]">
           <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row">
             <p className="text-[12px] text-gray-500">
-              © {new Date().getFullYear()} BPKAD Kabupaten Kendal. Semua hak
-              cipta dilindungi.
+              © {new Date().getFullYear()} BPKAD Kabupaten Kendal. Hak cipta
+              dilindungi.
             </p>
             <div className="flex items-center gap-4 text-[12px] text-gray-500">
-              <span>Dikembangkan oleh</span>
-              <span className="font-semibold text-blue-400">
-                BPKAD Kab. Kendal
+              <span className="hidden sm:inline">Dikembangkan oleh</span>
+              <span className="font-medium text-blue-400">
+                BPKAD Kab. Kendal — Sub Bidang Akuntansi dan Pelaporan
               </span>
             </div>
           </div>
         </div>
       </footer>
+      {/* ══════════════════ MODAL BUNGA ══════════════════ */}
+      {modalItem && <ModalBunga item={modalItem} onClose={handleCloseModal} />}
+
       {/* ══════════════════ MODAL LOGIN ══════════════════ */}
       {/* ══════════ MODAL LOGIN ══════════ */}
       {loginOpen && (
