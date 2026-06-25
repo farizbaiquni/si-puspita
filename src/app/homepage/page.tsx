@@ -8,23 +8,18 @@ import {
   UploadCloud,
   LayoutDashboard,
   Phone,
-  ChevronDown,
   Menu,
   X,
   CheckCircle2,
-  Clock,
   BookOpen,
   ClipboardList,
   Bell,
-  ShieldCheck,
   FileSearch,
   FileBadge,
   Building2,
   LogIn,
   Eye,
   EyeOff,
-  KeyRound,
-  User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -152,6 +147,40 @@ const WARNA_KELOPAK = ["#e85d04", "#f97316", "#fbbf24", "#f59e0b", "#f97316"];
 const SUDUT_KELOPAK = [0, 72, 144, 216, 288];
 
 // ─── Bunga Modal — Content Components ────────────────────────────────────────
+
+function SiPuspitaHeading({
+  showSlogan = true,
+  size = "lg",
+}: {
+  showSlogan?: boolean;
+  size?: "sm" | "md" | "lg" | "xl";
+}) {
+  const s = {
+    sm: { h: "text-[32px] lg:text-[40px]", sl: "text-[18px] lg:text-[22px]" },
+    md: { h: "text-[36px] lg:text-[46px]", sl: "text-[20px] lg:text-[24px]" },
+    lg: { h: "text-[40px] lg:text-[52px]", sl: "text-[22px] lg:text-[26px]" },
+    xl: { h: "text-[48px] lg:text-[60px]", sl: "text-[24px] lg:text-[30px]" },
+  }[size];
+
+  return (
+    <h1 className={`mb-5 leading-[1.1] font-extrabold tracking-tight ${s.h}`}>
+      <span className="text-orange-400">SI </span>
+      <span className="text-purple-400">PUS</span>
+      <span className="text-green-400">PI</span>
+      <span className="text-red-400">TA</span>
+
+      {showSlogan && (
+        <span className={`mt-1 block font-normal text-blue-100 ${s.sl}`}>
+          <span className="text-orange-400">Si</span>stem Pengajuan Pengha
+          <span className="text-purple-400">pus</span>an{" "}
+          <span className="text-green-400">Pi</span>utang{" "}
+          <span className="text-red-400">T</span>erintegr
+          <span className="text-red-400">a</span>si
+        </span>
+      )}
+    </h1>
+  );
+}
 
 function ModalSOP() {
   return (
@@ -702,15 +731,6 @@ const NAV_LINKS = [
   { label: "Kontak Layanan", hasDropdown: false, href: "#kontak" },
 ];
 
-const STAKEHOLDERS = [
-  "OPD Pemohon",
-  "BPKAD Kendal",
-  "Bagian Hukum",
-  "Inspektorat",
-  "TPUPPD",
-  "PUPN",
-];
-
 const FITUR = [
   {
     icon: <ClipboardList strokeWidth={1.8} />,
@@ -815,63 +835,6 @@ const ALUR = [
   },
 ];
 
-const STATUS_LIST = [
-  {
-    label: "Diterima",
-    unit: "Sistem / OPD",
-    desc: "Berkas pengajuan berhasil dikirim dan nomor registrasi diterbitkan.",
-    dot: "bg-blue-500",
-    track: "bg-blue-100",
-    text: "text-blue-700",
-    icon: "M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  },
-  {
-    label: "Diverifikasi",
-    unit: "BPKAD",
-    desc: "Tim BPKAD memeriksa kelengkapan dan keabsahan dokumen.",
-    dot: "bg-indigo-500",
-    track: "bg-indigo-100",
-    text: "text-indigo-700",
-    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
-  },
-  {
-    label: "Proses Telaah",
-    unit: "BPKAD",
-    desc: "Analisis mendalam atas data piutang dan kelayakan penghapusan.",
-    dot: "bg-amber-500",
-    track: "bg-amber-100",
-    text: "text-amber-700",
-    icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-  },
-  {
-    label: "Proses Hukum",
-    unit: "Bagian Hukum",
-    desc: "Kajian aspek hukum dan penyusunan rekomendasi penghapusan.",
-    dot: "bg-orange-500",
-    track: "bg-orange-100",
-    text: "text-orange-700",
-    icon: "M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3",
-  },
-  {
-    label: "Proses Inspektorat",
-    unit: "Inspektorat",
-    desc: "Audit dan pengawasan internal sebelum keputusan akhir diterbitkan.",
-    dot: "bg-purple-500",
-    track: "bg-purple-100",
-    text: "text-purple-700",
-    icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
-  },
-  {
-    label: "Selesai",
-    unit: "Pimpinan",
-    desc: "Surat keputusan penghapusan piutang diterbitkan dan disahkan.",
-    dot: "bg-emerald-500",
-    track: "bg-emerald-100",
-    text: "text-emerald-700",
-    icon: "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z",
-  },
-];
-
 const DOKUMEN_REQD = [
   "SK Penetapan Piutang",
   "BA Penagihan",
@@ -931,7 +894,7 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ NAVBAR ══════════════════ */}
       <header className="sticky top-0 z-50">
         <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
-          <div className="mx-auto flex h-[68px] max-w-[1200px] items-center justify-between px-6">
+          <div className="mx-auto flex h-17 max-w-300 items-center justify-between px-6">
             {/* Logo */}
             <Image
               src="/SiPuspita_Fix.png"
@@ -1036,7 +999,7 @@ export default function SiPuspitaLandingPage() {
         <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
 
         {/* Content wrapper (no duplication) */}
-        <div className="relative mx-auto w-full max-w-[1100px] px-12 py-5">
+        <div className="relative mx-auto w-full max-w-[1100px] px-6 py-14">
           <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
             {/* ── Kiri: teks utama ── */}
             <div className="flex-1">
@@ -1044,24 +1007,10 @@ export default function SiPuspitaLandingPage() {
               <p className="mb-4 text-[11px] font-bold tracking-[0.2em] text-yellow-400 uppercase">
                 BPKAD Kabupaten Kendal
               </p>
-
               {/* Headline */}
-              <h1 className="mb-5 text-[40px] leading-[1.1] font-extrabold tracking-tight lg:text-[52px]">
-                <span className="text-orange-400">SI </span>
-                <span className="text-purple-400">PUS</span>
-                <span className="text-green-400">PI</span>
-                <span className="text-red-400">TA</span>
-                <span className="mt-1 block text-[22px] font-normal text-blue-100 lg:text-[26px]">
-                  <span className="text-orange-400">Si</span>stem Pengajuan
-                  Pengha<span className="text-purple-400">pus</span>an{" "}
-                  <span className="text-green-400">Pi</span>utang{" "}
-                  <span className="text-red-400">T</span>erintegr
-                  <span className="text-red-400">a</span>si
-                </span>
-              </h1>
-
+              <SiPuspitaHeading showSlogan={true} />
               {/* Actions */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="mt-24 flex flex-wrap items-center gap-3">
                 <a
                   href="#formulir"
                   className="inline-flex items-center gap-2 rounded-lg bg-yellow-400 px-6 py-3 text-[13px] font-bold text-[#0f2d5e] transition hover:bg-yellow-300"
@@ -1080,7 +1029,7 @@ export default function SiPuspitaLandingPage() {
             </div>
 
             {/* ── Kanan: bunga menu interaktif ── */}
-            <div className="flex w-full flex-col items-center lg:w-auto lg:shrink-0">
+            <div className="flex w-full flex-col items-center pr-5 lg:w-auto lg:shrink-0">
               <div className="h-62 w-62 sm:h-65 sm:w-65">
                 <BungaSVG
                   activeId={bungaActiveId}
@@ -1089,9 +1038,6 @@ export default function SiPuspitaLandingPage() {
                   onCenterClick={handleCenterClick}
                 />
               </div>
-              <p className="mt-2 text-center text-[13px] text-blue-100">
-                Klik kelopak untuk menu layanan
-              </p>
             </div>
           </div>
         </div>
@@ -1099,15 +1045,16 @@ export default function SiPuspitaLandingPage() {
         {/* Stats bar */}
         <div className="relative border-t border-white/10 bg-white/5 backdrop-blur-sm">
           <div className="mx-auto max-w-[1100px] px-8 py-3">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               {[
-                { num: "24+", label: "OPD Terdaftar" },
+                { num: "45", label: "OPD Terdaftar" },
                 { num: "100%", label: "Proses Digital" },
-                { num: "6", label: "Tahap Verifikasi" },
+                { num: "4", label: "Tahap Verifikasi" },
                 { num: "Real-time", label: "Pemantauan Status" },
+                { num: "50%", label: "Efisiensi Waktu" },
               ].map(({ num, label }) => (
                 <div key={label} className="flex flex-col gap-0.5">
-                  <span className="text-[20px] leading-none font-extrabold text-yellow-400">
+                  <span className="text-[16px] leading-none font-extrabold text-yellow-200">
                     {num}
                   </span>
                   <span className="text-[12px] text-blue-300">{label}</span>
@@ -1119,7 +1066,7 @@ export default function SiPuspitaLandingPage() {
       </section>
 
       {/* ══════════════════ FITUR UTAMA ══════════════════ */}
-      <section id="formulir" className="bg-white py-12 sm:py-16">
+      <section id="formulir" className="bg-white px-3 py-12 sm:py-16">
         <div className="mx-auto max-w-[1200px] px-6">
           {/* Heading */}
           <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -1128,10 +1075,10 @@ export default function SiPuspitaLandingPage() {
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                 Layanan Digital
               </div>
-              <h2 className="text-[28px] leading-[1.15] font-extrabold text-[#0f2d5e] sm:text-[34px]">
+              <h2 className="text-[25px] leading-[1.15] font-extrabold text-[#1c293d] sm:text-[34px]">
                 Fitur Layanan
                 <br className="hidden sm:block" />
-                <span className="text-[#2563eb]"> SI PUSPITA</span>
+                <SiPuspitaHeading showSlogan={false} size="md" />
               </h2>
             </div>
             <p className="max-w-[320px] text-[14px] leading-[1.75] text-gray-500 sm:text-right">
@@ -1145,16 +1092,16 @@ export default function SiPuspitaLandingPage() {
             {FITUR.map((f, i) => (
               <div
                 key={f.title}
-                className={`group relative flex flex-col rounded-xl border ${f.border} cursor-default overflow-hidden bg-white shadow-sm transition-all duration-300 hover:shadow-lg`}
+                className={`group relative flex flex-col rounded-sm border ${f.border} cursor-default overflow-hidden bg-white shadow-sm transition-all duration-300 hover:shadow-lg`}
               >
                 {/* Accent top bar */}
-                <div className={`h-1 w-full bg-gradient-to-r ${f.accent}`} />
+                <div className={`h-1 w-full bg-linear-to-r ${f.accent}`} />
 
                 <div className="flex flex-1 flex-col p-5">
                   {/* Icon + badge row */}
                   <div className="mb-5 flex items-start justify-between">
                     <div
-                      className={`h-12 w-12 rounded-xl ${f.bg} ${f.border} flex flex-shrink-0 items-center justify-center border transition-transform duration-300 group-hover:scale-105`}
+                      className={`h-12 w-12 rounded-xl ${f.bg} ${f.border} flex shrink-0 items-center justify-center border transition-transform duration-300 group-hover:scale-105`}
                     >
                       <span className={`h-6 w-6 ${f.color}`}>{f.icon}</span>
                     </div>
@@ -1216,91 +1163,6 @@ export default function SiPuspitaLandingPage() {
                 />
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════ KEUNGGULAN ══════════════════ */}
-      <section className="bg-white py-6 sm:py-8">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <h2 className="mb-8 text-center text-[25px] leading-[1.2] font-bold text-gray-900 sm:text-[36px]">
-            Mengapa SI PUSPITA Lebih Efektif dari Proses Manual?
-          </h2>
-
-          <div className="grid items-center gap-12 lg:grid-cols-2 xl:gap-20">
-            <div className="flex flex-col gap-4">
-              {KEUNGGULAN.map((k) => (
-                <div
-                  key={k.num}
-                  className="rounded-2xl border border-gray-200 bg-white px-6 py-5 shadow-sm"
-                >
-                  <div className="mb-2.5 flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600">
-                      <span className="text-[12px] font-bold text-white">
-                        {k.num}
-                      </span>
-                    </div>
-                    <h3 className="text-[15px] font-bold text-blue-700">
-                      {k.title}
-                    </h3>
-                  </div>
-                  <p className="pl-10 text-[14px] leading-[1.7] text-gray-500">
-                    {k.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Dokumen requirements visual */}
-            <div className="flex justify-center">
-              <div className="relative w-[320px] sm:w-[360px]">
-                <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-xl">
-                  <div className="mb-5 flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-400" />
-                    <span className="text-[14px] font-semibold text-[#0f2d5e]">
-                      Dokumen Persyaratan
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    {DOKUMEN_REQD.map((doc, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 rounded-xl border border-blue-100 bg-[#f0f6ff] px-4 py-2.5"
-                      >
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-500" />
-                        <span className="text-[13px] text-[#1a3a6e]">
-                          {doc}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-5 flex items-center justify-between border-t border-blue-100 pt-4">
-                    <span className="text-[12px] text-[#4a6fa5]">
-                      Format diterima
-                    </span>
-                    <div className="flex gap-2">
-                      {["PDF", "DOCX", "JPG"].map((fmt) => (
-                        <span
-                          key={fmt}
-                          className="rounded-full bg-blue-600/20 px-2.5 py-1 text-[11px] font-bold text-blue-400"
-                        >
-                          {fmt}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {/* Floating badge */}
-                <div className="absolute -top-4 -right-4 rounded-2xl bg-emerald-500 px-4 py-2.5 shadow-lg">
-                  <p className="text-[12px] leading-tight font-bold text-white">
-                    Tersimpan Digital
-                  </p>
-                  <p className="text-[11px] text-emerald-100">
-                    Mudah ditelusuri
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -1426,6 +1288,91 @@ export default function SiPuspitaLandingPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════ KEUNGGULAN ══════════════════ */}
+      <section className="bg-white py-6 sm:py-8">
+        <div className="mx-auto max-w-[1200px] px-6">
+          <h2 className="mb-8 text-center text-[25px] leading-[1.2] font-bold text-gray-900 sm:text-[36px]">
+            Mengapa SI PUSPITA Lebih Efektif dari Proses Manual?
+          </h2>
+
+          <div className="grid items-center gap-12 lg:grid-cols-2 xl:gap-20">
+            <div className="flex flex-col gap-4">
+              {KEUNGGULAN.map((k) => (
+                <div
+                  key={k.num}
+                  className="rounded-md border border-gray-200 bg-white px-6 py-5 shadow-sm"
+                >
+                  <div className="mb-2.5 flex items-center gap-3">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600">
+                      <span className="text-[12px] font-bold text-white">
+                        {k.num}
+                      </span>
+                    </div>
+                    <h3 className="text-[15px] font-bold text-blue-700">
+                      {k.title}
+                    </h3>
+                  </div>
+                  <p className="pl-10 text-[14px] leading-[1.7] text-gray-500">
+                    {k.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Dokumen requirements visual */}
+            <div className="flex justify-center">
+              <div className="relative w-[320px] sm:w-[360px]">
+                <div className="rounded-md border border-blue-100 bg-white p-6 shadow-xl">
+                  <div className="mb-5 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-400" />
+                    <span className="text-[14px] font-semibold text-[#0f2d5e]">
+                      Dokumen Persyaratan
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {DOKUMEN_REQD.map((doc, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 rounded-xl border border-blue-100 bg-[#f0f6ff] px-4 py-2.5"
+                      >
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-500" />
+                        <span className="text-[13px] text-[#1a3a6e]">
+                          {doc}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 flex items-center justify-between border-t border-blue-100 pt-4">
+                    <span className="text-[12px] text-[#4a6fa5]">
+                      Format diterima
+                    </span>
+                    <div className="flex gap-2">
+                      {["PDF", "DOCX", "JPG"].map((fmt) => (
+                        <span
+                          key={fmt}
+                          className="rounded-full bg-blue-600/20 px-2.5 py-1 text-[11px] font-bold text-blue-400"
+                        >
+                          {fmt}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Floating badge */}
+                <div className="absolute -top-4 -right-4 rounded-2xl bg-emerald-500 px-4 py-2.5 shadow-lg">
+                  <p className="text-[12px] leading-tight font-bold text-white">
+                    Tersimpan Digital
+                  </p>
+                  <p className="text-[11px] text-emerald-100">
+                    Mudah ditelusuri
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
