@@ -1036,7 +1036,7 @@ export default function SiPuspitaLandingPage() {
         <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
 
         {/* Content wrapper (no duplication) */}
-        <div className="relative mx-auto w-full max-w-[1100px] px-8 py-5">
+        <div className="relative mx-auto w-full max-w-[1100px] px-12 py-5">
           <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
             {/* ── Kiri: teks utama ── */}
             <div className="flex-1">
@@ -1060,12 +1060,6 @@ export default function SiPuspitaLandingPage() {
                 </span>
               </h1>
 
-              <p className="mb-10 text-[14px] leading-[1.9] text-blue-100">
-                Platform digital terintegrasi untuk OPD Kabupaten Kendal —
-                mempercepat proses penghapusan piutang secara transparan bersama
-                BPKAD, Bagian Hukum, dan Inspektorat.
-              </p>
-
               {/* Actions */}
               <div className="flex flex-wrap items-center gap-3">
                 <a
@@ -1087,7 +1081,7 @@ export default function SiPuspitaLandingPage() {
 
             {/* ── Kanan: bunga menu interaktif ── */}
             <div className="flex w-full flex-col items-center lg:w-auto lg:shrink-0">
-              <div className="h-72 w-72 sm:h-80 sm:w-80">
+              <div className="h-62 w-62 sm:h-65 sm:w-65">
                 <BungaSVG
                   activeId={bungaActiveId}
                   centerActive={bungaCenterActive}

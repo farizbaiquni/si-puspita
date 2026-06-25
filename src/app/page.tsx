@@ -8,6 +8,7 @@ import LihatDaftarPengajuan, {
 import VerifikasiPengajuan from "./dashboard/contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
 import Link from "next/link";
 import type { Pengajuan } from "@/types/types";
+import Image from "next/image";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -318,14 +319,14 @@ const PAGE_META: Record<
 const SiPuspitaLogo = () => (
   <Link href="/">
     <div className="relative">
-      <h1 className="text-2xl font-bold">
-        <span className="text-slate-800">Si</span>
-        <span className="text-amber-600">Puspita</span>
-      </h1>
-      <div className="mt-0.5 h-0.5 w-2/3 rounded-full bg-linear-to-r from-amber-400 to-amber-600"></div>
-      <p className="mt-1.5 text-[11px] font-medium text-slate-500">
-        Sistem Pengajuan Penghapusan Piutang Terintegrasi
-      </p>
+      {/* Logo */}
+      <Image
+        src="/SiPuspita_Fix.png"
+        alt="Logo"
+        width={100}
+        height={100}
+        className="w-40"
+      />
     </div>
   </Link>
 );
@@ -534,7 +535,7 @@ const Header: React.FC<HeaderProps> = ({ role, onRoleChange }) => {
     <header className="flex h-17 shrink-0 items-center gap-4 border-b border-[#f0f0f0] bg-white px-8">
       <div className="flex max-w-85 flex-1 items-center gap-2.5 rounded-xl border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5">
         <IconSearch />
-        <span className="flex-1 text-sm text-[#b0bac5]">Search task</span>
+        <span className="flex-1 text-sm text-[#b0bac5]">Search</span>
         <div className="flex items-center gap-1 rounded-md border border-[#e0e0e0] px-1.5 py-0.5 text-xs text-[#b0bac5]">
           <span>⌘</span>
           <span>F</span>
