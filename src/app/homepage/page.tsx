@@ -733,13 +733,13 @@ const NAV_LINKS = [
 
 const FITUR = [
   {
-    icon: <ClipboardList strokeWidth={1.8} />,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-100",
-    accent: "from-blue-500 to-blue-600",
-    badge: "OPD",
-    title: "Formulir Pengajuan Online",
+    icon: <LayoutDashboard strokeWidth={1.8} />,
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+    border: "border-amber-100",
+    accent: "from-amber-500 to-amber-600",
+    badge: "Admin",
+    title: "Panel Admin BPKAD",
     desc: "OPD mengisi data pemohon, data piutang, dasar permohonan, dan riwayat penagihan secara digital. Nomor registrasi otomatis diterbitkan setelah submit.",
     points: [
       "Wizard langkah demi langkah",
@@ -747,6 +747,7 @@ const FITUR = [
       "Nomor registrasi instan",
     ],
   },
+
   {
     icon: <UploadCloud strokeWidth={1.8} />,
     color: "text-violet-600",
@@ -778,13 +779,13 @@ const FITUR = [
     ],
   },
   {
-    icon: <LayoutDashboard strokeWidth={1.8} />,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    border: "border-amber-100",
-    accent: "from-amber-500 to-amber-600",
-    badge: "Admin",
-    title: "Panel Admin BPKAD",
+    icon: <ClipboardList strokeWidth={1.8} />,
+    color: "text-blue-600",
+    bg: "bg-red-50",
+    border: "border-red-100",
+    accent: "from-red-500 to-red-600",
+    badge: "OPD",
+    title: "Formulir Pengajuan Online",
     desc: "Petugas BPKAD dapat melihat daftar pengajuan masuk, memperbarui status, mengunggah hasil validasi, dan memantau log aktivitas dari satu dashboard.",
     points: ["Dashboard terpadu", "Log aktivitas lengkap", "Multi-role akses"],
   },
@@ -923,7 +924,7 @@ export default function SiPuspitaLandingPage() {
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 onClick={() => setLoginOpen(true)}
-                className="group relative flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:text-[#1a4e8f]"
+                className="group relative flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:cursor-pointer hover:text-[#1a4e8f]"
               >
                 <LogIn className="h-3.5 w-3.5" /> Masuk
                 <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
@@ -966,7 +967,7 @@ export default function SiPuspitaLandingPage() {
                 </a>
               ))}
               <hr className="my-1 border-gray-200" />
-              <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:bg-yellow-300 hover:text-[#0a2342]">
+              <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]">
                 Ajukan Sekarang
               </button>
               <button
@@ -999,69 +1000,130 @@ export default function SiPuspitaLandingPage() {
         <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
 
         {/* Content wrapper (no duplication) */}
-        <div className="relative mx-auto w-full max-w-[1100px] px-6 py-14">
-          <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
-            {/* ── Kiri: teks utama ── */}
-            <div className="flex-1">
-              {/* Eyebrow */}
-              <p className="mb-4 text-[11px] font-bold tracking-[0.2em] text-yellow-400 uppercase">
-                BPKAD Kabupaten Kendal
-              </p>
-              {/* Headline */}
-              <SiPuspitaHeading showSlogan={true} />
-              {/* Actions */}
-              <div className="mt-24 flex flex-wrap items-center gap-3">
-                <a
-                  href="#formulir"
-                  className="inline-flex items-center gap-2 rounded-lg bg-yellow-400 px-6 py-3 text-[13px] font-bold text-[#0f2d5e] transition hover:bg-yellow-300"
-                >
-                  Ajukan Permohonan
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </a>
+        {/* ── Hero root ── */}
+        <div className="relative overflow-hidden bg-[#0f2d5e]">
+          {/* Garis emas atas — pembatas resmi */}
+          <div className="h-[4px] w-full bg-gradient-to-r from-transparent via-[#e8c84a] to-transparent" />
 
-                <a
-                  href="#tracking"
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-6 py-3 text-[13px] font-semibold text-white/80 transition hover:border-white/40 hover:text-white"
-                >
-                  Lacak Status Berkas
-                </a>
-              </div>
-            </div>
+          {/* Ornamen diagonal subtle */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.013) 40px, rgba(255,255,255,0.013) 41px)",
+            }}
+          />
 
-            {/* ── Kanan: bunga menu interaktif ── */}
-            <div className="flex w-full flex-col items-center pr-5 lg:w-auto lg:shrink-0">
-              <div className="h-62 w-62 sm:h-65 sm:w-65">
-                <BungaSVG
-                  activeId={bungaActiveId}
-                  centerActive={bungaCenterActive}
-                  onKelopakClick={handleKelopakClick}
-                  onCenterClick={handleCenterClick}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+          {/* Sorot cahaya kanan */}
+          <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.07),transparent)]" />
 
-        {/* Stats bar */}
-        <div className="relative border-t border-white/10 bg-white/5 backdrop-blur-sm">
-          <div className="mx-auto max-w-[1100px] px-8 py-3">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-              {[
-                { num: "45", label: "OPD Terdaftar" },
-                { num: "100%", label: "Proses Digital" },
-                { num: "4", label: "Tahap Verifikasi" },
-                { num: "Real-time", label: "Pemantauan Status" },
-                { num: "50%", label: "Efisiensi Waktu" },
-              ].map(({ num, label }) => (
-                <div key={label} className="flex flex-col gap-0.5">
-                  <span className="text-[16px] leading-none font-extrabold text-yellow-200">
-                    {num}
-                  </span>
-                  <span className="text-[12px] text-blue-300">{label}</span>
+          {/* ── Content wrapper ── */}
+          <div className="relative mx-auto w-full max-w-[1100px] px-8 py-24">
+            <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
+              {/* ── Kiri: teks utama ── */}
+              <div className="min-w-0 flex-1">
+                {/* Eyebrow institusi */}
+                <div className="bg-[#e8c84a]/07 mb-5 inline-flex items-center gap-2 rounded-[4px] border border-[#e8c84a]/35 px-3 py-1.5">
+                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#e8c84a]" />
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-[#e8c84a] uppercase">
+                    BPKAD Kabupaten Kendal
+                  </p>
                 </div>
-              ))}
+
+                {/* Divider aksen emas */}
+                <div className="mb-5 h-[2px] w-10 rounded-full bg-gradient-to-r from-[#c8a020] to-[#e8c84a]" />
+
+                {/* Heading — warna SiPuspita TIDAK diubah */}
+                <div className="mb-7">
+                  <SiPuspitaHeading showSlogan={true} />
+                </div>
+
+                {/* CTA Actions */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    href="#formulir"
+                    aria-label="Ajukan permohonan baru"
+                    className="inline-flex items-center gap-2 rounded-[4px] border border-[#e8c84a] bg-[#e8c84a] px-[22px] py-[11px] text-[13px] font-bold tracking-[0.02em] text-[#0a1f4e] transition hover:bg-[#f0d45a] hover:shadow-[0_2px_12px_rgba(232,200,74,0.25)]"
+                  >
+                    Ajukan Permohonan
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </a>
+
+                  <a
+                    href="#tracking"
+                    aria-label="Lacak status berkas pengajuan"
+                    className="inline-flex items-center gap-2 rounded-[4px] border border-white/25 px-5 py-[10px] text-[13px] font-medium text-white/75 transition hover:border-white/50 hover:bg-white/5 hover:text-white"
+                  >
+                    <Search className="h-3.5 w-3.5" aria-hidden="true" />
+                    Lacak Status Berkas
+                  </a>
+                </div>
+
+                {/* Strip statistik */}
+                <div className="mt-7 flex gap-6 border-t border-white/10 pt-6">
+                  <div>
+                    <p className="text-xl leading-none font-bold text-[#e8c84a]">
+                      2.4K+
+                    </p>
+                    <p className="mt-1 text-[11px] tracking-[0.05em] text-white/45 uppercase">
+                      Permohonan Diproses
+                    </p>
+                  </div>
+                  <div className="w-px self-stretch bg-white/12" />
+                  <div>
+                    <p className="text-xl leading-none font-bold text-[#e8c84a]">
+                      98%
+                    </p>
+                    <p className="mt-1 text-[11px] tracking-[0.05em] text-white/45 uppercase">
+                      Tingkat Penyelesaian
+                    </p>
+                  </div>
+                  <div className="w-px self-stretch bg-white/12" />
+                  <div>
+                    <p className="text-xl leading-none font-bold text-[#e8c84a]">
+                      &lt; 3 Hari
+                    </p>
+                    <p className="mt-1 text-[11px] tracking-[0.05em] text-white/45 uppercase">
+                      Rata-rata Proses
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Kanan: bunga interaktif ── */}
+              <div className="flex flex-shrink-0 flex-col items-center">
+                {/* Frame resmi */}
+                <div className="relative flex h-72 w-72 items-center justify-center">
+                  {/* Lingkaran dekorasi */}
+                  <div className="pointer-events-none absolute inset-[30px] rounded-full border border-slate-200/25" />
+
+                  {/* Corner accent ala dokumen resmi */}
+                  <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
+                  <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
+                  <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
+                  <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
+
+                  {/* BungaSVG komponen asli */}
+                  <div className="relative z-10 h-64 w-64">
+                    <BungaSVG
+                      activeId={bungaActiveId}
+                      centerActive={bungaCenterActive}
+                      onKelopakClick={handleKelopakClick}
+                      onCenterClick={handleCenterClick}
+                    />
+                  </div>
+                </div>
+
+                {/* Caption */}
+                <p className="mt-3.5 text-[10.5px] tracking-[0.12em] text-white/35 uppercase">
+                  Menu Layanan Interaktif
+                </p>
+              </div>
             </div>
           </div>
+
+          {/* Garis bawah subtle */}
+          <div className="absolute right-0 bottom-0 left-0 h-px bg-gradient-to-r from-transparent via-[#c8a020]/30 to-transparent" />
         </div>
       </section>
 
@@ -1075,16 +1137,16 @@ export default function SiPuspitaLandingPage() {
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                 Layanan Digital
               </div>
-              <h2 className="text-[25px] leading-[1.15] font-extrabold text-[#1c293d] sm:text-[34px]">
+              <div className="text-[25px] leading-[1.15] font-extrabold text-[#1c293d] sm:text-[34px]">
                 Fitur Layanan
                 <br className="hidden sm:block" />
                 <SiPuspitaHeading showSlogan={false} size="md" />
-              </h2>
+              </div>
             </div>
-            <p className="max-w-[320px] text-[14px] leading-[1.75] text-gray-500 sm:text-right">
+            <div className="max-w-[320px] text-[14px] leading-[1.75] text-gray-500 sm:text-right">
               Dirancang untuk menyederhanakan proses penghapusan piutang daerah
               yang sebelumnya manual dan tersebar.
-            </p>
+            </div>
           </div>
 
           {/* Cards grid */}
@@ -1471,26 +1533,19 @@ export default function SiPuspitaLandingPage() {
       </section>
 
       {/* ══════════════════ FOOTER ══════════════════ */}
-      {/* ══════════════════ FOOTER ══════════════════ */}
       <footer className="bg-[#0d1f3c] text-gray-400">
         {/* Main footer content */}
         <div className="mx-auto max-w-[1200px] px-6 py-16">
           <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
             {/* Col 1 — Brand + alamat */}
             <div className="lg:col-span-1">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1a4e8f] to-blue-600 shadow-md">
-                  <FileSearch className="h-5 w-5 text-white" strokeWidth={2} />
-                </div>
-                <div>
-                  <div className="text-[17px] leading-none font-bold text-white">
-                    <span className="text-blue-400">SI</span> PUSPITA
-                  </div>
-                  <div className="mt-0.5 text-[11px] font-medium tracking-wide text-blue-400/80">
-                    BPKAD Kab. Kendal
-                  </div>
-                </div>
-              </div>
+              <Image
+                src="/SiPuspita_Fix.png"
+                alt="Logo"
+                width={100}
+                height={100}
+                className="w-40 bg-white"
+              />
               <p className="mb-6 text-[13px] leading-relaxed text-gray-400">
                 Sistem Pengajuan Penghapusan Piutang Terintegrasi — platform
                 digital layanan BPKAD Kabupaten Kendal.
@@ -1613,8 +1668,8 @@ export default function SiPuspitaLandingPage() {
               </div>
 
               {/* Email card */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
-                <div className="mb-1 text-[10px] font-semibold tracking-widest text-blue-400 uppercase">
+              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
+                <div className="mb-1 text-[10px] font-semibold tracking-widest text-blue-200 uppercase">
                   Email Resmi
                 </div>
                 <a
@@ -1648,7 +1703,6 @@ export default function SiPuspitaLandingPage() {
       {modalItem && <ModalBunga item={modalItem} onClose={handleCloseModal} />}
 
       {/* ══════════════════ MODAL LOGIN ══════════════════ */}
-      {/* ══════════ MODAL LOGIN ══════════ */}
       {loginOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center"
@@ -1664,26 +1718,22 @@ export default function SiPuspitaLandingPage() {
             }
           }}
         >
-          <div className="w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-[420px] sm:rounded-3xl">
+          <div className="w-full overflow-hidden rounded-md bg-white shadow-2xl sm:max-w-[420px]">
             {/* Top accent line */}
-            <div className="h-[3px] bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-500" />
+            <div className="h-[3px] bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500" />
 
             {/* Content */}
             <div className="px-8 pt-8 pb-9">
               {/* Header row */}
               <div className="mb-8 flex items-start justify-between">
                 <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
-                      <FileSearch
-                        className="h-3.5 w-3.5 text-white"
-                        strokeWidth={2.5}
-                      />
-                    </div>
-                    <span className="text-[12px] font-bold tracking-widest text-blue-600 uppercase">
-                      SI PUSPITA
-                    </span>
-                  </div>
+                  <Image
+                    src="/SiPuspita_Fix.png"
+                    alt="Logo"
+                    width={100}
+                    height={100}
+                    className="w-40"
+                  />
                   <h2 className="text-[24px] leading-tight font-bold tracking-tight text-gray-900">
                     Selamat datang
                   </h2>
@@ -1779,7 +1829,7 @@ export default function SiPuspitaLandingPage() {
                 <button
                   type="submit"
                   disabled={loginLoading}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60"
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-600 py-4 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:cursor-pointer hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60"
                 >
                   {loginLoading ? (
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
