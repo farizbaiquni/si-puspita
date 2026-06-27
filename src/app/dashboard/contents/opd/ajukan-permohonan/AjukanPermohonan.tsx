@@ -1168,6 +1168,13 @@ const ModalSelesai: React.FC<{
   </div>
 );
 
+function hitungUmurTahun(tgl: string): number {
+  const d = new Date(tgl);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  return diff / (1000 * 60 * 60 * 24 * 365.25);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Wizard steps
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1397,13 +1404,6 @@ const PupnP1: React.FC<{
     </QuestionCard>
   );
 };
-
-function hitungUmurTahun(tgl: string): number {
-  const d = new Date(tgl);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  return diff / (1000 * 60 * 60 * 24 * 365.25);
-}
 
 const PupnP2: React.FC<{
   state: WizardState;

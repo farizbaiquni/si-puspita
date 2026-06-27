@@ -320,13 +320,15 @@ const SiPuspitaLogo = () => (
   <Link href="/">
     <div className="relative">
       {/* Logo */}
-      <Image
-        src="/SiPuspita_Fix.png"
-        alt="Logo"
-        width={100}
-        height={100}
-        className="w-40"
-      />
+      <Link href="/homepage">
+        <Image
+          src="/SiPuspita_Fix.png"
+          alt="Logo"
+          width={100}
+          height={100}
+          className="w-50"
+        />
+      </Link>
     </div>
   </Link>
 );
@@ -383,7 +385,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, active, onNavigate }) => {
 
   return (
     <aside className="flex min-h-screen w-60 shrink-0 flex-col border-r border-[#f0f0f0] bg-white">
-      <div className="px-5 pt-7 pb-8">
+      <div className="px-5 pb-8">
         <SiPuspitaLogo />
       </div>
 
@@ -494,8 +496,6 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
     </div>
   );
 };
-
-// ── Header ───────────────────────────────────────────────────────────────────
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
