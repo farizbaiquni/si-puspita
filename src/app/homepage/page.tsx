@@ -562,29 +562,57 @@ function ModalBunga({
   item: KelopakItem;
   onClose: () => void;
 }) {
+  const [visible, setVisible] = useState(false);
+  const [displayedItem, setDisplayedItem] = useState(item);
+  const [contentVisible, setContentVisible] = useState(true);
+
   useEffect(() => {
+    // Trigger animasi masuk setelah mount
+    const t = setTimeout(() => setVisible(true), 10);
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
     return () => {
+      clearTimeout(t);
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
   }, [onClose]);
 
+  // Animasi ganti konten saat item berubah
+  useEffect(() => {
+    if (item.id === displayedItem.id) return;
+    const t1 = setTimeout(() => setContentVisible(false), 0);
+    const t2 = setTimeout(() => {
+      setDisplayedItem(item);
+      setContentVisible(true);
+    }, 200);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [item, displayedItem.id]);
+
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center p-6 sm:items-center sm:p-8"
+      className="fixed inset-0 z-100 flex items-end justify-center p-6 transition-all duration-300 sm:items-center sm:p-8"
       style={{
-        backgroundColor: "rgba(8,20,50,0.82)",
-        backdropFilter: "blur(2px)",
+        backgroundColor: visible ? "rgba(8,20,50,0.82)" : "rgba(8,20,50,0)",
+        backdropFilter: visible ? "blur(2px)" : "blur(0px)",
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      {/* Modal — lebih lebar, lebih banyak padding, posisi lebih ke kiri dari bunga */}
-      <div className="flex w-full max-w-170 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-85">
+      <div
+        className="flex w-full max-w-130 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl transition-all duration-300 sm:mr-65"
+        style={{
+          opacity: visible ? 1 : 0,
+          transform: visible
+            ? "translateY(0) scale(1)"
+            : "translateY(16px) scale(0.97)",
+        }}
+      >
         {/* Sidebar aksen warna kiri */}
         <div className="w-1 shrink-0 bg-linear-to-b from-orange-400 via-amber-400 to-yellow-400" />
 
@@ -596,11 +624,11 @@ function ModalBunga({
 
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-orange-100 bg-orange-50 text-xl">
-                {item.icon}
+                {displayedItem.icon}
               </div>
               <div>
                 <h2 className="text-[15px] font-semibold text-gray-900">
-                  {item.modalTitle}
+                  {displayedItem.modalTitle}
                 </h2>
                 <p className="text-[11px] text-gray-400">
                   SI PUSPITA · BPKAD Kab. Kendal
@@ -618,8 +646,15 @@ function ModalBunga({
           </div>
 
           {/* Body — lebih tinggi, padding lebih lapang */}
-          <div className="max-h-[72vh] overflow-y-auto px-6 py-5">
-            {item.modalContent}
+          {/* Body */}
+          <div
+            className="max-h-[72vh] overflow-y-auto px-6 py-5 transition-all duration-200"
+            style={{
+              opacity: contentVisible ? 1 : 0,
+              transform: contentVisible ? "translateY(0)" : "translateY(6px)",
+            }}
+          >
+            {displayedItem.modalContent}
           </div>
         </div>
       </div>
@@ -724,7 +759,7 @@ function BungaSVG({
                 stroke={isActive ? "#ffffff" : "rgba(255,255,255,0.3)"}
                 strokeWidth={isActive ? 2.5 : 1.5}
                 opacity={isActive ? 1 : 0.8}
-                filter={isActive ? "url(#liftedShadow)" : "url(#softShadow)"}
+                filter="url(#softShadow)"
                 transform={`rotate(${angle}) translate(0,-${translateOffset})`}
                 style={{
                   cursor: "pointer",
@@ -1802,8 +1837,14 @@ export default function SiPuspitaLandingPage() {
           {/* Modal pakai sm:mr-[340px] → digeser 340px ke kiri dari center.
               Bunga kita taruh di kanan modal: right = 50% - 340px - 288px/2 */}
           <div
-            className="pointer-events-none fixed top-1/2 z-105 hidden -translate-y-1/2 sm:block"
-            style={{ left: "calc(50% + 220px)" }}
+            className="pointer-events-none fixed top-1/2 z-105 hidden transition-all duration-300 sm:block"
+            style={{
+              left: "calc(50% + 240px)",
+              opacity: isModalOpen ? 1 : 0,
+              transform: isModalOpen
+                ? "translateY(-50%) scale(1)"
+                : "translateY(-50%) scale(0.85)",
+            }}
             aria-hidden="true"
           >
             <div className="pointer-events-auto flex shrink-0 flex-col items-center">
