@@ -1028,11 +1028,13 @@ export default function SiPuspitaLandingPage() {
           <div className="mx-auto flex h-17 max-w-300 items-center justify-between px-6">
             {/* Logo */}
             <Image
-              src="/SiPuspita_Fix.png"
+              src="/Logo_Si-Puspita_v1.png"
               alt="Logo"
-              width={100}
-              height={100}
-              className="w-40"
+              width={640}
+              height={640}
+              quality={100}
+              priority
+              className="w-40 bg-white"
             />
 
             {/* Desktop links */}
@@ -1059,8 +1061,8 @@ export default function SiPuspitaLandingPage() {
                 <LogIn className="h-3.5 w-3.5" /> Masuk
                 <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
               </button>
-              <Link href={"/"}>
-                <button className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md">
+              <Link href={"/dashboard"}>
+                <button className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md">
                   Ajukan Sekarang
                 </button>
               </Link>
@@ -1670,10 +1672,12 @@ export default function SiPuspitaLandingPage() {
             {/* Col 1 — Brand + alamat */}
             <div className="lg:col-span-1">
               <Image
-                src="/SiPuspita_Fix.png"
+                src="/Logo_Si-Puspita_v1.png"
                 alt="Logo"
-                width={100}
-                height={100}
+                width={640}
+                height={640}
+                quality={100}
+                priority
                 className="w-40 bg-white"
               />
               <p className="mb-6 text-[13px] leading-relaxed text-gray-400">
@@ -1897,11 +1901,13 @@ export default function SiPuspitaLandingPage() {
               <div className="mb-8 flex items-start justify-between">
                 <div>
                   <Image
-                    src="/SiPuspita_Fix.png"
+                    src="/Logo_Si-Puspita_v1.png"
                     alt="Logo"
-                    width={100}
-                    height={100}
-                    className="w-40"
+                    width={640}
+                    height={640}
+                    quality={100}
+                    priority
+                    className="w-40 bg-white"
                   />
                   <h2 className="text-[24px] leading-tight font-bold tracking-tight text-gray-900">
                     Selamat datang

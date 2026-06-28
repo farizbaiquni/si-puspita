@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import AjukanPermohonanWizard from "./opd/ajukan-permohonan/AjukanPermohonan";
+import AjukanPermohonanWizard from "./contents/opd/ajukan-permohonan/AjukanPermohonan";
 import LihatDaftarPengajuan, {
   MOCK_PENGAJUAN,
-} from "./opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
+} from "./contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
 
-import VerifikasiPengajuan from "./bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
+import VerifikasiPengajuan from "./contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
 import Link from "next/link";
 import type { Pengajuan } from "@/types/types";
 import Image from "next/image";
@@ -322,11 +322,13 @@ const SiPuspitaLogo = () => (
     {/* Logo */}
     <Link href="/homepage">
       <Image
-        src="/SiPuspita_Fix.png"
+        src="/Logo_Si-Puspita_v1.png"
         alt="Logo"
-        width={100}
-        height={100}
-        className="w-50"
+        width={640}
+        height={640}
+        quality={100}
+        priority
+        className="w-40 bg-white"
       />
     </Link>
   </div>
