@@ -588,7 +588,7 @@ function ModalBunga({
     const t2 = setTimeout(() => {
       setDisplayedItem(item);
       setContentVisible(true);
-    }, 200);
+    }, 180); // turunkan dari 200 → 180
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -597,20 +597,23 @@ function ModalBunga({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center p-6 transition-all duration-300 sm:items-center sm:p-8"
+      className="fixed inset-0 z-100 flex items-end justify-center p-6 sm:items-center sm:p-8"
       style={{
         backgroundColor: visible ? "rgba(8,20,50,0.82)" : "rgba(8,20,50,0)",
-        backdropFilter: visible ? "blur(2px)" : "blur(0px)",
+        backdropFilter: visible ? "blur(3px)" : "blur(0px)",
+        transition: "background-color 0.4s ease, backdrop-filter 0.4s ease",
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="flex w-full max-w-130 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl transition-all duration-300 sm:mr-65"
+        className="flex w-full max-w-130 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-65"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible
             ? "translateY(0) scale(1)"
-            : "translateY(16px) scale(0.97)",
+            : "translateY(20px) scale(0.96)",
+          transition:
+            "opacity 0.35s cubic-bezier(0.4,0,0.2,1), transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
         {/* Sidebar aksen warna kiri */}
@@ -648,10 +651,12 @@ function ModalBunga({
           {/* Body — lebih tinggi, padding lebih lapang */}
           {/* Body */}
           <div
-            className="max-h-[72vh] overflow-y-auto px-6 py-5 transition-all duration-200"
+            className="max-h-[72vh] overflow-y-auto px-6 py-5"
             style={{
               opacity: contentVisible ? 1 : 0,
-              transform: contentVisible ? "translateY(0)" : "translateY(6px)",
+              transform: contentVisible ? "translateY(0)" : "translateY(10px)",
+              transition:
+                "opacity 0.25s cubic-bezier(0.4,0,0.2,1), transform 0.25s cubic-bezier(0.4,0,0.2,1)",
             }}
           >
             {displayedItem.modalContent}
@@ -981,6 +986,7 @@ export default function SiPuspitaLandingPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [isModalClosing, setIsModalClosing] = useState(false);
 
   // Bunga menu state
   const [bungaActiveId, setBungaActiveId] = useState<KelopakId | null>(null);
@@ -1001,9 +1007,13 @@ export default function SiPuspitaLandingPage() {
   };
 
   const handleCloseModal = () => {
-    setModalItem(null);
-    setBungaActiveId(null);
-    setBungaCenterActive(false);
+    setIsModalClosing(true);
+    setTimeout(() => {
+      setModalItem(null);
+      setBungaActiveId(null);
+      setBungaCenterActive(false);
+      setIsModalClosing(false);
+    }, 400);
   };
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
@@ -1228,7 +1238,14 @@ export default function SiPuspitaLandingPage() {
               {/* Spacer placeholder — menjaga ukuran layout saat bunga jadi fixed */}
               <div
                 className="flex shrink-0 flex-col items-center"
-                style={{ visibility: isModalOpen ? "hidden" : "visible" }}
+                style={{
+                  opacity: isModalOpen && !isModalClosing ? 0 : 1,
+                  transform:
+                    isModalOpen && !isModalClosing ? "scale(0.9)" : "scale(1)",
+                  pointerEvents: isModalOpen ? "none" : "auto",
+                  transition:
+                    "opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)",
+                }}
               >
                 <div className="relative flex h-72 w-72 items-center justify-center">
                   <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
@@ -1834,20 +1851,23 @@ export default function SiPuspitaLandingPage() {
         </div>
       </footer>
       {/* ══════════════════ MODAL BUNGA ══════════════════ */}
-      {modalItem && (
+      {(modalItem || isModalClosing) && (
         <>
-          <ModalBunga item={modalItem} onClose={handleCloseModal} />
+          <ModalBunga item={modalItem!} onClose={handleCloseModal} />
           {/* BungaSVG — fixed sejajar modal, tidak terpengaruh scroll */}
           {/* Modal pakai sm:mr-[340px] → digeser 340px ke kiri dari center.
               Bunga kita taruh di kanan modal: right = 50% - 340px - 288px/2 */}
           <div
-            className="pointer-events-none fixed top-1/2 z-105 hidden transition-all duration-300 sm:block"
+            className="pointer-events-none fixed top-1/2 z-105 hidden sm:block"
             style={{
               left: "calc(50% + 240px)",
-              opacity: isModalOpen ? 1 : 0,
-              transform: isModalOpen
-                ? "translateY(-50%) scale(1)"
-                : "translateY(-50%) scale(0.85)",
+              opacity: isModalOpen && !isModalClosing ? 1 : 0,
+              transform:
+                isModalOpen && !isModalClosing
+                  ? "translateY(-50%) scale(1)"
+                  : "translateY(-50%) scale(0.85)",
+              transition:
+                "opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)",
             }}
             aria-hidden="true"
           >
