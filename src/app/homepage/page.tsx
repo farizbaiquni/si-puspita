@@ -14,7 +14,6 @@ import {
   BookOpen,
   ClipboardList,
   Bell,
-  FileSearch,
   FileBadge,
   Building2,
   LogIn,
@@ -27,7 +26,13 @@ import Link from "next/link";
 
 // ─── Bunga Menu — Data & Types ────────────────────────────────────────────────
 
-type KelopakId = "sop" | "flowchart" | "pengajuan" | "lacak" | "faq" | "daftar";
+type KelopakId =
+  | "sop"
+  | "flowchart"
+  | "pengajuan"
+  | "lacak"
+  | "informasi"
+  | "daftar";
 
 interface KelopakItem {
   id: KelopakId;
@@ -168,15 +173,15 @@ function SiPuspitaHeading({
       <span className="text-orange-400">SI </span>
       <span className="text-purple-400">PUS</span>
       <span className="text-green-400">PI</span>
-      <span className="text-red-400">TA</span>
+      <span className="text-orange-600">TA</span>
 
       {showSlogan && (
         <span className={`mt-1 block font-normal text-blue-100 ${s.sl}`}>
           <span className="text-orange-400">Si</span>stem Pengajuan Pengha
           <span className="text-purple-400">pus</span>an{" "}
           <span className="text-green-400">Pi</span>utang{" "}
-          <span className="text-red-400">T</span>erintegr
-          <span className="text-red-400">a</span>si
+          <span className="text-orange-600">T</span>erintegr
+          <span className="text-orange-600">a</span>si
         </span>
       )}
     </h1>
@@ -241,7 +246,7 @@ function ModalFlowchart() {
               </div>
             </div>
             {i < ALUR_FLOWCHART_BUNGA.length - 1 && (
-              <div className="ml-[22px] h-3 w-0.5 bg-orange-200" />
+              <div className="ml-5.5 h-3 w-0.5 bg-orange-200" />
             )}
           </div>
         ))}
@@ -531,8 +536,8 @@ const KELOPAK_LIST: KelopakItem[] = [
     modalContent: <ModalLacak />,
   },
   {
-    id: "faq",
-    label: "FAQ",
+    id: "informasi",
+    label: "Informasi",
     icon: "❓",
     tooltip: "Pertanyaan Umum",
     modalTitle: "Pertanyaan yang Sering Diajukan",
@@ -550,7 +555,6 @@ const KELOPAK_DAFTAR: KelopakItem = {
 };
 
 // ─── Bunga Modal ──────────────────────────────────────────────────────────────
-
 function ModalBunga({
   item,
   onClose,
@@ -572,36 +576,51 @@ function ModalBunga({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end justify-center p-4 sm:items-center"
+      className="fixed inset-0 z-100 flex items-end justify-center p-6 sm:items-center sm:p-8"
       style={{
-        backgroundColor: "rgba(15,45,94,0.55)",
-        backdropFilter: "blur(6px)",
+        backgroundColor: "rgba(8,20,50,0.82)",
+        backdropFilter: "blur(2px)",
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
-        {/* Accent top bar */}
-        <div className="h-[3px] bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400" />
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-lg">
-              {item.icon}
+      {/* Modal — lebih lebar, lebih banyak padding, posisi lebih ke kiri dari bunga */}
+      <div className="flex w-full max-w-170 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-85">
+        {/* Sidebar aksen warna kiri */}
+        <div className="w-1 shrink-0 bg-linear-to-b from-orange-400 via-amber-400 to-yellow-400" />
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Header */}
+          <div className="relative flex items-center justify-between overflow-hidden border-b border-gray-100 bg-white px-6 py-4">
+            {/* Aksen garis emas bawah */}
+            <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-orange-100 bg-orange-50 text-xl">
+                {item.icon}
+              </div>
+              <div>
+                <h2 className="text-[15px] font-semibold text-gray-900">
+                  {item.modalTitle}
+                </h2>
+                <p className="text-[11px] text-gray-400">
+                  SI PUSPITA · BPKAD Kab. Kendal
+                </p>
+              </div>
             </div>
-            <h2 className="text-base font-semibold text-gray-900">
-              {item.modalTitle}
-            </h2>
+
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
+              aria-label="Tutup"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-lg leading-none text-gray-400 transition hover:bg-gray-200 hover:text-gray-600"
-          >
-            ×
-          </button>
-        </div>
-        {/* Body */}
-        <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
-          {item.modalContent}
+
+          {/* Body — lebih tinggi, padding lebih lapang */}
+          <div className="max-h-[72vh] overflow-y-auto px-6 py-5">
+            {item.modalContent}
+          </div>
         </div>
       </div>
     </div>
@@ -624,10 +643,20 @@ function BungaSVG({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="-120 -120 240 240"
+      viewBox="-130 -130 260 260"
       className="h-full w-full"
     >
       <defs>
+        {/* Glow effect untuk kelopak aktif */}
+        <filter id="glowActive" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        {/* Shadow halus untuk semua kelopak */}
         <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow
             dx="0"
@@ -637,52 +666,107 @@ function BungaSVG({
             floodOpacity="0.3"
           />
         </filter>
+
+        {/* Shadow lebih kuat untuk kelopak aktif (efek terangkat) */}
+        <filter id="liftedShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow
+            dx="0"
+            dy="4"
+            stdDeviation="5"
+            floodColor="#000"
+            floodOpacity="0.5"
+          />
+        </filter>
+
         <linearGradient id="textGradient" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ffffff" />
           <stop offset="100%" stopColor="#fde68a" />
         </linearGradient>
+
+        {/* Gradient khusus label aktif — lebih terang/mencolok */}
+        <linearGradient id="textGradientActive" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
       </defs>
+
       <g>
         {KELOPAK_LIST.map((item, index) => {
           const isActive = activeId === item.id;
           const angle = SUDUT_KELOPAK[index];
           const flip = angle >= 90 && angle <= 270 ? 180 : 0;
+
+          // Kelopak aktif didorong 12px lebih jauh dari pusat
+          const translateOffset = isActive ? 64 : 52;
+          // Label ikut geser supaya tidak menabrak kelopak
+          const labelY = isActive ? -120 : -108;
+
           return (
             <g key={item.id}>
+              {/* Layer glow — hanya tampil saat aktif, di belakang kelopak */}
+              {isActive && (
+                <ellipse
+                  rx="22"
+                  ry="46"
+                  fill={WARNA_KELOPAK[index]}
+                  opacity="0.55"
+                  filter="url(#glowActive)"
+                  transform={`rotate(${angle}) translate(0,-${translateOffset})`}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
+
+              {/* Kelopak utama */}
               <ellipse
                 rx="20"
                 ry="44"
                 fill={WARNA_KELOPAK[index]}
                 stroke={isActive ? "#ffffff" : "rgba(255,255,255,0.3)"}
-                strokeWidth={isActive ? 2 : 1.5}
-                opacity={isActive ? 1 : 0.85}
-                transform={`rotate(${angle}) translate(0,-52)`}
+                strokeWidth={isActive ? 2.5 : 1.5}
+                opacity={isActive ? 1 : 0.8}
+                filter={isActive ? "url(#liftedShadow)" : "url(#softShadow)"}
+                transform={`rotate(${angle}) translate(0,-${translateOffset})`}
                 style={{
                   cursor: "pointer",
-                  transition: "stroke 0.2s, opacity 0.2s",
+                  transition: "opacity 0.25s ease",
                 }}
                 onClick={() => onKelopakClick(item.id)}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.opacity = isActive ? "1" : "0.85")
+                  (e.currentTarget.style.opacity = isActive ? "1" : "0.8")
                 }
               >
                 <title>{item.tooltip}</title>
               </ellipse>
+
+              {/* Garis putih kecil di ujung kelopak aktif sebagai aksen */}
+              {isActive && (
+                <ellipse
+                  rx="8"
+                  ry="3"
+                  fill="rgba(255,255,255,0.35)"
+                  transform={`rotate(${angle}) translate(0,-${translateOffset + 36})`}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
+
+              {/* Label teks */}
               <text
                 x="0"
-                y="-108"
-                transform={`rotate(${angle}) rotate(${flip}, 0, -108)`}
+                y={labelY}
+                transform={`rotate(${angle}) rotate(${flip}, 0, ${labelY})`}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontFamily="Segoe UI, system-ui, sans-serif"
-                fontSize="13"
-                fontWeight="500"
+                fontSize={isActive ? "13.5" : "13"}
+                fontWeight={isActive ? "600" : "500"}
                 letterSpacing="0.5"
-                fill="url(#textGradient)"
+                fill={
+                  isActive ? "url(#textGradientActive)" : "url(#textGradient)"
+                }
                 filter="url(#softShadow)"
-                stroke="rgba(0,0,0,0.25)"
-                strokeWidth="0.6"
+                stroke="rgba(0,0,0,0.3)"
+                strokeWidth={isActive ? "0.8" : "0.6"}
                 paintOrder="stroke fill"
                 style={{ pointerEvents: "none", userSelect: "none" }}
               >
@@ -691,34 +775,43 @@ function BungaSVG({
             </g>
           );
         })}
-        {/* Pusat */}
+
+        {/* Pusat bunga */}
         <circle
           r="20"
           fill="#1f2937"
           stroke={centerActive ? "#f59e0b" : "rgba(255,255,255,0.25)"}
           strokeWidth={centerActive ? 2.5 : 2}
-          style={{ cursor: "pointer", transition: "stroke 0.2s" }}
+          filter={centerActive ? "url(#glowActive)" : undefined}
+          style={{ cursor: "pointer", transition: "stroke 0.2s, filter 0.2s" }}
           onClick={onCenterClick}
         >
           <title>Daftar Pengajuan</title>
         </circle>
-        <text
-          x="0"
-          y="7"
-          fontFamily="Arial,sans-serif"
-          fontSize="18"
-          fontWeight="900"
-          fill={centerActive ? "#f59e0b" : "#d1d5db"}
-          textAnchor="middle"
-          style={{
-            cursor: "pointer",
-            userSelect: "none",
-            transition: "fill 0.2s",
-          }}
-          onClick={onCenterClick}
+        <g
+          style={{ cursor: "pointer", pointerEvents: "none" }}
+          fill="none"
+          stroke={centerActive ? "#f59e0b" : "#d1d5db"}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          &#10003;
-        </text>
+          {/* Body dokumen */}
+          <rect x="-7" y="-10" width="14" height="17" rx="2" />
+          {/* Pojok lipatan */}
+          <polyline points="-7,-5 -3,-5 -3,-10" />
+          {/* Garis teks */}
+          <line x1="-4" y1="0" x2="4" y2="0" />
+          <line x1="-4" y1="3.5" x2="4" y2="3.5" />
+          <line x1="-4" y1="7" x2="1" y2="7" />
+        </g>
+        {/* Invisible click target */}
+        <circle
+          r="20"
+          fill="transparent"
+          style={{ cursor: "pointer" }}
+          onClick={onCenterClick}
+        />
       </g>
     </svg>
   );
@@ -858,6 +951,7 @@ export default function SiPuspitaLandingPage() {
   const [bungaActiveId, setBungaActiveId] = useState<KelopakId | null>(null);
   const [bungaCenterActive, setBungaCenterActive] = useState(false);
   const [modalItem, setModalItem] = useState<KelopakItem | null>(null);
+  const isModalOpen = modalItem !== null;
 
   const handleKelopakClick = (id: KelopakId) => {
     setBungaCenterActive(false);
@@ -916,7 +1010,7 @@ export default function SiPuspitaLandingPage() {
                 >
                   {label}
                   {/* Underline animasi */}
-                  <span className="absolute inset-x-3.5 bottom-1.5 h-[2px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                  <span className="absolute inset-x-3.5 bottom-1.5 h-0.5 origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 </a>
               ))}
             </div>
@@ -954,7 +1048,7 @@ export default function SiPuspitaLandingPage() {
           {/* Mobile menu */}
           <div
             className={`overflow-hidden transition-all duration-300 ease-in-out lg:hidden ${
-              mobileOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+              mobileOpen ? "max-h-125 opacity-100" : "max-h-0 opacity-0"
             }`}
           >
             <div className="flex flex-col gap-3 border-t border-gray-100 bg-white/90 px-6 py-5 backdrop-blur-md">
@@ -966,7 +1060,7 @@ export default function SiPuspitaLandingPage() {
                   onClick={() => setMobileOpen(false)}
                 >
                   {label}
-                  <span className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full bg-[#1a4e8f] transition-all duration-300 ease-out group-hover:w-full" />
+                  <span className="absolute bottom-0 left-0 h-0.5 w-0 rounded-full bg-[#1a4e8f] transition-all duration-300 ease-out group-hover:w-full" />
                 </a>
               ))}
               <hr className="my-1 border-gray-200" />
@@ -995,18 +1089,18 @@ export default function SiPuspitaLandingPage() {
       >
         {/* Background glows */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -right-32 h-[600px] w-[600px] rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 h-[400px] w-[400px] rounded-full bg-blue-800/30 blur-2xl" />
+          <div className="absolute -top-32 -right-32 h-150 w-150 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 h-100 w-100 rounded-full bg-blue-800/30 blur-2xl" />
         </div>
 
         {/* Left accent bar */}
-        <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
+        <div className="absolute top-0 left-0 h-full w-1 bg-linear-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
 
         {/* Content wrapper (no duplication) */}
         {/* ── Hero root ── */}
         <div className="relative overflow-hidden bg-[#0f2d5e]">
           {/* Garis emas atas — pembatas resmi */}
-          <div className="h-[4px] w-full bg-gradient-to-r from-transparent via-[#e8c84a] to-transparent" />
+          <div className="h-1 w-full bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
 
           {/* Ornamen diagonal subtle */}
           <div
@@ -1021,20 +1115,20 @@ export default function SiPuspitaLandingPage() {
           <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.07),transparent)]" />
 
           {/* ── Content wrapper ── */}
-          <div className="relative mx-auto w-full max-w-[1100px] px-8 py-24">
+          <div className="relative mx-auto w-full max-w-275 px-8 py-24">
             <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
               {/* ── Kiri: teks utama ── */}
               <div className="min-w-0 flex-1">
                 {/* Eyebrow institusi */}
-                <div className="bg-[#e8c84a]/07 mb-5 inline-flex items-center gap-2 rounded-[4px] border border-[#e8c84a]/35 px-3 py-1.5">
-                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#e8c84a]" />
+                <div className="bg-[#e8c84a]/07 mb-5 inline-flex items-center gap-2 rounded-sm border border-[#e8c84a]/35 px-3 py-1.5">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e8c84a]" />
                   <p className="text-[11px] font-semibold tracking-[0.18em] text-[#e8c84a] uppercase">
                     BPKAD Kabupaten Kendal
                   </p>
                 </div>
 
                 {/* Divider aksen emas */}
-                <div className="mb-5 h-[2px] w-10 rounded-full bg-gradient-to-r from-[#c8a020] to-[#e8c84a]" />
+                <div className="mb-5 h-0.5 w-10 rounded-full bg-linear-to-r from-[#c8a020] to-[#e8c84a]" />
 
                 {/* Heading — warna SiPuspita TIDAK diubah */}
                 <div className="mb-7">
@@ -1046,7 +1140,7 @@ export default function SiPuspitaLandingPage() {
                   <a
                     href="#formulir"
                     aria-label="Ajukan permohonan baru"
-                    className="inline-flex items-center gap-2 rounded-[4px] border border-[#e8c84a] bg-[#e8c84a] px-[22px] py-[11px] text-[13px] font-bold tracking-[0.02em] text-[#0a1f4e] transition hover:bg-[#f0d45a] hover:shadow-[0_2px_12px_rgba(232,200,74,0.25)]"
+                    className="inline-flex items-center gap-2 rounded-sm border border-[#e8c84a] bg-[#e8c84a] px-5.5 py-2.75 text-[13px] font-bold tracking-[0.02em] text-[#0a1f4e] transition hover:bg-[#f0d45a] hover:shadow-[0_2px_12px_rgba(232,200,74,0.25)]"
                   >
                     Ajukan Permohonan
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1055,7 +1149,7 @@ export default function SiPuspitaLandingPage() {
                   <a
                     href="#tracking"
                     aria-label="Lacak status berkas pengajuan"
-                    className="inline-flex items-center gap-2 rounded-[4px] border border-white/25 px-5 py-[10px] text-[13px] font-medium text-white/75 transition hover:border-white/50 hover:bg-white/5 hover:text-white"
+                    className="inline-flex items-center gap-2 rounded-sm border border-white/25 px-5 py-2.5 text-[13px] font-medium text-white/75 transition hover:border-white/50 hover:bg-white/5 hover:text-white"
                   >
                     <Search className="h-3.5 w-3.5" aria-hidden="true" />
                     Lacak Status Berkas
@@ -1068,7 +1162,7 @@ export default function SiPuspitaLandingPage() {
                     <p className="text-xl leading-none font-bold text-[#e8c84a]">
                       2.4K+
                     </p>
-                    <p className="mt-1 text-[11px] tracking-[0.05em] text-white/45 uppercase">
+                    <p className="mt-1 text-[11px] tracking-wider text-white/45 uppercase">
                       Permohonan Diproses
                     </p>
                   </div>
@@ -1077,7 +1171,7 @@ export default function SiPuspitaLandingPage() {
                     <p className="text-xl leading-none font-bold text-[#e8c84a]">
                       98%
                     </p>
-                    <p className="mt-1 text-[11px] tracking-[0.05em] text-white/45 uppercase">
+                    <p className="mt-1 text-[11px] tracking-wider text-white/45 uppercase">
                       Tingkat Penyelesaian
                     </p>
                   </div>
@@ -1086,7 +1180,7 @@ export default function SiPuspitaLandingPage() {
                     <p className="text-xl leading-none font-bold text-[#e8c84a]">
                       &lt; 3 Hari
                     </p>
-                    <p className="mt-1 text-[11px] tracking-[0.05em] text-white/45 uppercase">
+                    <p className="mt-1 text-[11px] tracking-wider text-white/45 uppercase">
                       Rata-rata Proses
                     </p>
                   </div>
@@ -1094,30 +1188,28 @@ export default function SiPuspitaLandingPage() {
               </div>
 
               {/* ── Kanan: bunga interaktif ── */}
-              <div className="flex flex-shrink-0 flex-col items-center">
-                {/* Frame resmi */}
+              {/* Spacer placeholder — menjaga ukuran layout saat bunga jadi fixed */}
+              <div
+                className="flex shrink-0 flex-col items-center"
+                style={{ visibility: isModalOpen ? "hidden" : "visible" }}
+              >
                 <div className="relative flex h-72 w-72 items-center justify-center">
-                  {/* Lingkaran dekorasi */}
-                  <div className="pointer-events-none absolute inset-[30px] rounded-full border border-slate-200/25" />
-
-                  {/* Corner accent ala dokumen resmi */}
+                  <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
                   <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                   <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
                   <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                   <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
-
-                  {/* BungaSVG komponen asli */}
                   <div className="relative z-10 h-64 w-64">
-                    <BungaSVG
-                      activeId={bungaActiveId}
-                      centerActive={bungaCenterActive}
-                      onKelopakClick={handleKelopakClick}
-                      onCenterClick={handleCenterClick}
-                    />
+                    {!isModalOpen && (
+                      <BungaSVG
+                        activeId={bungaActiveId}
+                        centerActive={bungaCenterActive}
+                        onKelopakClick={handleKelopakClick}
+                        onCenterClick={handleCenterClick}
+                      />
+                    )}
                   </div>
                 </div>
-
-                {/* Caption */}
                 <p className="mt-3.5 text-[10.5px] tracking-[0.12em] text-white/35 uppercase">
                   Menu Layanan Interaktif
                 </p>
@@ -1126,13 +1218,13 @@ export default function SiPuspitaLandingPage() {
           </div>
 
           {/* Garis bawah subtle */}
-          <div className="absolute right-0 bottom-0 left-0 h-px bg-gradient-to-r from-transparent via-[#c8a020]/30 to-transparent" />
+          <div className="absolute right-0 bottom-0 left-0 h-px bg-linear-to-r from-transparent via-[#c8a020]/30 to-transparent" />
         </div>
       </section>
 
       {/* ══════════════════ FITUR UTAMA ══════════════════ */}
       <section id="formulir" className="bg-white px-3 py-12 sm:py-16">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-300 px-6">
           {/* Heading */}
           <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -1154,7 +1246,7 @@ export default function SiPuspitaLandingPage() {
 
           {/* Cards grid */}
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {FITUR.map((f, i) => (
+            {FITUR.map((f) => (
               <div
                 key={f.title}
                 className={`group relative flex flex-col rounded-sm border ${f.border} cursor-default overflow-hidden bg-white shadow-sm transition-all duration-300 hover:shadow-lg`}
@@ -1195,7 +1287,7 @@ export default function SiPuspitaLandingPage() {
                         className="flex items-center gap-2 text-[12px] text-gray-600"
                       >
                         <svg
-                          className={`h-3.5 w-3.5 flex-shrink-0 ${f.color}`}
+                          className={`h-3.5 w-3.5 shrink-0 ${f.color}`}
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2.5"
@@ -1224,7 +1316,7 @@ export default function SiPuspitaLandingPage() {
 
                 {/* Hover glow background */}
                 <div
-                  className={`absolute inset-0 bg-gradient-to-br ${f.accent} pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-[0.03]`}
+                  className={`absolute inset-0 bg-linear-to-br ${f.accent} pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-[0.03]`}
                 />
               </div>
             ))}
@@ -1234,7 +1326,7 @@ export default function SiPuspitaLandingPage() {
 
       {/* ══════════════════ ALUR PENGAJUAN ══════════════════ */}
       <section id="sop" className="bg-[#f7faff] py-7 sm:py-10">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-300 px-6">
           {/* ── Heading ── */}
           <div className="mb-14 text-center">
             <h2 className="text-[32px] leading-[1.15] font-bold text-[#0f2d5e] sm:text-[42px]">
@@ -1250,7 +1342,7 @@ export default function SiPuspitaLandingPage() {
           {/* ── Step Cards — redesigned with large numbered lanes ── */}
           <div className="relative mb-8">
             {/* Connector dashed line desktop */}
-            <div className="absolute top-[44px] right-[10%] left-[10%] z-0 hidden h-px border-t-2 border-dashed border-blue-200 lg:block" />
+            <div className="absolute top-11 right-[10%] left-[10%] z-0 hidden h-px border-t-2 border-dashed border-blue-200 lg:block" />
 
             <div className="relative z-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {ALUR.map((step, i) => {
@@ -1302,7 +1394,7 @@ export default function SiPuspitaLandingPage() {
                         />
                       )}
                       <div
-                        className={`relative flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full border-4 border-white ${colors.bg} shadow-xl transition-transform duration-300 group-hover:scale-105`}
+                        className={`relative flex h-22 w-22 flex-col items-center justify-center rounded-full border-4 border-white ${colors.bg} shadow-xl transition-transform duration-300 group-hover:scale-105`}
                       >
                         <span className="mb-0.5 text-[13px] font-black tracking-widest text-white uppercase">
                           {step.num}
@@ -1360,7 +1452,7 @@ export default function SiPuspitaLandingPage() {
 
       {/* ══════════════════ KEUNGGULAN ══════════════════ */}
       <section className="bg-white py-6 sm:py-8">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-300 px-6">
           <h2 className="mb-8 text-center text-[25px] leading-[1.2] font-bold text-gray-900 sm:text-[36px]">
             Mengapa SI PUSPITA Lebih Efektif dari Proses Manual?
           </h2>
@@ -1391,7 +1483,7 @@ export default function SiPuspitaLandingPage() {
 
             {/* Dokumen requirements visual */}
             <div className="flex justify-center">
-              <div className="relative w-[320px] sm:w-[360px]">
+              <div className="relative w-[320px] sm:w-90">
                 <div className="rounded-md border border-blue-100 bg-white p-6 shadow-xl">
                   <div className="mb-5 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-blue-400" />
@@ -1445,7 +1537,7 @@ export default function SiPuspitaLandingPage() {
 
       {/* ══════════════════ KONTAK ══════════════════ */}
       <section id="kontak" className="bg-gray-50 py-6 sm:py-8">
-        <div className="mx-auto max-w-[1200px] px-6">
+        <div className="mx-auto max-w-300 px-6">
           <div className="grid items-start gap-16 lg:grid-cols-2">
             <div>
               <h2 className="mb-2 text-[20px] leading-snug font-bold text-gray-900 sm:text-[40px]">
@@ -1538,7 +1630,7 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ FOOTER ══════════════════ */}
       <footer className="bg-[#0d1f3c] text-gray-400">
         {/* Main footer content */}
-        <div className="mx-auto max-w-[1200px] px-6 py-16">
+        <div className="mx-auto max-w-300 px-6 py-16">
           <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
             {/* Col 1 — Brand + alamat */}
             <div className="lg:col-span-1">
@@ -1556,7 +1648,7 @@ export default function SiPuspitaLandingPage() {
               <div className="flex flex-col gap-3 text-[13px]">
                 <div className="flex items-start gap-2.5 text-gray-400">
                   <svg
-                    className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-blue-400"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
@@ -1579,7 +1671,7 @@ export default function SiPuspitaLandingPage() {
                 </div>
                 <div className="flex items-center gap-2.5 text-gray-400">
                   <svg
-                    className="h-4 w-4 flex-shrink-0 text-blue-400"
+                    className="h-4 w-4 shrink-0 text-blue-400"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
@@ -1615,7 +1707,7 @@ export default function SiPuspitaLandingPage() {
                       className="group relative inline-block text-[13px] text-gray-400 transition-colors duration-200 hover:text-white"
                     >
                       {label}
-                      <span className="absolute bottom-0 left-0 h-[1px] w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
+                      <span className="absolute bottom-0 left-0 h-px w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
                     </a>
                   </li>
                 ))}
@@ -1641,7 +1733,7 @@ export default function SiPuspitaLandingPage() {
                       className="group relative inline-block text-[13px] text-gray-400 transition-colors duration-200 hover:text-white"
                     >
                       {label}
-                      <span className="absolute bottom-0 left-0 h-[1px] w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
+                      <span className="absolute bottom-0 left-0 h-px w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
                     </a>
                   </li>
                 ))}
@@ -1671,7 +1763,7 @@ export default function SiPuspitaLandingPage() {
               </div>
 
               {/* Email card */}
-              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
+              <div className="rounded-sm border border-white/10 bg-white/3 p-4 backdrop-blur-sm">
                 <div className="mb-1 text-[10px] font-semibold tracking-widest text-blue-200 uppercase">
                   Email Resmi
                 </div>
@@ -1688,7 +1780,7 @@ export default function SiPuspitaLandingPage() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/5 bg-[#07111f]">
-          <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row">
+          <div className="mx-auto flex max-w-300 flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row">
             <p className="text-[12px] text-gray-500">
               © {new Date().getFullYear()} BPKAD Kabupaten Kendal. Hak cipta
               dilindungi.
@@ -1703,12 +1795,45 @@ export default function SiPuspitaLandingPage() {
         </div>
       </footer>
       {/* ══════════════════ MODAL BUNGA ══════════════════ */}
-      {modalItem && <ModalBunga item={modalItem} onClose={handleCloseModal} />}
+      {modalItem && (
+        <>
+          <ModalBunga item={modalItem} onClose={handleCloseModal} />
+          {/* BungaSVG — fixed sejajar modal, tidak terpengaruh scroll */}
+          {/* Modal pakai sm:mr-[340px] → digeser 340px ke kiri dari center.
+              Bunga kita taruh di kanan modal: right = 50% - 340px - 288px/2 */}
+          <div
+            className="pointer-events-none fixed top-1/2 z-105 hidden -translate-y-1/2 sm:block"
+            style={{ left: "calc(50% + 220px)" }}
+            aria-hidden="true"
+          >
+            <div className="pointer-events-auto flex shrink-0 flex-col items-center">
+              <div className="relative flex h-72 w-72 items-center justify-center">
+                <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
+                <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
+                <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
+                <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
+                <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
+                <div className="relative z-10 h-64 w-64">
+                  <BungaSVG
+                    activeId={bungaActiveId}
+                    centerActive={bungaCenterActive}
+                    onKelopakClick={handleKelopakClick}
+                    onCenterClick={handleCenterClick}
+                  />
+                </div>
+              </div>
+              <p className="mt-3.5 text-[10.5px] tracking-[0.12em] text-white/35 uppercase">
+                Menu Layanan Interaktif
+              </p>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ══════════════════ MODAL LOGIN ══════════════════ */}
       {loginOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center"
+          className="fixed inset-0 z-100 flex items-end justify-center sm:items-center"
           style={{
             backgroundColor: "rgba(8,13,28,0.7)",
             backdropFilter: "blur(8px)",
@@ -1721,9 +1846,9 @@ export default function SiPuspitaLandingPage() {
             }
           }}
         >
-          <div className="w-full overflow-hidden rounded-md bg-white shadow-2xl sm:max-w-[420px]">
+          <div className="w-full overflow-hidden rounded-md bg-white shadow-2xl sm:max-w-105">
             {/* Top accent line */}
-            <div className="h-[3px] bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500" />
+            <div className="hlinear from-yellow-500 via-yellow-400 to-yellow-500" />
 
             {/* Content */}
             <div className="px-8 pt-8 pb-9">
