@@ -558,28 +558,34 @@ const KELOPAK_DAFTAR: KelopakItem = {
 function ModalBunga({
   item,
   onClose,
+  isClosing,
 }: {
   item: KelopakItem;
   onClose: () => void;
+  isClosing: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   const [displayedItem, setDisplayedItem] = useState(item);
   const [contentVisible, setContentVisible] = useState(true);
 
   useEffect(() => {
-    // Trigger animasi masuk setelah mount
     const t = setTimeout(() => setVisible(true), 10);
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handleKey);
-    document.body.style.overflow = "hidden";
     return () => {
       clearTimeout(t);
       document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
     };
   }, [onClose]);
+
+  useEffect(() => {
+    if (isClosing) {
+      const t = setTimeout(() => setVisible(false), 10);
+      return () => clearTimeout(t);
+    }
+  }, [isClosing]);
 
   // Animasi ganti konten saat item berubah
   useEffect(() => {
@@ -601,7 +607,7 @@ function ModalBunga({
       style={{
         backgroundColor: visible ? "rgba(8,20,50,0.82)" : "rgba(8,20,50,0)",
         backdropFilter: visible ? "blur(3px)" : "blur(0px)",
-        transition: "background-color 0.4s ease, backdrop-filter 0.4s ease",
+        transition: "background-color 0.5s ease, backdrop-filter 0.5s ease",
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
@@ -613,7 +619,7 @@ function ModalBunga({
             ? "translateY(0) scale(1)"
             : "translateY(20px) scale(0.96)",
           transition:
-            "opacity 0.35s cubic-bezier(0.4,0,0.2,1), transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+            "opacity 0.45s cubic-bezier(0.4,0,0.2,1), transform 0.45s cubic-bezier(0.4,0,0.2,1)",
         }}
       >
         {/* Sidebar aksen warna kiri */}
@@ -987,6 +993,7 @@ export default function SiPuspitaLandingPage() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
+  const [lastModalItem, setLastModalItem] = useState<KelopakItem | null>(null);
 
   // Bunga menu state
   const [bungaActiveId, setBungaActiveId] = useState<KelopakId | null>(null);
@@ -997,13 +1004,16 @@ export default function SiPuspitaLandingPage() {
   const handleKelopakClick = (id: KelopakId) => {
     setBungaCenterActive(false);
     setBungaActiveId(id);
-    setModalItem(KELOPAK_LIST.find((k) => k.id === id) ?? null);
+    const found = KELOPAK_LIST.find((k) => k.id === id) ?? null;
+    setModalItem(found);
+    setLastModalItem(found); // ← ganti dari ref
   };
 
   const handleCenterClick = () => {
     setBungaActiveId(null);
     setBungaCenterActive(true);
     setModalItem(KELOPAK_DAFTAR);
+    setLastModalItem(KELOPAK_DAFTAR); // ← ganti dari ref
   };
 
   const handleCloseModal = () => {
@@ -1013,7 +1023,7 @@ export default function SiPuspitaLandingPage() {
       setBungaActiveId(null);
       setBungaCenterActive(false);
       setIsModalClosing(false);
-    }, 400);
+    }, 600); // perpanjang agar animasi selesai dulu
   };
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
@@ -1029,6 +1039,15 @@ export default function SiPuspitaLandingPage() {
       setLoginError("Username atau password salah. Silakan coba lagi.");
     }, 1200);
   };
+  useEffect(() => {
+    if (isModalOpen || isModalClosing) {
+      document.body.style.overflow = "hidden";
+    } else {
+      setTimeout(() => {
+        document.body.style.overflow = "";
+      }, 600);
+    }
+  }, [isModalOpen, isModalClosing]);
 
   return (
     <div className="overflow-x-hidden bg-white font-sans text-gray-900">
@@ -1243,8 +1262,9 @@ export default function SiPuspitaLandingPage() {
                   transform:
                     isModalOpen && !isModalClosing ? "scale(0.9)" : "scale(1)",
                   pointerEvents: isModalOpen ? "none" : "auto",
-                  transition:
-                    "opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)",
+                  transition: isModalClosing
+                    ? "opacity 0.5s 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.5s 0.2s cubic-bezier(0.4,0,0.2,1)"
+                    : "opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1)",
                 }}
               >
                 <div className="relative flex h-72 w-72 items-center justify-center">
@@ -1853,7 +1873,11 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ MODAL BUNGA ══════════════════ */}
       {(modalItem || isModalClosing) && (
         <>
-          <ModalBunga item={modalItem!} onClose={handleCloseModal} />
+          <ModalBunga
+            item={modalItem ?? lastModalItem!}
+            onClose={handleCloseModal}
+            isClosing={isModalClosing}
+          />
           {/* BungaSVG — fixed sejajar modal, tidak terpengaruh scroll */}
           {/* Modal pakai sm:mr-[340px] → digeser 340px ke kiri dari center.
               Bunga kita taruh di kanan modal: right = 50% - 340px - 288px/2 */}
