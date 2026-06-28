@@ -317,20 +317,18 @@ const PAGE_META: Record<
 // ── Logo ─────────────────────────────────────────────────────────────────────
 
 const SiPuspitaLogo = () => (
-  <Link href="/">
-    <div className="relative">
-      {/* Logo */}
-      <Link href="/homepage">
-        <Image
-          src="/SiPuspita_Fix.png"
-          alt="Logo"
-          width={100}
-          height={100}
-          className="w-50"
-        />
-      </Link>
-    </div>
-  </Link>
+  <div className="relative">
+    {/* Logo */}
+    <Link href="/homepage">
+      <Image
+        src="/SiPuspita_Fix.png"
+        alt="Logo"
+        width={100}
+        height={100}
+        className="w-50"
+      />
+    </Link>
+  </div>
 );
 
 // ── NavItem ──────────────────────────────────────────────────────────────────
