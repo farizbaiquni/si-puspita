@@ -20,7 +20,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -612,7 +612,7 @@ function ModalBunga({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="flex w-full max-w-130 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-65"
+        className="flex w-full max-w-160 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible
@@ -689,7 +689,7 @@ function BungaSVG({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="-130 -130 260 260"
+      viewBox="-145 -145 290 290"
       className="h-full w-full"
     >
       <defs>
@@ -742,10 +742,11 @@ function BungaSVG({
           const angle = SUDUT_KELOPAK[index];
           const flip = angle >= 90 && angle <= 270 ? 180 : 0;
 
-          // Kelopak aktif didorong 12px lebih jauh dari pusat
-          const translateOffset = isActive ? 64 : 52;
+          // Kelopak aktif didorong lebih jauh dari pusat
+          const translateOffset = isActive ? 80 : 52;
           // Label ikut geser supaya tidak menabrak kelopak
-          const labelY = isActive ? -120 : -108;
+          // (ujung kelopak aktif = translateOffset + ry = 80 + 44 = 124, beri jarak aman)
+          const labelY = isActive ? -136 : -108;
 
           return (
             <g key={item.id}>
@@ -774,7 +775,8 @@ function BungaSVG({
                 transform={`rotate(${angle}) translate(0,-${translateOffset})`}
                 style={{
                   cursor: "pointer",
-                  transition: "opacity 0.25s ease",
+                  transition:
+                    "opacity 0.25s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
                 }}
                 onClick={() => onKelopakClick(item.id)}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
@@ -1001,7 +1003,57 @@ export default function SiPuspitaLandingPage() {
   const [modalItem, setModalItem] = useState<KelopakItem | null>(null);
   const isModalOpen = modalItem !== null;
 
+  // Backsound klik kelopak — soft pop + sentuhan chime tipis, di-generate
+  // langsung via Web Audio API (tidak perlu file audio eksternal)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const playKelopakSound = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") ctx.resume();
+      const now = ctx.currentTime;
+
+      // Nada utama — soft pop, sedikit naik nadanya (± 100ms)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.09);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.18, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+
+      // Lapisan oktaf tipis di atas untuk sentuhan chime halus
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(1240, now);
+      osc2.frequency.exponentialRampToValueAtTime(1760, now + 0.09);
+      gain2.gain.setValueAtTime(0.0001, now);
+      gain2.gain.exponentialRampToValueAtTime(0.05, now + 0.012);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.16);
+    } catch {
+      // Abaikan bila Web Audio API tidak tersedia di browser
+    }
+  };
+
   const handleKelopakClick = (id: KelopakId) => {
+    playKelopakSound();
     setBungaCenterActive(false);
     setBungaActiveId(id);
     const found = KELOPAK_LIST.find((k) => k.id === id) ?? null;
@@ -1010,6 +1062,7 @@ export default function SiPuspitaLandingPage() {
   };
 
   const handleCenterClick = () => {
+    playKelopakSound();
     setBungaActiveId(null);
     setBungaCenterActive(true);
     setModalItem(KELOPAK_DAFTAR);
@@ -1267,13 +1320,13 @@ export default function SiPuspitaLandingPage() {
                     : "opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1)",
                 }}
               >
-                <div className="relative flex h-72 w-72 items-center justify-center">
+                <div className="relative flex h-80 w-80 items-center justify-center">
                   <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
                   <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                   <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
                   <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                   <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
-                  <div className="relative z-10 h-64 w-64">
+                  <div className="relative z-10 h-72 w-72">
                     {!isModalOpen && (
                       <BungaSVG
                         activeId={bungaActiveId}
@@ -1896,13 +1949,13 @@ export default function SiPuspitaLandingPage() {
             aria-hidden="true"
           >
             <div className="pointer-events-auto flex shrink-0 flex-col items-center">
-              <div className="relative flex h-72 w-72 items-center justify-center">
+              <div className="relative flex h-80 w-80 items-center justify-center">
                 <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
                 <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                 <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
                 <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                 <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
-                <div className="relative z-10 h-64 w-64">
+                <div className="relative z-10 h-72 w-72">
                   <BungaSVG
                     activeId={bungaActiveId}
                     centerActive={bungaCenterActive}
