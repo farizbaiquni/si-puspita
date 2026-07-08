@@ -27,8 +27,8 @@ import Link from "next/link";
 // ─── Bunga Menu — Data & Types ────────────────────────────────────────────────
 
 type KelopakId =
-  | "sop"
-  | "flowchart"
+  | "sop&flowchart"
+  | "upload-dokumen"
   | "pengajuan"
   | "lacak"
   | "informasi"
@@ -504,19 +504,19 @@ function ModalDaftarPengajuan() {
 
 const KELOPAK_LIST: KelopakItem[] = [
   {
-    id: "sop",
-    label: "SOP",
+    id: "sop&flowchart",
+    label: "SOP & Flowchart",
     icon: "📄",
-    tooltip: "Standar Operasional Prosedur",
-    modalTitle: "Standar Operasional Prosedur",
+    tooltip: "Standar Operasional Prosedur & Flowchart",
+    modalTitle: "Standar Operasional Prosedur & Flowchart",
     modalContent: <ModalSOP />,
   },
   {
-    id: "flowchart",
-    label: "Flowchart",
+    id: "upload-dokumen",
+    label: "Upload Dokumen",
     icon: "🗂️",
-    tooltip: "Alur & Diagram Proses",
-    modalTitle: "Alur Proses Pengajuan",
+    tooltip: "Upload Dokumen",
+    modalTitle: "Upload Dokumen",
     modalContent: <ModalFlowchart />,
   },
   {
