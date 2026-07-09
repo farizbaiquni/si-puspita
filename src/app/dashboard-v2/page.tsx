@@ -517,9 +517,9 @@ const Header: React.FC<HeaderProps> = ({ role, onRoleChange }) => {
     }
   > = {
     OPD: {
-      name: "Disdik",
-      subtitle: "Dinas Pendidikan dan Kebudayaan",
-      initials: "DP",
+      name: "Disdagkop UKM",
+      subtitle: "Dinas Perdagangan Koperasi dan UKM",
+      initials: "D",
       avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
     },
     BPKAD: {

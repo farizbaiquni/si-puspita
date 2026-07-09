@@ -1,4 +1,3 @@
-// contents/opd/ajukan-permohonan/AjukanPermohonan.tsx
 "use client";
 
 import React, { useState, useEffect, useRef, ChangeEvent } from "react";
@@ -6,6 +5,13 @@ import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
+
+interface NominatifFormProps {
+  initialData: NominatifEntry | null;
+  onSave: (entry: NominatifEntry) => void;
+  onCancel: () => void;
+}
+
 interface Pembayaran {
   id: string;
   nilaiPembayaran: string;
@@ -38,6 +44,7 @@ interface PernyataanOPD {
 }
 
 interface FormData {
+  namaOPD: string;
   namaPenanggungJawab: string;
   jabatan: string;
   nomorSurat: string;
@@ -50,6 +57,67 @@ interface FormData {
   nominatifList: NominatifEntry[];
   pernyataan: PernyataanOPD;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Utility: format yyyy-mm-dd → DD/MM/YYYY                            */
+/* ------------------------------------------------------------------ */
+const formatDisplayDate = (dateStr: string): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+};
+
+/* ------------------------------------------------------------------ */
+/*  DateInput – tampilan DD/MM/YYYY, value tetap yyyy-mm-dd            */
+/* ------------------------------------------------------------------ */
+const DateInput = ({
+  value,
+  onChange,
+  placeholder = "DD/MM/YYYY",
+  required = false,
+  className = "",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+}) => {
+  const inputDateRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+  };
+
+  const handleContainerClick = () => {
+    inputDateRef.current?.showPicker?.();
+    inputDateRef.current?.focus();
+  };
+
+  return (
+    <div
+      className={`relative w-full cursor-pointer ${className}`}
+      onClick={handleContainerClick}
+    >
+      <input
+        ref={inputDateRef}
+        type="date"
+        value={value}
+        onChange={handleChange}
+        required={required}
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+      />
+      <input
+        type="text"
+        value={value ? formatDisplayDate(value) : ""}
+        placeholder={placeholder}
+        readOnly
+        className="pointer-events-none h-full w-full rounded-md border border-gray-300 bg-white px-3 py-0 text-sm"
+      />
+    </div>
+  );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Step Configuration (5 langkah)                                     */
@@ -65,6 +133,7 @@ interface StepConfig {
     label: string;
     required?: boolean;
     maxSizeText?: string;
+    disabled?: boolean;
   }[];
 }
 
@@ -73,6 +142,14 @@ const steps: StepConfig[] = [
     id: "step1",
     label: "Data Penanggung Jawab",
     fields: [
+      {
+        name: "namaOPD",
+        label: "Nama OPD",
+        type: "text",
+        placeholder: "Nama OPD terisi otomatis",
+        required: true,
+        disabled: true,
+      },
       {
         name: "namaPenanggungJawab",
         label: "Nama Penanggung Jawab (Kepala OPD)",
@@ -187,6 +264,7 @@ const initialNominatif = (): NominatifEntry => ({
 });
 
 const initialForm: FormData = {
+  namaOPD: "",
   namaPenanggungJawab: "",
   jabatan: "",
   nomorSurat: "",
@@ -205,8 +283,11 @@ const initialForm: FormData = {
   },
 };
 
-function useFormWizard() {
-  const [form, setForm] = useState<FormData>(initialForm);
+function useFormWizard(initialOverrides?: Partial<FormData>) {
+  const [form, setForm] = useState<FormData>({
+    ...initialForm,
+    ...initialOverrides,
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -216,6 +297,7 @@ function useFormWizard() {
     required = true,
   ): string => {
     switch (name) {
+      case "namaOPD":
       case "namaPenanggungJawab":
       case "jabatan":
       case "nomorSurat":
@@ -265,7 +347,7 @@ function useFormWizard() {
   const markTouched = (name: string) =>
     setTouched((prev) => ({ ...prev, [name]: true }));
   const resetForm = () => {
-    setForm(initialForm);
+    setForm({ ...initialForm, ...initialOverrides });
     setErrors({});
     setTouched({});
   };
@@ -303,7 +385,7 @@ function useFormWizard() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  FileUploadCard (tetap)                                             */
+/*  FileUploadCard                                                     */
 /* ------------------------------------------------------------------ */
 const FileUploadCard = ({
   label,
@@ -338,9 +420,9 @@ const FileUploadCard = ({
           {label}
           {required ? <span className="text-red-500"> *</span> : ""}
         </label>
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-3 shadow-sm">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-red-50">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-red-50">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 text-red-500"
@@ -367,14 +449,14 @@ const FileUploadCard = ({
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+              className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
             >
               Lihat
             </button>
             <button
               type="button"
               onClick={onReset}
-              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
             >
               Hapus
             </button>
@@ -383,7 +465,7 @@ const FileUploadCard = ({
         {touched && error && <p className="text-sm text-red-600">{error}</p>}
         {modalOpen && previewUrl && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-2xl">
+            <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-md bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b px-4 py-3">
                 <span className="truncate text-sm font-medium text-gray-700">
                   {file.name}
@@ -417,7 +499,7 @@ const FileUploadCard = ({
         {required ? <span className="text-red-500"> *</span> : ""}
       </label>
       <div
-        className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${touched && error ? "border-red-400 bg-red-50" : "border-gray-300 bg-gray-50 hover:border-blue-400"}`}
+        className={`rounded-md border-2 border-dashed p-4 text-center transition-colors ${touched && error ? "border-red-400 bg-red-50" : "border-gray-300 bg-gray-50 hover:border-blue-400"}`}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -454,7 +536,7 @@ const FileUploadCard = ({
 };
 
 /* ------------------------------------------------------------------ */
-/*  Tabel Nominatif – lebih lega, minimal border                        */
+/*  Tabel Nominatif                                                    */
 /* ------------------------------------------------------------------ */
 interface NominatifTableProps {
   data: NominatifEntry[];
@@ -475,7 +557,7 @@ const NominatifTable: React.FC<NominatifTableProps> = ({
     );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-5 py-4">
         <h3 className="text-base font-semibold text-gray-800">
           Daftar Penanggung Piutang
@@ -530,14 +612,8 @@ const NominatifTable: React.FC<NominatifTableProps> = ({
 };
 
 /* ------------------------------------------------------------------ */
-/*  Form Nominatif – dengan format rupiah                              */
+/*  Form Nominatif                                                     */
 /* ------------------------------------------------------------------ */
-interface NominatifFormProps {
-  initialData: NominatifEntry | null;
-  onSave: (entry: NominatifEntry) => void;
-  onCancel: () => void;
-}
-
 const formatRupiah = (angka: string) => {
   const numberString = angka.replace(/[^0-9]/g, "");
   if (!numberString) return "";
@@ -591,6 +667,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
     initialData?.riwayatPembayaran ?? [],
   );
 
+  // ... preview state
   const [previewPen1, setPreviewPen1] = useState(() =>
     initialData?.penagihan1
       ? URL.createObjectURL(initialData.penagihan1)
@@ -617,8 +694,6 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
       : null,
   );
 
-  // Simpan referensi ke preview URL terbaru agar cleanup saat unmount
-  // selalu me-revoke URL yang sedang aktif (bukan nilai awal saat mount).
   const previewsRef = useRef({
     previewPen1,
     previewPen2,
@@ -733,7 +808,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
   const isEdit = !!initialData;
 
   return (
-    <div className="space-y-7 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="space-y-7 rounded-md border border-blue-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-800">
           {isEdit
@@ -759,7 +834,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
           <select
             value={jenisPiutang}
             onChange={(e) => setJenisPiutang(e.target.value)}
-            className="focus:ring-opacity-50 w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            className="w-full rounded-md border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
           >
             <option value="">-- Pilih --</option>
             <option value="pajak">Pajak</option>
@@ -771,7 +846,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
         </div>
       </div>
 
-      <fieldset className="rounded-xl border border-gray-100 bg-gray-50/50 p-5">
+      <fieldset className="rounded-md border border-gray-100 bg-gray-50/50 p-5">
         <legend className="rounded bg-gray-50/50 px-2 text-sm font-medium text-gray-700">
           Dokumen Riwayat Penagihan
         </legend>
@@ -842,7 +917,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
             value={nama}
             onChange={(e) => setNama(e.target.value)}
             placeholder="Nama penanggung piutang"
-            className="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            className="w-full rounded-md border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
           />
         </div>
         <div>
@@ -854,29 +929,29 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
             value={alamat}
             onChange={(e) => setAlamat(e.target.value)}
             placeholder="Alamat lengkap"
-            className="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            className="w-full rounded-md border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
           />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
             Tanggal Terjadinya Piutang *
           </label>
-          <input
-            type="date"
+          <DateInput
             value={tglPiutang}
-            onChange={(e) => setTglPiutang(e.target.value)}
-            className="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            onChange={setTglPiutang}
+            placeholder="DD/MM/YYYY"
+            className="h-10"
           />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
             Tanggal Piutang Macet *
           </label>
-          <input
-            type="date"
+          <DateInput
             value={tglPiutangMacet}
-            onChange={(e) => setTglPiutangMacet(e.target.value)}
-            className="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            onChange={setTglPiutangMacet}
+            placeholder="DD/MM/YYYY"
+            className="h-10"
           />
         </div>
         <div>
@@ -888,7 +963,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
             value={nilaiMataUang}
             onChange={(e) => setNilaiMataUang(e.target.value)}
             placeholder="Contoh: IDR"
-            className="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            className="w-full rounded-md border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
           />
         </div>
         <div>
@@ -900,7 +975,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
             value={nilaiPiutang ? formatRupiah(nilaiPiutang) : ""}
             onChange={(e) => handleNilaiPiutangChange(e.target.value)}
             placeholder="5000000"
-            className="w-full rounded-lg border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
+            className="w-full rounded-md border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200"
           />
         </div>
       </div>
@@ -913,7 +988,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
           <button
             type="button"
             onClick={addPembayaran}
-            className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+            className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
           >
             + Tambah Pembayaran
           </button>
@@ -927,7 +1002,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
           {riwayat.map((p, idx) => (
             <div
               key={p.id}
-              className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center"
+              className="flex flex-col gap-3 rounded-md border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center"
             >
               <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
@@ -940,24 +1015,20 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
                     onChange={(e) =>
                       updatePembayaran(p.id, "nilaiPembayaran", e.target.value)
                     }
-                    className="w-full rounded-md border-gray-300 px-2 py-1.5 text-sm"
+                    className="h-10 w-full rounded-md border-gray-300 bg-white px-2 py-0 text-sm"
                   />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-gray-500">
                     Tanggal Pembayaran *
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={p.tanggalPembayaran}
-                    onChange={(e) =>
-                      updatePembayaran(
-                        p.id,
-                        "tanggalPembayaran",
-                        e.target.value,
-                      )
+                    onChange={(val) =>
+                      updatePembayaran(p.id, "tanggalPembayaran", val)
                     }
-                    className="w-full rounded-md border-gray-300 px-2 py-1.5 text-sm"
+                    placeholder="DD/MM/YYYY"
+                    className="h-10"
                   />
                 </div>
                 <div>
@@ -968,13 +1039,13 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
                     type="text"
                     value={p.saldoUtang}
                     readOnly
-                    className="w-full rounded-md border-gray-200 bg-gray-100 px-2 py-1.5 text-sm text-gray-700"
+                    className="h-10 w-full rounded-md border-gray-200 bg-gray-100 px-2 py-0 text-sm text-gray-700"
                   />
                 </div>
               </div>
               <button
                 onClick={() => removePembayaran(p.id)}
-                className="mt-1 self-end text-xs text-red-500 hover:text-red-700 sm:mt-0 sm:self-center"
+                className="mt-1 self-end rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50 sm:mt-0 sm:self-center"
               >
                 Hapus
               </button>
@@ -987,7 +1058,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
         <button
           type="button"
           onClick={handleSubmit}
-          className="rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800"
+          className="rounded-md bg-blue-700 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800"
         >
           {isEdit ? "Perbarui Data" : "Tambah ke Daftar"}
         </button>
@@ -997,7 +1068,7 @@ const NominatifForm: React.FC<NominatifFormProps> = ({
 };
 
 /* ------------------------------------------------------------------ */
-/*  Komponen Utama                                                    */
+/*  Komponen Utama                                                     */
 /* ------------------------------------------------------------------ */
 export default function AjukanPermohonanWizard() {
   const {
@@ -1013,7 +1084,9 @@ export default function AjukanPermohonanWizard() {
     updateNominatifEntry,
     removeNominatifEntry,
     updatePernyataan,
-  } = useFormWizard();
+  } = useFormWizard({
+    namaOPD: "Dinas Perdagangan Koperasi dan UKM",
+  });
 
   const [currentStep, setCurrentStep] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -1325,6 +1398,29 @@ export default function AjukanPermohonanWizard() {
             );
           }
 
+          if (field.type === "date") {
+            return (
+              <div key={field.name} className="space-y-1.5">
+                <label
+                  htmlFor={field.name}
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  {field.label}{" "}
+                  {isRequired && <span className="text-red-500">*</span>}
+                </label>
+                <DateInput
+                  value={(value as string) || ""}
+                  onChange={(val) => updateField(field.name, val)}
+                  placeholder={field.placeholder || "DD/MM/YYYY"}
+                  className="h-10" // ← tambahkan class ini
+                />
+                {isTouched && error && (
+                  <p className="text-sm text-red-600">{error}</p>
+                )}
+              </div>
+            );
+          }
+
           return (
             <div key={field.name} className="space-y-1.5">
               <label
@@ -1342,13 +1438,16 @@ export default function AjukanPermohonanWizard() {
                 onChange={(e) => updateField(field.name, e.target.value)}
                 onBlur={() => markTouched(field.name)}
                 placeholder={field.placeholder}
+                disabled={field.disabled}
                 ref={
                   field.name === "namaPenanggungJawab" ? inputRef : undefined
                 }
-                className={`w-full rounded-lg border px-3 py-2.5 text-sm transition outline-none ${
-                  isTouched && error
-                    ? "border-red-400 bg-red-50"
-                    : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
+                className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
+                  field.disabled
+                    ? "cursor-not-allowed bg-gray-100 text-gray-600"
+                    : isTouched && error
+                      ? "border-red-400 bg-red-50"
+                      : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
                 }`}
               />
               {isTouched && error && (
@@ -1361,36 +1460,105 @@ export default function AjukanPermohonanWizard() {
     );
   };
 
-  const renderStep6 = () => (
-    <div className="space-y-8">
-      <NominatifTable
-        data={form.nominatifList}
-        onEdit={(entry) => setEditingEntry(entry)}
-        onDelete={(index) => removeNominatifEntry(index)}
-      />
+  const renderStep6 = () => {
+    const totalDebitur = form.nominatifList.length;
 
-      <NominatifForm
-        key={nominatifKey}
-        initialData={editingEntry}
-        onSave={handleSaveNominatif}
-        onCancel={() => {
-          setEditingEntry(null);
-          setNominatifKey((prev) => prev + 1);
-        }}
-      />
+    const getSaldoAkhir = (entry: NominatifEntry): number => {
+      const piutang = parseFloat(entry.nilaiPiutang) || 0;
+      const riwayat = entry.riwayatPembayaran;
+      if (riwayat.length === 0) return piutang;
+      const lastSaldo = parseFloat(riwayat[riwayat.length - 1].saldoUtang);
+      return isNaN(lastSaldo) ? piutang : lastSaldo;
+    };
 
-      {errors.nominatifEmpty && (
-        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-          {errors.nominatifEmpty}
-        </p>
-      )}
-    </div>
-  );
+    const totalSisaPiutang = form.nominatifList.reduce(
+      (sum, e) => sum + getSaldoAkhir(e),
+      0,
+    );
+
+    const fmt = (val: number) => val.toLocaleString("id-ID");
+
+    return (
+      <div className="space-y-8">
+        {/* Panel Statistik Ringkas & Modern */}
+        {form.nominatifList.length > 0 && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 rounded-md border border-blue-100 bg-gradient-to-br from-white to-blue-50/50 p-4 shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-100 text-blue-700">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">
+                  Jumlah Debitur
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {totalDebitur}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-md border border-blue-100 bg-gradient-to-br from-white to-emerald-50/50 p-4 shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">
+                  Total Sisa Piutang
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  Rp {fmt(totalSisaPiutang)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <NominatifTable
+          data={form.nominatifList}
+          onEdit={(entry) => setEditingEntry(entry)}
+          onDelete={(index) => removeNominatifEntry(index)}
+        />
+
+        <NominatifForm
+          key={nominatifKey}
+          initialData={editingEntry}
+          onSave={handleSaveNominatif}
+          onCancel={() => {
+            setEditingEntry(null);
+            setNominatifKey((prev) => prev + 1);
+          }}
+        />
+
+        {errors.nominatifEmpty && (
+          <p className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+            {errors.nominatifEmpty}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   if (submitted) {
     return (
       <div className="w-full py-10">
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
+        <div className="rounded-md border border-gray-200 bg-white p-6 text-center">
           <p className="mb-2 text-lg font-semibold text-gray-800">
             ✅ Pengiriman Berhasil
           </p>
@@ -1403,7 +1571,7 @@ export default function AjukanPermohonanWizard() {
               resetForm();
               setCurrentStep(0);
             }}
-            className="rounded-lg bg-[#1a4e8f] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0e3b6e]"
+            className="rounded-md bg-[#1a4e8f] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0e3b6e]"
           >
             Kirim Usulan Baru
           </button>
@@ -1422,7 +1590,7 @@ export default function AjukanPermohonanWizard() {
     <>
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-5 shadow-lg">
+          <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-5 shadow-lg">
             <h3 className="mb-2 font-semibold text-gray-800">
               Konfirmasi Pengiriman
             </h3>
@@ -1433,14 +1601,14 @@ export default function AjukanPermohonanWizard() {
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={isSubmitting}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
               >
                 Batal
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-1 rounded-lg bg-[#1a4e8f] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0e3b6e]"
+                className="flex items-center gap-1 rounded-md bg-[#1a4e8f] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0e3b6e]"
               >
                 {isSubmitting ? "Mengirim..." : "Ya, Kirim"}
               </button>
@@ -1450,7 +1618,7 @@ export default function AjukanPermohonanWizard() {
       )}
 
       <div className="w-full">
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
           <div className="px-6 pt-4 pb-2">
             <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
               <span>
@@ -1539,7 +1707,7 @@ export default function AjukanPermohonanWizard() {
                   type="button"
                   onClick={goPrev}
                   disabled={currentStep === 0}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  className={`rounded-md px-4 py-2 text-sm font-medium transition ${
                     currentStep === 0
                       ? "cursor-not-allowed bg-gray-50 text-gray-400"
                       : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -1552,7 +1720,7 @@ export default function AjukanPermohonanWizard() {
                     type="button"
                     onClick={goNext}
                     disabled={!allChecked}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
                       allChecked
                         ? "bg-[#1a4e8f] text-white hover:bg-[#0e3b6e]"
                         : "cursor-not-allowed bg-gray-300 text-gray-500"
@@ -1564,7 +1732,7 @@ export default function AjukanPermohonanWizard() {
                   <button
                     type="button"
                     onClick={goNext}
-                    className="rounded-lg bg-[#1a4e8f] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0e3b6e]"
+                    className="rounded-md bg-[#1a4e8f] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0e3b6e]"
                   >
                     Berikutnya
                   </button>
