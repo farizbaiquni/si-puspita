@@ -1148,7 +1148,9 @@ export default function AjukanPermohonanWizard() {
                   <legend className="px-2 text-xl font-bold text-gray-800">
                     Identitas Usulan
                   </legend>
-                  {current.fields?.map((field) => renderField(field))}
+                  <div className="space-y-4">
+                    {current.fields?.map((field) => renderField(field))}
+                  </div>
                 </fieldset>
               ) : (
                 <div className="space-y-6">
