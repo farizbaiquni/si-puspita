@@ -1143,7 +1143,7 @@ export default function SiPuspitaLandingPage() {
                 <LogIn className="h-3.5 w-3.5" /> Masuk
                 <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
               </button>
-              <Link href={"/dashboard"}>
+              <Link href={"/dashboard-v2"}>
                 <button className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md">
                   Ajukan Sekarang
                 </button>
