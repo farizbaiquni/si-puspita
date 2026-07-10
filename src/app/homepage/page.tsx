@@ -456,8 +456,8 @@ function ModalInformasiUmum() {
           </span>{" "}
           adalah layanan digital BPKAD Kabupaten Kendal yang mengintegrasikan
           prosedur, dokumen, dan alur pengajuan penghapusan piutang daerah dalam
-          satu sistem — mulai dari pengajuan, verifikasi, hingga penerbitan SK
-          Penghapusan.
+          satu sistem — mulai dari pengajuan hingga verifikasi administratif dan
+          substantif oleh BPKAD Kabupaten Kendal.
         </p>
       </div>
 
@@ -651,6 +651,7 @@ function ModalBunga({
   const [visible, setVisible] = useState(false);
   const [displayedItem, setDisplayedItem] = useState(item);
   const [contentVisible, setContentVisible] = useState(true);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 10);
@@ -658,9 +659,15 @@ function ModalBunga({
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handleKey);
+
+    // Kunci scroll halaman di belakang modal selama modal terbuka
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     return () => {
       clearTimeout(t);
       document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
     };
   }, [onClose]);
 
@@ -678,6 +685,7 @@ function ModalBunga({
     const t2 = setTimeout(() => {
       setDisplayedItem(item);
       setContentVisible(true);
+      bodyRef.current?.scrollTo({ top: 0, behavior: "auto" });
     }, 180); // turunkan dari 200 → 180
     return () => {
       clearTimeout(t1);
@@ -694,6 +702,12 @@ function ModalBunga({
         transition: "background-color 0.5s ease, backdrop-filter 0.5s ease",
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      onWheel={(e) => {
+        if (e.target === e.currentTarget) e.preventDefault();
+      }}
+      onTouchMove={(e) => {
+        if (e.target === e.currentTarget) e.preventDefault();
+      }}
     >
       <div
         className="flex w-full max-w-160 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95"
@@ -741,6 +755,7 @@ function ModalBunga({
           {/* Body — lebih tinggi, padding lebih lapang */}
           {/* Body */}
           <div
+            ref={bodyRef}
             className="max-h-[72vh] overflow-y-auto px-6 py-5"
             style={{
               opacity: contentVisible ? 1 : 0,
@@ -1130,6 +1145,7 @@ export default function SiPuspitaLandingPage() {
 
   const handleKelopakClick = (id: KelopakId) => {
     playKelopakSound();
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setBungaCenterActive(false);
     setBungaActiveId(id);
     const found = KELOPAK_LIST.find((k) => k.id === id) ?? null;
