@@ -19,6 +19,9 @@ import {
   LogIn,
   Eye,
   EyeOff,
+  MapPin,
+  Mail,
+  Clock,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -43,22 +46,35 @@ interface KelopakItem {
   modalContent: React.ReactNode;
 }
 
-const FAQ_LIST = [
+const DASAR_HUKUM_BUNGA = [
+  "UU No. 25 Tahun 2009 tentang Pelayanan Publik",
+  "PP No. 76 Tahun 2013 tentang Pengelolaan Pengaduan Pelayanan Publik",
+  "PP No. 95 Tahun 2018 tentang Sistem Pemerintahan Berbasis Elektronik (SPBE)",
+  "PMK No. 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada PUPN",
+  "Perlan No. 6 Tahun 2022 tentang Penyelenggaraan Pelatihan Struktural Kepemimpinan",
+  "Perda Prov. Jateng No. 3 Tahun 2019 tentang Penyelenggaraan Inovasi Daerah",
+];
+
+const MAKNA_LOGO_BUNGA = [
   {
-    q: "Berapa nilai piutang minimal untuk jalur PUPN?",
-    a: "Piutang dengan nilai di atas Rp8.000.000 diarahkan ke jalur PUPN (Panitia Urusan Piutang Negara).",
+    judul: "Bunga (Puspita)",
+    isi: "Melambangkan pelayanan yang bertumbuh, tertata, dan memberi manfaat.",
   },
   {
-    q: "Dokumen apa saja yang perlu dilampirkan?",
-    a: "Surat permohonan, bukti piutang, laporan upaya penagihan, dan dokumen pendukung lainnya sesuai SOP.",
+    judul: "5 Kelopak",
+    isi: "Mewakili 5 fitur utama layanan: informasi, SOP & Flowchart, formulir pengajuan, unggah dokumen, dan tracking status usulan.",
   },
   {
-    q: "Berapa lama proses verifikasi berlangsung?",
-    a: "Proses verifikasi BPKAD memakan waktu 5–10 hari kerja, tergantung kelengkapan dokumen.",
+    judul: "Dokumen di Tengah",
+    isi: "Melambangkan inti pelayanan, yaitu pengajuan penghapusan piutang.",
   },
   {
-    q: "Apakah OPD bisa memantau status pengajuan?",
-    a: "Ya, OPD dapat memantau status secara real-time melalui fitur Lacak Status Berkas di sistem ini.",
+    judul: "Lingkaran Penghubung",
+    isi: "Melambangkan integrasi antar proses, informasi, layanan digital, dan dokumentasi.",
+  },
+  {
+    judul: "Warna Oranye/Emas",
+    isi: "Melambangkan nilai aset dan keuangan daerah.",
   },
 ];
 
@@ -159,9 +175,10 @@ function SiPuspitaHeading({
   size = "lg",
 }: {
   showSlogan?: boolean;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 }) {
   const s = {
+    xs: { h: "text-[17px] lg:text-[19px]", sl: "text-[11px] lg:text-[12px]" },
     sm: { h: "text-[32px] lg:text-[40px]", sl: "text-[18px] lg:text-[22px]" },
     md: { h: "text-[36px] lg:text-[46px]", sl: "text-[20px] lg:text-[24px]" },
     lg: { h: "text-[40px] lg:text-[52px]", sl: "text-[22px] lg:text-[26px]" },
@@ -176,7 +193,7 @@ function SiPuspitaHeading({
       <span className="text-orange-600">TA</span>
 
       {showSlogan && (
-        <span className={`mt-1 block font-normal text-blue-100 ${s.sl}`}>
+        <span className={`mt-1 block font-normal text-slate-500 ${s.sl}`}>
           <span className="text-orange-400">Si</span>stem Pengajuan Pengha
           <span className="text-purple-400">pus</span>an{" "}
           <span className="text-green-400">Pi</span>utang{" "}
@@ -425,35 +442,102 @@ function ModalLacak() {
   );
 }
 
-function ModalFAQ() {
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
+function ModalInformasiUmum() {
   return (
-    <div className="space-y-2">
-      <p className="mb-3 text-sm leading-relaxed text-gray-500">
-        Pertanyaan yang sering diajukan seputar proses penghapusan piutang
-        daerah.
-      </p>
-      {FAQ_LIST.map((f, i) => (
-        <div
-          key={i}
-          className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm"
-        >
-          <button
-            className="flex w-full items-center justify-between px-4 py-3 text-left"
-            onClick={() => setOpenIdx(openIdx === i ? null : i)}
-          >
-            <span className="text-sm font-medium text-gray-800">{f.q}</span>
-            <span className="ml-3 shrink-0 text-lg leading-none text-amber-500">
-              {openIdx === i ? "−" : "+"}
-            </span>
-          </button>
-          {openIdx === i && (
-            <div className="border-t border-gray-100 px-4 py-3">
-              <p className="text-xs leading-relaxed text-gray-500">{f.a}</p>
+    <div className="space-y-5">
+      {/* Deskripsi umum */}
+      <div className="rounded-xl border border-gray-100 bg-orange-50/60 p-4">
+        <p className="mb-1 text-[11px] font-bold tracking-widest text-amber-600 uppercase">
+          Apa itu SI PUSPITA?
+        </p>
+        <p className="text-sm leading-relaxed text-gray-600">
+          <span className="font-semibold text-gray-800">
+            SI PUSPITA (Sistem Pengajuan Penghapusan Piutang Terintegrasi)
+          </span>{" "}
+          adalah layanan digital BPKAD Kabupaten Kendal yang mengintegrasikan
+          prosedur, dokumen, dan alur pengajuan penghapusan piutang daerah dalam
+          satu sistem — mulai dari pengajuan, verifikasi, hingga penerbitan SK
+          Penghapusan.
+        </p>
+      </div>
+
+      {/* Latar belakang singkat */}
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800">
+          Latar Belakang
+        </p>
+        <p className="text-xs leading-relaxed text-gray-500">
+          Piutang macet Kabupaten Kendal tercatat{" "}
+          <span className="font-semibold text-gray-700">
+            Rp81,79 miliar (45,31%)
+          </span>{" "}
+          dari total piutang daerah Rp180,53 miliar (audited 2025). SI PUSPITA
+          hadir agar pengelolaannya lebih tertib, transparan, dan akuntabel.
+        </p>
+      </div>
+
+      {/* Tujuan */}
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800">Tujuan Utama</p>
+        <p className="text-xs leading-relaxed text-gray-500">
+          Mewujudkan tata kelola pengajuan penghapusan piutang daerah yang{" "}
+          <span className="font-medium text-gray-700">
+            efektif, terstandar, transparan, dan akuntabel
+          </span>
+          , guna mendukung optimalisasi pengelolaan piutang serta kualitas
+          laporan keuangan Pemerintah Kabupaten Kendal.
+        </p>
+      </div>
+
+      {/* Lokus */}
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800">Lokus</p>
+        <p className="text-xs leading-relaxed text-gray-500">
+          Pemerintah Kabupaten Kendal, dengan{" "}
+          <span className="font-medium text-gray-700">
+            BPKAD selaku fungsi SKPKD
+          </span>{" "}
+          sebagai koordinator utama proses penghapusan piutang.
+        </p>
+      </div>
+
+      {/* Dasar hukum */}
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800">Dasar Hukum</p>
+        <div className="space-y-2">
+          {DASAR_HUKUM_BUNGA.map((item, i) => (
+            <div
+              key={i}
+              className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3"
+            >
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-600">
+                {i + 1}
+              </div>
+              <p className="text-xs leading-relaxed text-gray-500">{item}</p>
             </div>
-          )}
+          ))}
         </div>
-      ))}
+      </div>
+
+      {/* Makna logo */}
+      <div>
+        <p className="mb-2 text-sm font-semibold text-gray-800">
+          Makna Logo SI PUSPITA
+        </p>
+        <div className="space-y-2">
+          {MAKNA_LOGO_BUNGA.map((m) => (
+            <div
+              key={m.judul}
+              className="rounded-xl border border-gray-100 bg-orange-50/60 p-3"
+            >
+              <p className="text-xs font-semibold text-gray-800">{m.judul}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                {m.isi}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -539,9 +623,9 @@ const KELOPAK_LIST: KelopakItem[] = [
     id: "informasi",
     label: "Informasi",
     icon: "❓",
-    tooltip: "Pertanyaan Umum",
-    modalTitle: "Pertanyaan yang Sering Diajukan",
-    modalContent: <ModalFAQ />,
+    tooltip: "Informasi Umum SI PUSPITA",
+    modalTitle: "Informasi Umum SI PUSPITA",
+    modalContent: <ModalInformasiUmum />,
   },
 ];
 
@@ -1100,15 +1184,15 @@ export default function SiPuspitaLandingPage() {
       <header className="sticky top-0 z-50">
         <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="mx-auto flex h-17 items-center justify-between px-26">
-            {/* Logo */}
+            {/* Logo — hanya ikon bunga */}
             <Image
-              src="/Logo_Si-Puspita_v2.png"
-              alt="Logo"
-              width={640}
-              height={640}
+              src="/Logo_Si-Puspita_icon.png"
+              alt="Logo SI PUSPITA"
+              width={824}
+              height={824}
               quality={100}
               priority
-              className="w-42 bg-white"
+              className="h-11 w-11 shrink-0 rounded-full bg-white object-contain"
             />
 
             {/* Desktop links */}
@@ -1173,50 +1257,47 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ HERO ══════════════════ */}
       <section
         id="beranda"
-        className="relative flex flex-col justify-center overflow-hidden bg-[#0f2d5e] text-white"
+        className="relative flex flex-col justify-center overflow-hidden bg-white text-[#0f2d5e]"
       >
-        {/* Background glows */}
+        {/* Background glows — versi lembut untuk latar putih */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -right-32 h-150 w-150 rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 h-100 w-100 rounded-full bg-blue-800/30 blur-2xl" />
+          <div className="absolute -top-32 -right-32 h-150 w-150 rounded-full bg-[#0f2d5e]/[0.045] blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 h-100 w-100 rounded-full bg-[#e8c84a]/10 blur-3xl" />
         </div>
 
         {/* Left accent bar */}
-        <div className="absolute top-0 left-0 h-full w-1 bg-linear-to-b from-yellow-400/0 via-yellow-400 to-yellow-400/0" />
+        <div className="absolute top-0 left-0 h-full w-1 bg-linear-to-b from-[#c8a020]/0 via-[#c8a020] to-[#c8a020]/0" />
 
         {/* Content wrapper (no duplication) */}
         {/* ── Hero root ── */}
-        <div className="relative overflow-hidden bg-[#0f2d5e]">
+        <div className="relative overflow-hidden bg-white">
           {/* Garis emas atas — pembatas resmi */}
-          <div className="h-1 w-full bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
+          <div className="h-1 w-full bg-linear-to-r from-transparent via-[#c8a020] to-transparent" />
 
-          {/* Ornamen diagonal subtle */}
+          {/* Ornamen diagonal subtle — motif garis halus ala kertas berharga/dokumen resmi */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               backgroundImage:
-                "repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.013) 40px, rgba(255,255,255,0.013) 41px)",
+                "repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(15,45,94,0.03) 40px, rgba(15,45,94,0.03) 41px)",
             }}
           />
 
           {/* Sorot cahaya kanan */}
-          <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.07),transparent)]" />
+          <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.09),transparent)]" />
 
           {/* ── Content wrapper ── */}
           <div className="relative mx-auto w-full max-w-275 px-8 py-24">
             <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
               {/* ── Kiri: teks utama ── */}
               <div className="min-w-0 flex-1">
-                {/* Divider aksen emas */}
-                <div className="h-0.2 mb-5 w-15 rounded-full bg-linear-to-r from-[#c8a020] to-[#e8c84a]" />
-
                 {/* Heading — warna SiPuspita TIDAK diubah */}
                 <div className="mb-7">
                   <SiPuspitaHeading showSlogan={true} />
                 </div>
 
                 <div>
-                  <p className="text-justify text-gray-100">
+                  <p className="max-w-xl text-justify leading-relaxed text-slate-600">
                     Si Puspita merupakan sistem informasi yang dirancang untuk
                     mendukung proses pengusulan penghapusan piutang daerah
                     secara digital. Melalui sistem yang terintegrasi, setiap
@@ -1225,31 +1306,48 @@ export default function SiPuspitaLandingPage() {
                   </p>
                 </div>
 
+                {/* CTA utama */}
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <a
+                    href="#formulir"
+                    className="group inline-flex items-center gap-2 rounded-full bg-[#0f2d5e] px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-[#0f2d5e]/20 transition-all hover:bg-[#153a75] active:scale-[0.98]"
+                  >
+                    Ajukan Permohonan
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </a>
+                  <a
+                    href="#sop"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-6 py-3 text-[14px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/[0.03]"
+                  >
+                    Lihat SOP &amp; Alur
+                  </a>
+                </div>
+
                 {/* Strip statistik */}
-                <div className="mt-7 flex gap-6 border-t border-white/10 pt-6">
+                <div className="mt-9 flex gap-6 border-t border-[#0f2d5e]/10 pt-6">
                   <div>
-                    <p className="text-xl leading-none font-bold text-[#e8c84a]">
+                    <p className="text-xl leading-none font-bold text-[#0f2d5e]">
                       2.4K+
                     </p>
-                    <p className="mt-1 text-[11px] tracking-wider text-white/45 uppercase">
+                    <p className="mt-1 text-[11px] tracking-wider text-slate-400 uppercase">
                       Permohonan Diproses
                     </p>
                   </div>
-                  <div className="w-px self-stretch bg-white/12" />
+                  <div className="w-px self-stretch bg-[#0f2d5e]/10" />
                   <div>
-                    <p className="text-xl leading-none font-bold text-[#e8c84a]">
+                    <p className="text-xl leading-none font-bold text-[#0f2d5e]">
                       98%
                     </p>
-                    <p className="mt-1 text-[11px] tracking-wider text-white/45 uppercase">
+                    <p className="mt-1 text-[11px] tracking-wider text-slate-400 uppercase">
                       Tingkat Penyelesaian
                     </p>
                   </div>
-                  <div className="w-px self-stretch bg-white/12" />
+                  <div className="w-px self-stretch bg-[#0f2d5e]/10" />
                   <div>
-                    <p className="text-xl leading-none font-bold text-[#e8c84a]">
+                    <p className="text-xl leading-none font-bold text-[#0f2d5e]">
                       &lt; 3 Hari
                     </p>
-                    <p className="mt-1 text-[11px] tracking-wider text-white/45 uppercase">
+                    <p className="mt-1 text-[11px] tracking-wider text-slate-400 uppercase">
                       Rata-rata Proses
                     </p>
                   </div>
@@ -1270,12 +1368,14 @@ export default function SiPuspitaLandingPage() {
                     : "opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1)",
                 }}
               >
+                {/* Piringan navy — panggung untuk bunga interaktif di atas latar putih */}
                 <div className="relative flex h-80 w-80 items-center justify-center">
-                  <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
-                  <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
-                  <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
-                  <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
-                  <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
+                  <div className="absolute inset-0 rounded-full bg-[#0f2d5e] shadow-[0_25px_70px_-20px_rgba(15,45,94,0.5)]" />
+                  <div className="pointer-events-none absolute inset-7.5 rounded-full border border-white/10" />
+                  <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#e8c84a]/60" />
+                  <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#e8c84a]/60" />
+                  <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#e8c84a]/60" />
+                  <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#e8c84a]/60" />
                   <div className="relative z-10 h-72 w-72">
                     {!isModalOpen && (
                       <BungaSVG
@@ -1287,7 +1387,7 @@ export default function SiPuspitaLandingPage() {
                     )}
                   </div>
                 </div>
-                <p className="mt-3.5 text-[10.5px] tracking-[0.12em] text-white/35 uppercase">
+                <p className="mt-3.5 text-[10.5px] tracking-[0.12em] text-[#0f2d5e]/40 uppercase">
                   Menu Layanan Interaktif
                 </p>
               </div>
@@ -1295,473 +1395,90 @@ export default function SiPuspitaLandingPage() {
           </div>
 
           {/* Garis bawah subtle */}
-          <div className="absolute right-0 bottom-0 left-0 h-px bg-linear-to-r from-transparent via-[#c8a020]/30 to-transparent" />
-        </div>
-      </section>
-
-      {/* ══════════════════ FITUR UTAMA ══════════════════ */}
-      <section id="formulir" className="bg-white px-3 py-12 sm:py-16">
-        <div className="mx-auto max-w-300 px-6">
-          {/* Heading */}
-          <div className="mb-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3.5 py-1.5 text-[11px] font-bold tracking-wide text-blue-600 uppercase">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                Layanan Digital
-              </div>
-              <div className="text-[25px] leading-[1.15] font-extrabold text-[#1c293d] sm:text-[34px]">
-                Fitur Layanan
-                <br className="hidden sm:block" />
-                <SiPuspitaHeading showSlogan={false} size="md" />
-              </div>
-            </div>
-            <div className="max-w-[320px] text-[14px] leading-[1.75] text-gray-500 sm:text-right">
-              Dirancang untuk menyederhanakan proses penghapusan piutang daerah
-              yang sebelumnya manual dan tersebar.
-            </div>
-          </div>
-
-          {/* Cards grid */}
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {FITUR.map((f) => (
-              <div
-                key={f.title}
-                className={`group relative flex flex-col rounded-sm border ${f.border} cursor-default overflow-hidden bg-white shadow-sm transition-all duration-300 hover:shadow-lg`}
-              >
-                {/* Accent top bar */}
-                <div className={`h-1 w-full bg-linear-to-r ${f.accent}`} />
-
-                <div className="flex flex-1 flex-col p-5">
-                  {/* Icon + badge row */}
-                  <div className="mb-5 flex items-start justify-between">
-                    <div
-                      className={`h-12 w-12 rounded-xl ${f.bg} ${f.border} flex shrink-0 items-center justify-center border transition-transform duration-300 group-hover:scale-105`}
-                    >
-                      <span className={`h-6 w-6 ${f.color}`}>{f.icon}</span>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${f.bg} ${f.color} border ${f.border} tracking-wide uppercase`}
-                    >
-                      {f.badge}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="mb-2 text-[15px] leading-snug font-bold text-[#0f2d5e]">
-                    {f.title}
-                  </h3>
-
-                  {/* Desc */}
-                  <p className="mb-4 flex-1 text-[13px] leading-[1.7] text-gray-500">
-                    {f.desc}
-                  </p>
-
-                  {/* Key points */}
-                  <ul className="mb-5 flex flex-col gap-1.5">
-                    {f.points.map((p) => (
-                      <li
-                        key={p}
-                        className="flex items-center gap-2 text-[12px] text-gray-600"
-                      >
-                        <svg
-                          className={`h-3.5 w-3.5 shrink-0 ${f.color}`}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA */}
-                  <a
-                    href="#"
-                    className={`inline-flex items-center gap-2 text-[12.5px] font-semibold ${f.color} mt-auto hover:underline`}
-                  >
-                    Pelajari lebih lanjut
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-
-                {/* Hover glow background */}
-                <div
-                  className={`absolute inset-0 bg-linear-to-br ${f.accent} pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-[0.03]`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════ ALUR PENGAJUAN ══════════════════ */}
-      <section id="sop" className="bg-[#f7faff] py-7 sm:py-10">
-        <div className="mx-auto max-w-300 px-6">
-          {/* ── Heading ── */}
-          <div className="mb-14 text-center">
-            <h2 className="text-[32px] leading-[1.15] font-bold text-[#0f2d5e] sm:text-[42px]">
-              Alur Pengajuan
-              <span className="text-orange-700"> Penghapusan Piutang</span>
-            </h2>
-            <p className="mx-auto mt-3 text-[15px] leading-[1.8] text-[#29323e]">
-              Empat langkah terstandar menghubungkan OPD, BPKAD, Bagian Hukum,
-              dan Inspektorat dalam satu sistem terpadu.
-            </p>
-          </div>
-
-          {/* ── Step Cards — redesigned with large numbered lanes ── */}
-          <div className="relative mb-8">
-            {/* Connector dashed line desktop */}
-            <div className="absolute top-11 right-[10%] left-[10%] z-0 hidden h-px border-t-2 border-dashed border-blue-200 lg:block" />
-
-            <div className="relative z-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {ALUR.map((step, i) => {
-                const isFirst = i === 0;
-                const colors = [
-                  {
-                    ring: "ring-blue-500",
-                    bg: "bg-lime-900",
-                    light: "bg-blue-50",
-                    text: "text-lime-900",
-                    border: "border-blue-200",
-                    numBg: "bg-blue-600",
-                  },
-                  {
-                    ring: "ring-indigo-400",
-                    bg: "bg-sky-900",
-                    light: "bg-indigo-50",
-                    text: "text-sky-900",
-                    border: "border-indigo-200",
-                    numBg: "bg-indigo-600",
-                  },
-                  {
-                    ring: "ring-violet-400",
-                    bg: "bg-violet-900",
-                    light: "bg-violet-50",
-                    text: "text-violet-900",
-                    border: "border-violet-200",
-                    numBg: "bg-violet-600",
-                  },
-                  {
-                    ring: "ring-blue-400",
-                    bg: "bg-[#0f2d5e]",
-                    light: "bg-[#eef4ff]",
-                    text: "text-[#1a4e8f]",
-                    border: "border-blue-200",
-                    numBg: "bg-[#0f2d5e]",
-                  },
-                ][i];
-                return (
-                  <div
-                    key={step.num}
-                    className="group flex flex-col items-center text-center"
-                  >
-                    {/* Icon circle */}
-                    <div className="relative mb-5">
-                      {isFirst && (
-                        <span
-                          className={`absolute inset-0 rounded-full ${colors.bg} animate-ping opacity-20`}
-                        />
-                      )}
-                      <div
-                        className={`relative flex h-22 w-22 flex-col items-center justify-center rounded-full border-4 border-white ${colors.bg} shadow-xl transition-transform duration-300 group-hover:scale-105`}
-                      >
-                        <span className="mb-0.5 text-[13px] font-black tracking-widest text-white uppercase">
-                          {step.num}
-                        </span>
-                        <span className="[&>svg]:h-7 [&>svg]:w-7 [&>svg]:text-white">
-                          {step.icon}
-                        </span>
-                      </div>
-                      {/* Connector arrow between steps (desktop) */}
-                      {i < 3 && (
-                        <div className="absolute top-1/2 -right-[calc(50%+8px)] hidden -translate-y-1/2 lg:block">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            className="text-blue-300"
-                          >
-                            <path
-                              d="M2 8h10M8 4l4 4-4 4"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Card */}
-                    <div
-                      className={`w-full flex-1 rounded-md border ${colors.border} ${colors.light} p-5 transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md`}
-                    >
-                      {/* Step label */}
-                      <div
-                        className={`mb-2 text-[15px] font-black tracking-[0.15em] ${colors.text} uppercase`}
-                      >
-                        Langkah {step.num}
-                      </div>
-                      <h3 className="mb-2 text-[15px] leading-snug font-bold text-[#0f2d5e]">
-                        {step.title}
-                      </h3>
-                      <p className="text-[13px] leading-snug text-[#474747]">
-                        {step.desc}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════ KEUNGGULAN ══════════════════ */}
-      <section className="bg-white py-6 sm:py-8">
-        <div className="mx-auto max-w-300 px-6">
-          <h2 className="mb-8 text-center text-[25px] leading-[1.2] font-bold text-gray-900 sm:text-[36px]">
-            Mengapa SI PUSPITA Lebih Efektif dari Proses Manual?
-          </h2>
-
-          <div className="grid items-center gap-12 lg:grid-cols-2 xl:gap-20">
-            <div className="flex flex-col gap-4">
-              {KEUNGGULAN.map((k) => (
-                <div
-                  key={k.num}
-                  className="rounded-md border border-gray-200 bg-white px-6 py-5 shadow-sm"
-                >
-                  <div className="mb-2.5 flex items-center gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600">
-                      <span className="text-[12px] font-bold text-white">
-                        {k.num}
-                      </span>
-                    </div>
-                    <h3 className="text-[15px] font-bold text-blue-700">
-                      {k.title}
-                    </h3>
-                  </div>
-                  <p className="pl-10 text-[14px] leading-[1.7] text-gray-500">
-                    {k.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Dokumen requirements visual */}
-            <div className="flex justify-center">
-              <div className="relative w-[320px] sm:w-90">
-                <div className="rounded-md border border-blue-100 bg-white p-6 shadow-xl">
-                  <div className="mb-5 flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-400" />
-                    <span className="text-[14px] font-semibold text-[#0f2d5e]">
-                      Dokumen Persyaratan
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    {DOKUMEN_REQD.map((doc, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 rounded-xl border border-blue-100 bg-[#f0f6ff] px-4 py-2.5"
-                      >
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-500" />
-                        <span className="text-[13px] text-[#1a3a6e]">
-                          {doc}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-5 flex items-center justify-between border-t border-blue-100 pt-4">
-                    <span className="text-[12px] text-[#4a6fa5]">
-                      Format diterima
-                    </span>
-                    <div className="flex gap-2">
-                      {["PDF", "DOCX", "JPG"].map((fmt) => (
-                        <span
-                          key={fmt}
-                          className="rounded-full bg-blue-600/20 px-2.5 py-1 text-[11px] font-bold text-blue-400"
-                        >
-                          {fmt}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {/* Floating badge */}
-                <div className="absolute -top-4 -right-4 rounded-2xl bg-emerald-500 px-4 py-2.5 shadow-lg">
-                  <p className="text-[12px] leading-tight font-bold text-white">
-                    Tersimpan Digital
-                  </p>
-                  <p className="text-[11px] text-emerald-100">
-                    Mudah ditelusuri
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════ KONTAK ══════════════════ */}
-      <section id="kontak" className="bg-gray-50 py-6 sm:py-8">
-        <div className="mx-auto max-w-300 px-6">
-          <div className="grid items-start gap-16 lg:grid-cols-2">
-            <div>
-              <h2 className="mb-2 text-[20px] leading-snug font-bold text-gray-900 sm:text-[40px]">
-                Kontak Layanan SI PUSPITA
-              </h2>
-              <p className="mb-8 text-[15px] text-gray-500">
-                Hubungi Admin BPKAD Kabupaten Kendal untuk informasi lebih
-                lanjut mengenai proses pengajuan penghapusan piutang daerah.
-              </p>
-              <div className="flex flex-col gap-4">
-                {[
-                  {
-                    icon: <Phone className="h-5 w-5 text-blue-600" />,
-                    label: "Telepon",
-                    val: "(0294) 381124",
-                  },
-                  {
-                    icon: <Bell className="h-5 w-5 text-blue-600" />,
-                    label: "Jam Layanan",
-                    val: "Senin–Jumat, 08.00–16.00 WIB",
-                  },
-                  {
-                    icon: <Building2 className="h-5 w-5 text-blue-600" />,
-                    label: "Unit Pengelola",
-                    val: "Sub Bidang Akuntansi & Pelaporan, BPKAD Kab. Kendal",
-                  },
-                ].map(({ icon, label, val }) => (
-                  <div
-                    key={label}
-                    className="flex items-start gap-4 rounded-md border border-gray-200 bg-white px-5 py-4"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                      {icon}
-                    </div>
-                    <div>
-                      <p className="text-[12px] font-semibold tracking-wider text-gray-400 uppercase">
-                        {label}
-                      </p>
-                      <p className="mt-0.5 text-[15px] font-semibold text-gray-800">
-                        {val}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* FAQ */}
-            <div>
-              <h3 className="mb-6 text-[20px] font-bold text-gray-900">
-                Pertanyaan Umum (FAQ)
-              </h3>
-              <div className="flex flex-col gap-4">
-                {[
-                  {
-                    q: "Siapa yang dapat mengajukan permohonan?",
-                    a: "OPD (Organisasi Perangkat Daerah) di lingkungan Pemerintah Kabupaten Kendal yang memiliki piutang daerah yang telah memenuhi kriteria penghapusan.",
-                  },
-                  {
-                    q: "Berapa lama proses penghapusan piutang?",
-                    a: "Setiap tahap memiliki standar waktu proses. OPD dapat memantau perkembangan secara real-time melalui fitur tracking status.",
-                  },
-                  {
-                    q: "Dokumen apa saja yang wajib diunggah?",
-                    a: "SK Penetapan, BA Penagihan, BA Piutang Macet, Laporan Keuangan OPD, Surat Permohonan, dan dokumen pendukung lainnya sesuai SOP.",
-                  },
-                  {
-                    q: "Bagaimana cara mengetahui nomor registrasi?",
-                    a: "Nomor registrasi diterbitkan otomatis oleh sistem setelah formulir pengajuan berhasil di-submit.",
-                  },
-                ].map(({ q, a }, i) => (
-                  <div
-                    key={i}
-                    className="rounded-md border border-gray-200 bg-white px-5 py-4"
-                  >
-                    <p className="mb-2 text-[14px] font-bold text-gray-900">
-                      {q}
-                    </p>
-                    <p className="text-[13px] leading-[1.7] text-gray-500">
-                      {a}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <div className="absolute right-0 bottom-0 left-0 h-px bg-linear-to-r from-transparent via-[#c8a020]/40 to-transparent" />
         </div>
       </section>
 
       {/* ══════════════════ FOOTER ══════════════════ */}
-      <footer className="bg-[#0d1f3c] text-gray-400">
-        {/* Main footer content */}
-        <div className="mx-auto max-w-300 px-6 py-16">
-          <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
+      <footer className="relative overflow-hidden bg-[#0a1b38] text-slate-300">
+        {/* Garis emas atas — konsisten dengan hero */}
+        <div className="h-[3px] w-full bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
+
+        {/* Tekstur & glow latar */}
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px)",
+            }}
+          />
+          <div className="absolute -top-40 right-0 h-100 w-100 rounded-full bg-[#1a4e8f]/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/4 h-80 w-80 rounded-full bg-[#c8a020]/[0.06] blur-3xl" />
+        </div>
+
+        {/* ── Strip bantuan cepat ── */}
+        <div className="relative border-b border-white/8">
+          <div className="mx-auto flex max-w-300 flex-col gap-5 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[17px] font-bold text-white">
+                Butuh bantuan seputar pengajuan?
+              </p>
+              <p className="mt-1 text-[13px] text-slate-400">
+                Tim BPKAD siap membantu OPD pada jam layanan yang tersedia.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="tel:0294381124"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:border-white/30 hover:bg-white/5"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                (0294) 381124
+              </a>
+              <a
+                href="mailto:bpkad@kendalkab.go.id"
+                className="inline-flex items-center gap-2 rounded-full bg-[#e8c84a] px-5 py-2.5 text-[13px] font-semibold text-[#0a1b38] transition-colors hover:bg-[#f3d668]"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Email Kami
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Konten utama ── */}
+        <div className="relative mx-auto max-w-300 px-6 py-16">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.9fr_0.9fr_1fr]">
             {/* Col 1 — Brand + alamat */}
-            <div className="lg:col-span-1">
+            <div>
               <Image
                 src="/Logo_Si-Puspita_v2.png"
-                alt="Logo"
+                alt="Logo SI PUSPITA"
                 width={640}
                 height={640}
                 quality={100}
                 priority
-                className="w-40 bg-white"
+                className="mb-5 w-36 rounded-lg bg-white p-1.5"
               />
-              <p className="mb-6 text-[13px] leading-relaxed text-gray-400">
+              <p className="mb-6 max-w-[300px] text-[13px] leading-relaxed text-slate-400">
                 Sistem Pengajuan Penghapusan Piutang Terintegrasi — platform
-                digital layanan BPKAD Kabupaten Kendal.
+                digital layanan BPKAD Kabupaten Kendal untuk proses yang lebih
+                cepat, transparan, dan akuntabel.
               </p>
-              <div className="flex flex-col gap-3 text-[13px]">
-                <div className="flex items-start gap-2.5 text-gray-400">
-                  <svg
-                    className="mt-0.5 h-4 w-4 shrink-0 text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  <span>
+              <div className="flex flex-col gap-3.5 text-[13px]">
+                <div className="flex items-start gap-3 text-slate-400">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5">
+                    <MapPin className="h-3.5 w-3.5 text-[#e8c84a]" />
+                  </span>
+                  <span className="pt-1">
                     Jl. Soekarno Hatta No.1, Kendal, Jawa Tengah 51311
                   </span>
                 </div>
-                <div className="flex items-center gap-2.5 text-gray-400">
-                  <svg
-                    className="h-4 w-4 shrink-0 text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    />
-                  </svg>
+                <div className="flex items-center gap-3 text-slate-400">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5">
+                    <Phone className="h-3.5 w-3.5 text-[#e8c84a]" />
+                  </span>
                   <span>(0294) 381124</span>
                 </div>
               </div>
@@ -1769,10 +1486,10 @@ export default function SiPuspitaLandingPage() {
 
             {/* Col 2 — Layanan */}
             <div>
-              <h4 className="mb-5 text-[13px] font-bold tracking-widest text-white uppercase">
+              <h4 className="mb-5 text-[12px] font-bold tracking-[0.15em] text-white uppercase">
                 Layanan
               </h4>
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-3">
                 {[
                   { label: "Ajukan Permohonan", href: "#formulir" },
                   { label: "Lacak Status Berkas", href: "#tracking" },
@@ -1783,10 +1500,10 @@ export default function SiPuspitaLandingPage() {
                   <li key={label}>
                     <a
                       href={href}
-                      className="group relative inline-block text-[13px] text-gray-400 transition-colors duration-200 hover:text-white"
+                      className="group relative inline-flex items-center gap-1.5 text-[13px] text-slate-400 transition-colors duration-200 hover:text-white"
                     >
+                      <span className="h-1 w-1 shrink-0 rounded-full bg-[#e8c84a]/50 transition-colors group-hover:bg-[#e8c84a]" />
                       {label}
-                      <span className="absolute bottom-0 left-0 h-px w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
                     </a>
                   </li>
                 ))}
@@ -1795,10 +1512,10 @@ export default function SiPuspitaLandingPage() {
 
             {/* Col 3 — Informasi */}
             <div>
-              <h4 className="mb-5 text-[13px] font-bold tracking-widest text-white uppercase">
+              <h4 className="mb-5 text-[12px] font-bold tracking-[0.15em] text-white uppercase">
                 Informasi
               </h4>
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-3">
                 {[
                   { label: "Tentang SI PUSPITA", href: "#" },
                   { label: "Dasar Hukum", href: "#" },
@@ -1809,10 +1526,10 @@ export default function SiPuspitaLandingPage() {
                   <li key={label}>
                     <a
                       href={href}
-                      className="group relative inline-block text-[13px] text-gray-400 transition-colors duration-200 hover:text-white"
+                      className="group relative inline-flex items-center gap-1.5 text-[13px] text-slate-400 transition-colors duration-200 hover:text-white"
                     >
+                      <span className="h-1 w-1 shrink-0 rounded-full bg-[#e8c84a]/50 transition-colors group-hover:bg-[#e8c84a]" />
                       {label}
-                      <span className="absolute bottom-0 left-0 h-px w-0 bg-white/50 transition-all duration-300 group-hover:w-full" />
                     </a>
                   </li>
                 ))}
@@ -1821,19 +1538,23 @@ export default function SiPuspitaLandingPage() {
 
             {/* Col 4 — Jam Layanan + Email */}
             <div>
-              <h4 className="mb-5 text-[13px] font-bold tracking-widest text-white uppercase">
+              <h4 className="mb-5 flex items-center gap-2 text-[12px] font-bold tracking-[0.15em] text-white uppercase">
+                <Clock className="h-3.5 w-3.5 text-[#e8c84a]" />
                 Jam Layanan
               </h4>
-              <div className="mb-6 flex flex-col gap-3">
+              <div className="mb-6 flex flex-col gap-2.5 rounded-xl border border-white/8 bg-white/[0.03] p-4">
                 {[
                   { hari: "Senin — Kamis", jam: "08.00 — 15.30 WIB" },
                   { hari: "Jumat", jam: "08.00 — 11.00 WIB" },
                   { hari: "Sabtu — Minggu", jam: "Tutup" },
-                ].map(({ hari, jam }) => (
-                  <div key={hari} className="flex justify-between text-[13px]">
-                    <span className="text-gray-400">{hari}</span>
+                ].map(({ hari, jam }, i) => (
+                  <div
+                    key={hari}
+                    className={`flex items-center justify-between text-[12.5px] ${i > 0 ? "border-t border-white/8 pt-2.5" : ""}`}
+                  >
+                    <span className="text-slate-400">{hari}</span>
                     <span
-                      className={`font-medium ${jam === "Tutup" ? "text-red-400" : "text-white"}`}
+                      className={`font-semibold ${jam === "Tutup" ? "text-red-400" : "text-white"}`}
                     >
                       {jam}
                     </span>
@@ -1842,13 +1563,13 @@ export default function SiPuspitaLandingPage() {
               </div>
 
               {/* Email card */}
-              <div className="rounded-sm border border-white/10 bg-white/3 p-4 backdrop-blur-sm">
-                <div className="mb-1 text-[10px] font-semibold tracking-widest text-blue-200 uppercase">
+              <div className="rounded-xl border border-[#e8c84a]/20 bg-[#e8c84a]/[0.06] p-4">
+                <div className="mb-1 text-[10px] font-semibold tracking-widest text-[#e8c84a] uppercase">
                   Email Resmi
                 </div>
                 <a
                   href="mailto:bpkad@kendalkab.go.id"
-                  className="text-[13px] font-medium text-white transition-colors duration-200 hover:text-yellow-300"
+                  className="text-[13px] font-medium text-white transition-colors duration-200 hover:text-[#e8c84a]"
                 >
                   bpkad@kendalkab.go.id
                 </a>
@@ -1858,16 +1579,16 @@ export default function SiPuspitaLandingPage() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/5 bg-[#07111f]">
-          <div className="mx-auto flex max-w-300 flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row">
-            <p className="text-[12px] text-gray-500">
+        <div className="relative border-t border-white/8 bg-[#071429]">
+          <div className="mx-auto flex max-w-300 flex-col items-center justify-between gap-3 px-6 py-5 sm:flex-row">
+            <p className="text-[12px] text-slate-500">
               © {new Date().getFullYear()} BPKAD Kabupaten Kendal. Hak cipta
               dilindungi.
             </p>
-            <div className="flex items-center gap-4 text-[12px] text-gray-500">
+            <div className="flex items-center gap-2 text-[12px] text-slate-500">
               <span className="hidden sm:inline">Dikembangkan oleh</span>
-              <span className="font-medium text-blue-400">
-                BPKAD Kab. Kendal — Sub Bidang Akuntansi dan Pelaporan
+              <span className="font-medium text-[#e8c84a]/90">
+                Sub Bidang Akuntansi dan Pelaporan
               </span>
             </div>
           </div>
