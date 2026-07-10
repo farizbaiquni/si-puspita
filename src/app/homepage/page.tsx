@@ -865,14 +865,6 @@ function BungaSVG({
   );
 }
 
-const NAV_LINKS = [
-  { label: "Beranda", hasDropdown: false, href: "#beranda" },
-  { label: "SOP & Flowchart", hasDropdown: false, href: "#sop" },
-  { label: "Formulir Pengajuan", hasDropdown: false, href: "#formulir" },
-  { label: "Tracking Status", hasDropdown: false, href: "#tracking" },
-  { label: "Kontak Layanan", hasDropdown: false, href: "#kontak" },
-];
-
 const FITUR = [
   {
     icon: <LayoutDashboard strokeWidth={1.8} />,
@@ -1107,40 +1099,28 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ NAVBAR ══════════════════ */}
       <header className="sticky top-0 z-50">
         <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
-          <div className="mx-auto flex h-17 max-w-300 items-center justify-between px-6">
+          <div className="mx-auto flex h-17 items-center justify-between px-26">
             {/* Logo */}
             <Image
-              src="/Logo_Si-Puspita_v1.png"
+              src="/Logo_Si-Puspita_v2.png"
               alt="Logo"
               width={640}
               height={640}
               quality={100}
               priority
-              className="w-40 bg-white"
+              className="w-42 bg-white"
             />
 
             {/* Desktop links */}
-            <div className="hidden items-center gap-1 lg:flex">
-              {NAV_LINKS.map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="group relative px-3.5 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:text-[#1a4e8f] focus-visible:outline-2 focus-visible:outline-blue-500"
-                >
-                  {label}
-                  {/* Underline animasi */}
-                  <span className="absolute inset-x-3.5 bottom-1.5 h-0.5 origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                </a>
-              ))}
-            </div>
+            <div className="hidden items-center gap-1 lg:flex"></div>
 
             {/* CTA */}
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 onClick={() => setLoginOpen(true)}
-                className="group relative flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-gray-600 transition-colors duration-200 hover:cursor-pointer hover:text-[#1a4e8f]"
+                className="group relative flex items-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-200 hover:cursor-pointer hover:text-[#1a4e8f]"
               >
-                <LogIn className="h-3.5 w-3.5" /> Masuk
+                <LogIn className="h-3.5 w-3.5" /> Login
                 <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
               </button>
               <Link href={"/dashboard-v2"}>
@@ -1171,17 +1151,6 @@ export default function SiPuspitaLandingPage() {
             }`}
           >
             <div className="flex flex-col gap-3 border-t border-gray-100 bg-white/90 px-6 py-5 backdrop-blur-md">
-              {NAV_LINKS.map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="group relative py-1 text-[14px] font-medium text-gray-700 transition-colors duration-200 hover:text-[#1a4e8f]"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {label}
-                  <span className="absolute bottom-0 left-0 h-0.5 w-0 rounded-full bg-[#1a4e8f] transition-all duration-300 ease-out group-hover:w-full" />
-                </a>
-              ))}
               <hr className="my-1 border-gray-200" />
               <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]">
                 Ajukan Sekarang
@@ -1254,25 +1223,14 @@ export default function SiPuspitaLandingPage() {
                   <SiPuspitaHeading showSlogan={true} />
                 </div>
 
-                {/* CTA Actions */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <a
-                    href="#formulir"
-                    aria-label="Ajukan permohonan baru"
-                    className="inline-flex items-center gap-2 rounded-sm border border-[#e8c84a] bg-[#e8c84a] px-5.5 py-2.75 text-[13px] font-bold tracking-[0.02em] text-[#0a1f4e] transition hover:bg-[#f0d45a] hover:shadow-[0_2px_12px_rgba(232,200,74,0.25)]"
-                  >
-                    Ajukan Permohonan
-                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-
-                  <a
-                    href="#tracking"
-                    aria-label="Lacak status berkas pengajuan"
-                    className="inline-flex items-center gap-2 rounded-sm border border-white/25 px-5 py-2.5 text-[13px] font-medium text-white/75 transition hover:border-white/50 hover:bg-white/5 hover:text-white"
-                  >
-                    <Search className="h-3.5 w-3.5" aria-hidden="true" />
-                    Lacak Status Berkas
-                  </a>
+                <div>
+                  <p className="text-justify text-gray-100">
+                    Si Puspita merupakan sistem informasi yang dirancang untuk
+                    mendukung proses pengusulan penghapusan piutang daerah
+                    secara digital. Melalui sistem yang terintegrasi, setiap
+                    tahapan pengajuan dapat dikelola secara lebih mudah, cepat,
+                    transparan, dan akuntabel.
+                  </p>
                 </div>
 
                 {/* Strip statistik */}
@@ -1762,7 +1720,7 @@ export default function SiPuspitaLandingPage() {
             {/* Col 1 — Brand + alamat */}
             <div className="lg:col-span-1">
               <Image
-                src="/Logo_Si-Puspita_v1.png"
+                src="/Logo_Si-Puspita_v2.png"
                 alt="Logo"
                 width={640}
                 height={640}
