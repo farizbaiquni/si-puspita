@@ -105,30 +105,147 @@ const ALUR_FLOWCHART_BUNGA = [
 const SOP_STEPS_BUNGA = [
   {
     no: "01",
-    judul: "Identifikasi Piutang Macet",
-    isi: "OPD mengidentifikasi piutang yang tidak tertagih selama lebih dari 3 tahun berturut-turut.",
+    judul: "Mengidentifikasi Piutang dan Menyiapkan Dokumen Usulan",
+    pelaksana: "OPD",
+    waktu: "5 hari",
+    output: "Daftar piutang yang memenuhi kriteria",
+    isi: "OPD mengidentifikasi piutang macet dan menyiapkan data piutang beserta dokumen pendukung.",
   },
   {
     no: "02",
-    judul: "Penyusunan Berkas Permohonan",
-    isi: "Lengkapi dokumen sesuai checklist: surat permohonan, bukti piutang, dan laporan upaya penagihan.",
+    judul:
+      "Menyusun dan Menyampaikan Usulan Penghapusan kepada PPKD melalui BPKAD",
+    pelaksana: "OPD → Admin",
+    waktu: "2 hari",
+    output: "Usulan penghapusan diterima",
+    isi: "Surat usulan beserta lampiran disampaikan OPD kepada PPKD melalui BPKAD.",
   },
   {
     no: "03",
-    judul: "Pengajuan ke BPKAD",
-    isi: "Submit permohonan melalui SI PUSPITA. Sistem akan otomatis menentukan jalur PUPN atau Non-PUPN.",
+    judul: "Meregister dan Memverifikasi Kelengkapan Usulan",
+    pelaksana: "Admin → Kasubbid Aklap",
+    waktu: "2 hari",
+    output: "Usulan memenuhi persyaratan administrasi",
+    isi: "Verifikasi administratif kelengkapan berkas usulan penghapusan piutang.",
   },
   {
     no: "04",
-    judul: "Proses Verifikasi",
-    isi: "BPKAD, Bagian Hukum, dan Inspektorat melakukan verifikasi bertahap sesuai ketentuan yang berlaku.",
+    judul: "Mereviu Kelayakan Penghapusan Piutang",
+    pelaksana: "Inspektorat",
+    waktu: "7 hari",
+    output: "Laporan Hasil Reviu",
+    isi: "Reviu substantif oleh Inspektorat sebagai mekanisme pengendalian intern sebelum penetapan PPDTO oleh PPKD.",
   },
   {
     no: "05",
-    judul: "Penerbitan SK Penghapusan",
-    isi: "Setelah disetujui Pimpinan BPKAD, Surat Keputusan Penghapusan Piutang diterbitkan dan didistribusikan ke OPD.",
+    judul: "Menyusun, Menelaah, dan Menetapkan PPDTO",
+    pelaksana: "Kasubbid Aklap → Kabid Perben & Akun → Sekban",
+    waktu: "3 hari",
+    output: "PPDTO",
+    isi: "Penyusunan dan penetapan Pernyataan Piutang Daerah Tidak Optimal (PPDTO) berdasarkan laporan hasil reviu.",
+  },
+  {
+    no: "06",
+    judul:
+      "Mengajukan Usulan Penghapusan kepada Bupati melalui Sekretaris Daerah",
+    pelaksana: "Ka BPKAD/PPKD → Sekda",
+    waktu: "2 hari",
+    output: "Usulan penghapusan",
+    isi: "PPDTO beserta dokumen usulan diajukan ke Bupati melalui Sekretaris Daerah.",
+  },
+  {
+    no: "07",
+    judul: "Mengkaji Usulan melalui TPUPPD dan Menyusun Rekomendasi",
+    pelaksana: "TPUPPD",
+    waktu: "5 hari",
+    output: "BA Penelitian",
+    isi: "TPUPPD mengkaji usulan penghapusan beserta PPDTO dan menyusun Berita Acara penelitian.",
+  },
+  {
+    no: "08",
+    judul: "Menyampaikan Hasil Rekomendasi TPUPPD kepada Bupati",
+    pelaksana: "TPUPPD → Bupati",
+    waktu: "2 hari",
+    output: "Berita Acara/Rekomendasi TPUPPD",
+    isi: "Hasil rekomendasi TPUPPD disampaikan kepada Bupati sebagai dasar penetapan keputusan.",
+  },
+  {
+    no: "09",
+    judul: "Menetapkan Keputusan Penghapusan Piutang",
+    pelaksana: "Bupati",
+    waktu: "5 hari",
+    output: "Keputusan Bupati",
+    isi: "Bupati menetapkan Keputusan Penghapusan Piutang berdasarkan usulan dan rekomendasi TPUPPD.",
+  },
+  {
+    no: "10",
+    judul: "Menatausahakan dan Membukukan Penghapusan Piutang",
+    pelaksana: "OPD → Admin",
+    waktu: "1 hari",
+    output: "Penyesuaian administrasi dan akuntansi",
+    isi: "Pencatatan dan pembukuan penghapusan piutang berdasarkan Keputusan Bupati.",
+  },
+  {
+    no: "11",
+    judul: "Mengarsipkan Dokumen Penghapusan Piutang",
+    pelaksana: "Kasubbid Aklap",
+    waktu: "1 hari",
+    output: "Arsip lengkap",
+    isi: "Seluruh dokumen usulan, hasil penelitian, PPDTO, Berita Acara TPUPPD, dan Keputusan Kepala Daerah diadministrasikan dan diarsipkan.",
   },
 ];
+
+const SOP_DASAR_HUKUM_BUNGA = [
+  "PP No. 35 Tahun 2017 tentang Perubahan Kedua atas PP No. 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
+  "Permendagri No. 52 Tahun 2011 tentang SOP di Lingkungan Pemerintah Kabupaten/Kota",
+  "PP No. 12 Tahun 2019 tentang Pengelolaan Keuangan Daerah",
+  "PermenPAN-RB No. 52 Tahun 2011 tentang Pedoman Penyusunan SOP Administrasi Pemerintah",
+  "Permendagri No. 77 Tahun 2020 tentang Pedoman Teknis Pengelolaan Keuangan Daerah",
+  "PMK No. 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada PUPN",
+  "Perbup Kendal No. 49 Tahun 2025 tentang Perubahan atas Perbup No. 66 Tahun 2021 tentang Kebijakan Akuntansi Pemerintah Daerah Kabupaten Kendal",
+];
+
+// Aksen warna per tahap SOP, disesuaikan dengan pihak yang berwenang pada tahap tersebut
+function getSopAccent(pelaksana: string) {
+  if (pelaksana.includes("Inspektorat")) {
+    return {
+      badge: "bg-blue-500",
+      card: "border-blue-100 bg-blue-50/50",
+      pelaksanaChip: "border-blue-200 bg-blue-50 text-blue-700",
+      line: "bg-blue-200",
+    };
+  }
+  if (pelaksana.includes("TPUPPD")) {
+    return {
+      badge: "bg-purple-500",
+      card: "border-purple-100 bg-purple-50/50",
+      pelaksanaChip: "border-purple-200 bg-purple-50 text-purple-700",
+      line: "bg-purple-200",
+    };
+  }
+  if (pelaksana.includes("Bupati")) {
+    return {
+      badge: "bg-rose-500",
+      card: "border-rose-100 bg-rose-50/50",
+      pelaksanaChip: "border-rose-200 bg-rose-50 text-rose-700",
+      line: "bg-rose-200",
+    };
+  }
+  if (pelaksana.includes("Sekda")) {
+    return {
+      badge: "bg-slate-500",
+      card: "border-slate-200 bg-slate-50/60",
+      pelaksanaChip: "border-slate-200 bg-slate-100 text-slate-700",
+      line: "bg-slate-200",
+    };
+  }
+  return {
+    badge: "bg-amber-500",
+    card: "border-orange-100 bg-orange-50/60",
+    pelaksanaChip: "border-orange-200 bg-orange-50 text-orange-700",
+    line: "bg-orange-200",
+  };
+}
 
 const DAFTAR_PENGAJUAN_BUNGA = [
   {
@@ -207,35 +324,96 @@ function SiPuspitaHeading({
 
 function ModalSOP() {
   return (
-    <div className="space-y-4">
-      <p className="text-sm leading-relaxed text-gray-500">
-        Standar Operasional Prosedur penghapusan piutang daerah di lingkungan
-        Pemerintah Kabupaten Kendal berdasarkan Permendagri dan regulasi yang
-        berlaku.
+    <div className="space-y-5">
+      <p className="text-sm leading-relaxed text-gray-600">
+        Standar Operasional Prosedur{" "}
+        <span className="font-semibold text-gray-800">
+          Penghapusan Piutang Daerah
+        </span>{" "}
+        yang Tidak Dapat Diserahkan Pengurusannya kepada Panitia Urusan Piutang
+        Negara (PUPN), berdasarkan{" "}
+        <span className="font-semibold text-amber-600">
+          PMK No. 137/PMK.06/2022
+        </span>
+        .
       </p>
-      <div className="space-y-3">
-        {SOP_STEPS_BUNGA.map((s) => (
-          <div
-            key={s.no}
-            className="flex gap-4 rounded-xl border border-gray-100 bg-orange-50/60 p-4"
-          >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">
-              {s.no}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800">{s.judul}</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
-                {s.isi}
-              </p>
-            </div>
-          </div>
-        ))}
+
+      {/* Legenda pihak berwenang */}
+      <div className="flex flex-wrap gap-2 text-[10px] font-medium">
+        <span className="flex items-center gap-1.5 text-gray-500">
+          <span className="h-2 w-2 rounded-full bg-amber-500" /> OPD / BPKAD
+        </span>
+        <span className="flex items-center gap-1.5 text-gray-500">
+          <span className="h-2 w-2 rounded-full bg-blue-500" /> Inspektorat
+        </span>
+        <span className="flex items-center gap-1.5 text-gray-500">
+          <span className="h-2 w-2 rounded-full bg-purple-500" /> TPUPPD
+        </span>
+        <span className="flex items-center gap-1.5 text-gray-500">
+          <span className="h-2 w-2 rounded-full bg-slate-500" /> Sekda
+        </span>
+        <span className="flex items-center gap-1.5 text-gray-500">
+          <span className="h-2 w-2 rounded-full bg-rose-500" /> Bupati
+        </span>
       </div>
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-        <p className="text-xs text-amber-700">
-          📌 Dasar hukum: PP No. 14 Tahun 2005, Permendagri No. 73 Tahun 2015,
-          dan Perbup Kendal terkait.
+
+      <div className="relative">
+        {SOP_STEPS_BUNGA.map((s, i) => {
+          const accent = getSopAccent(s.pelaksana);
+          return (
+            <div key={s.no} className="relative">
+              <div
+                className={`flex gap-3 rounded-xl border p-3.5 ${accent.card}`}
+              >
+                <div
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-sm ${accent.badge}`}
+                >
+                  {s.no}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] leading-snug font-bold text-gray-900">
+                    {s.judul}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                    {s.isi}
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${accent.pelaksanaChip}`}
+                    >
+                      👤 {s.pelaksana}
+                    </span>
+                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                      ⏱ {s.waktu}
+                    </span>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      📄 {s.output}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {i < SOP_STEPS_BUNGA.length - 1 && (
+                <div className={`ml-6.5 h-2.5 w-0.5 ${accent.line}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4">
+        <p className="mb-2.5 text-xs font-bold tracking-wide text-amber-700 uppercase">
+          📌 Dasar Hukum
         </p>
+        <div className="space-y-2">
+          {SOP_DASAR_HUKUM_BUNGA.map((d, i) => (
+            <div key={i} className="flex gap-2.5">
+              <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-white text-[9px] font-bold text-amber-600 ring-1 ring-amber-200">
+                {i + 1}
+              </span>
+              <p className="text-[11px] leading-relaxed text-gray-600">{d}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
