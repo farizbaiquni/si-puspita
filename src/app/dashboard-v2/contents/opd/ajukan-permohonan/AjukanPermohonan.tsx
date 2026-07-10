@@ -21,6 +21,7 @@ interface FormData {
   nomorSurat: string;
   tanggalSurat: string;
   fileSurat: File | null;
+  jenisPenghapusan: string;
   // Langkah 2 – Upload Dokumen
   suratPengantarUsulan: File | null;
   daftarNominatifPiutang: File | null;
@@ -221,6 +222,7 @@ const initialForm: FormData = {
   nomorSurat: "",
   tanggalSurat: "",
   fileSurat: null,
+  jenisPenghapusan: "",
   suratPengantarUsulan: null,
   daftarNominatifPiutang: null,
   rekapitulasiSaldoPiutang: null,
@@ -705,6 +707,25 @@ export default function AjukanPermohonanWizard() {
         markTouched(field.name);
         if (err) allValid = false;
       }
+
+      // Validasi tambahan untuk step1: jenis penghapusan
+      if (current.id === "step1") {
+        if (!form.jenisPenghapusan) {
+          setErrors((prev) => ({
+            ...prev,
+            jenisPenghapusan: "Pilih jenis penghapusan",
+          }));
+          markTouched("jenisPenghapusan");
+          allValid = false;
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.jenisPenghapusan;
+            return next;
+          });
+        }
+      }
+
       return allValid;
     }
     return true;
@@ -1103,46 +1124,53 @@ export default function AjukanPermohonanWizard() {
                   {renderNominatifStep()}
                 </fieldset>
               ) : current.id === "step3" ? (
-                <div className="space-y-4">
-                  <p className="mb-2 text-sm font-medium text-gray-700">
-                    Kami menyatakan bahwa:
-                  </p>
-                  {(
-                    [
-                      "dataBenar",
-                      "dokumenResmi",
-                      "upayaPenagihan",
-                      "bersediaPerbaiki",
-                    ] as (keyof PernyataanOPD)[]
-                  ).map((key) => (
-                    <label
-                      key={key}
-                      className="flex cursor-pointer items-start gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.pernyataan[key]}
-                        onChange={(e) =>
-                          updatePernyataan(key, e.target.checked)
-                        }
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
-                      />
-                      <span className="text-sm text-gray-700">
-                        {key === "dataBenar" &&
-                          "Seluruh data yang diinput adalah benar."}
-                        {key === "dokumenResmi" &&
-                          "Seluruh dokumen merupakan dokumen resmi."}
-                        {key === "upayaPenagihan" &&
-                          "Seluruh upaya penagihan telah dilakukan secara optimal."}
-                        {key === "bersediaPerbaiki" &&
-                          "Bersedia memperbaiki apabila terdapat kekurangan."}
-                      </span>
-                    </label>
-                  ))}
-                  {errors.pernyataan && (
-                    <p className="text-sm text-red-600">{errors.pernyataan}</p>
-                  )}
-                </div>
+                <fieldset className="rounded-md border border-gray-300 p-4">
+                  <legend className="px-2 text-xl font-bold text-gray-800">
+                    Pernyataan OPD
+                  </legend>
+                  <div className="space-y-4">
+                    <p className="mb-2 text-sm font-medium text-gray-700">
+                      Kami menyatakan bahwa:
+                    </p>
+                    {(
+                      [
+                        "dataBenar",
+                        "dokumenResmi",
+                        "upayaPenagihan",
+                        "bersediaPerbaiki",
+                      ] as (keyof PernyataanOPD)[]
+                    ).map((key) => (
+                      <label
+                        key={key}
+                        className="flex cursor-pointer items-start gap-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.pernyataan[key]}
+                          onChange={(e) =>
+                            updatePernyataan(key, e.target.checked)
+                          }
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {key === "dataBenar" &&
+                            "Seluruh data yang diinput adalah benar."}
+                          {key === "dokumenResmi" &&
+                            "Seluruh dokumen merupakan dokumen resmi."}
+                          {key === "upayaPenagihan" &&
+                            "Seluruh upaya penagihan telah dilakukan secara optimal."}
+                          {key === "bersediaPerbaiki" &&
+                            "Bersedia memperbaiki apabila terdapat kekurangan."}
+                        </span>
+                      </label>
+                    ))}
+                    {errors.pernyataan && (
+                      <p className="text-sm text-red-600">
+                        {errors.pernyataan}
+                      </p>
+                    )}
+                  </div>
+                </fieldset>
               ) : current.id === "step1" ? (
                 <fieldset className="rounded-md border border-gray-300 p-4">
                   <legend className="px-2 text-xl font-bold text-gray-800">
@@ -1150,6 +1178,57 @@ export default function AjukanPermohonanWizard() {
                   </legend>
                   <div className="space-y-4">
                     {current.fields?.map((field) => renderField(field))}
+
+                    {/* Input baru: Jenis Penghapusan */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Jenis Penghapusan{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="jenisPenghapusan"
+                            value="Penghapusan Bersyarat"
+                            checked={
+                              form.jenisPenghapusan === "Penghapusan Bersyarat"
+                            }
+                            onChange={() =>
+                              updateField(
+                                "jenisPenghapusan",
+                                "Penghapusan Bersyarat",
+                              )
+                            }
+                            className="h-4 w-4 border-gray-300 text-blue-600"
+                          />
+                          <span className="text-sm">Penghapusan Bersyarat</span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="jenisPenghapusan"
+                            value="Penghapusan Mutlak"
+                            checked={
+                              form.jenisPenghapusan === "Penghapusan Mutlak"
+                            }
+                            onChange={() =>
+                              updateField(
+                                "jenisPenghapusan",
+                                "Penghapusan Mutlak",
+                              )
+                            }
+                            className="h-4 w-4 border-gray-300 text-blue-600"
+                          />
+                          <span className="text-sm">Penghapusan Mutlak</span>
+                        </label>
+                      </div>
+                      {touched.jenisPenghapusan && errors.jenisPenghapusan && (
+                        <p className="text-sm text-red-600">
+                          {errors.jenisPenghapusan}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </fieldset>
               ) : (

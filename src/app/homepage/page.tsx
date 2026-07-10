@@ -1207,16 +1207,8 @@ export default function SiPuspitaLandingPage() {
             <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
               {/* ── Kiri: teks utama ── */}
               <div className="min-w-0 flex-1">
-                {/* Eyebrow institusi */}
-                <div className="bg-[#e8c84a]/07 mb-5 inline-flex items-center gap-2 rounded-sm border border-[#e8c84a]/35 px-3 py-1.5">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e8c84a]" />
-                  <p className="text-[11px] font-semibold tracking-[0.18em] text-[#e8c84a] uppercase">
-                    BPKAD Kabupaten Kendal
-                  </p>
-                </div>
-
                 {/* Divider aksen emas */}
-                <div className="mb-5 h-0.5 w-10 rounded-full bg-linear-to-r from-[#c8a020] to-[#e8c84a]" />
+                <div className="h-0.2 mb-5 w-15 rounded-full bg-linear-to-r from-[#c8a020] to-[#e8c84a]" />
 
                 {/* Heading — warna SiPuspita TIDAK diubah */}
                 <div className="mb-7">
