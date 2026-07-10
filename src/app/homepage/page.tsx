@@ -12,6 +12,9 @@ import {
   MapPin,
   Mail,
   Clock,
+  FileText,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -68,27 +71,42 @@ const MAKNA_LOGO_BUNGA = [
   },
 ];
 
-const ALUR_FLOWCHART_BUNGA = [
+const FORMULIR_LIST = [
   {
-    step: "1",
-    label: "OPD Ajukan Permohonan",
-    sub: "Input data & upload dokumen",
+    id: "penetapan-mutlak",
+    file: "penetapan_penghapusan_secara_mutlak_piutang_daerah_yang_tidak_dapat_diserahkan_pengurusannya_kepada_pupn.pdf",
+    judul: "Penetapan Penghapusan Secara Mutlak",
+    sub: "Piutang daerah yang tidak dapat diserahkan pengurusannya kepada PUPN",
   },
   {
-    step: "2",
-    label: "Verifikasi BPKAD",
-    sub: "Pemeriksaan kelengkapan berkas",
-  },
-  { step: "3", label: "Review Bagian Hukum", sub: "Kajian aspek legalitas" },
-  {
-    step: "4",
-    label: "Pemeriksaan Inspektorat",
-    sub: "Audit & validasi internal",
+    id: "penetapan-bersyarat",
+    file: "penetapan_penghapusan_secara_bersyarat_piutang_daerah_yang_tidak_dapat_diserahkan_pengurusannya_kepada_pupn.pdf",
+    judul: "Penetapan Penghapusan Secara Bersyarat",
+    sub: "Piutang daerah yang tidak dapat diserahkan pengurusannya kepada PUPN",
   },
   {
-    step: "5",
-    label: "Persetujuan Pimpinan",
-    sub: "Keputusan akhir penghapusan",
+    id: "daftar-nominatif",
+    file: "daftar_nominatif_penanggung_utang.pdf",
+    judul: "Daftar Nominatif Penanggung Utang",
+    sub: "Rekapitulasi pihak yang memiliki kewajiban piutang",
+  },
+  {
+    id: "surat-pernyataan-optimal",
+    file: "surat_pernyataan_piutang_daerah_telah_optimal.pdf",
+    judul: "Surat Pernyataan Piutang Telah Optimal",
+    sub: "Pernyataan bahwa penagihan piutang telah dilakukan optimal",
+  },
+  {
+    id: "daftar-usulan-pengurusan",
+    file: "daftar_usulan_pengurusan_piutang_daerah_dalam_rangka_penghapusan_piutang.pdf",
+    judul: "Daftar Usulan Pengurusan Piutang",
+    sub: "Dalam rangka penghapusan piutang daerah",
+  },
+  {
+    id: "permohonan-bersyarat",
+    file: "surat_permohonan_usulan_penghapusan_bersyarat_piutang_daerah.pdf",
+    judul: "Surat Permohonan Usulan Penghapusan Bersyarat",
+    sub: "Permohonan usulan penghapusan bersyarat piutang daerah",
   },
 ];
 
@@ -317,37 +335,122 @@ function SiPuspitaHeading({
 }
 
 function ModalSOP() {
+  const [showPdf, setShowPdf] = useState(false);
+
   return (
     <div className="space-y-5">
-      <p className="text-sm leading-relaxed text-gray-600">
+      <p className="text-[15px] leading-relaxed text-gray-700">
         Standar Operasional Prosedur{" "}
-        <span className="font-semibold text-gray-800">
+        <span className="font-semibold text-gray-900">
           Penghapusan Piutang Daerah
         </span>{" "}
         yang Tidak Dapat Diserahkan Pengurusannya kepada Panitia Urusan Piutang
         Negara (PUPN), berdasarkan{" "}
-        <span className="font-semibold text-amber-600">
+        <span className="font-semibold text-amber-700">
           PMK No. 137/PMK.06/2022
         </span>
         .
       </p>
 
+      {/* CTA — Toggle PDF SOP: beda struktur dari kartu langkah, tapi tenang secara warna */}
+      <div>
+        <p className="mb-2 text-[11.5px] font-bold tracking-[0.1em] text-gray-500 uppercase">
+          Dokumen Resmi
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowPdf((v) => !v)}
+          className={`group flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-colors ${
+            showPdf
+              ? "border-gray-300 bg-gray-50"
+              : "border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/40"
+          }`}
+        >
+          <div
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+              showPdf ? "bg-gray-700 text-white" : "bg-amber-500 text-white"
+            }`}
+          >
+            <FileText className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15.5px] font-bold text-gray-900">
+              {showPdf ? "Sembunyikan Dokumen PDF" : "Buka Dokumen SOP Lengkap"}
+            </p>
+            <p className="text-[12.5px] text-gray-600">
+              {showPdf
+                ? "Klik untuk menutup pratinjau di bawah"
+                : "PDF resmi · tampil langsung di halaman ini"}
+            </p>
+          </div>
+          {showPdf ? (
+            <X className="h-5 w-5 shrink-0 text-gray-600" />
+          ) : (
+            <ExternalLink className="h-5 w-5 shrink-0 text-gray-500 transition-transform group-hover:translate-x-0.5" />
+          )}
+        </button>
+      </div>
+
+      {/* Viewer PDF inline — tampil di dalam modal yang sama */}
+      {showPdf && (
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-inner">
+          <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2.5">
+            <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-gray-700">
+              <FileText className="h-4 w-4" />
+              SOP-Penghapusan-Piutang-Daerah.pdf
+            </p>
+            <div className="flex items-center gap-1.5">
+              <a
+                href="/dokumen/SOP-Penghapusan-Piutang-Daerah.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full px-2.5 py-1 text-[11.5px] font-semibold text-gray-700 transition-colors hover:bg-gray-200"
+              >
+                Buka Tab Baru
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowPdf(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-200"
+                aria-label="Tutup pratinjau PDF"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <iframe
+            src="/dokumen/SOP-Penghapusan-Piutang-Daerah.pdf"
+            title="SOP Penghapusan Piutang Daerah"
+            className="h-[65vh] w-full"
+          />
+        </div>
+      )}
+
+      {/* Pemisah section — memisahkan dokumen dari daftar langkah */}
+      <div className="flex items-center gap-3 pt-1">
+        <div className="h-px flex-1 bg-gray-200" />
+        <p className="shrink-0 text-[11.5px] font-bold tracking-[0.1em] text-gray-500 uppercase">
+          Tahapan Proses
+        </p>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+
       {/* Legenda pihak berwenang */}
-      <div className="flex flex-wrap gap-2 text-[10px] font-medium">
-        <span className="flex items-center gap-1.5 text-gray-500">
-          <span className="h-2 w-2 rounded-full bg-amber-500" /> OPD / BPKAD
+      <div className="flex flex-wrap gap-3 text-[12px] font-medium">
+        <span className="flex items-center gap-1.5 text-gray-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> OPD / BPKAD
         </span>
-        <span className="flex items-center gap-1.5 text-gray-500">
-          <span className="h-2 w-2 rounded-full bg-blue-500" /> Inspektorat
+        <span className="flex items-center gap-1.5 text-gray-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Inspektorat
         </span>
-        <span className="flex items-center gap-1.5 text-gray-500">
-          <span className="h-2 w-2 rounded-full bg-purple-500" /> TPUPPD
+        <span className="flex items-center gap-1.5 text-gray-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-purple-500" /> TPUPPD
         </span>
-        <span className="flex items-center gap-1.5 text-gray-500">
-          <span className="h-2 w-2 rounded-full bg-slate-500" /> Sekda
+        <span className="flex items-center gap-1.5 text-gray-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-500" /> Sekda
         </span>
-        <span className="flex items-center gap-1.5 text-gray-500">
-          <span className="h-2 w-2 rounded-full bg-rose-500" /> Bupati
+        <span className="flex items-center gap-1.5 text-gray-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Bupati
         </span>
       </div>
 
@@ -357,54 +460,54 @@ function ModalSOP() {
           return (
             <div key={s.no} className="relative">
               <div
-                className={`flex gap-3 rounded-xl border p-3.5 ${accent.card}`}
+                className={`flex gap-3.5 rounded-xl border p-4 ${accent.card}`}
               >
                 <div
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-sm ${accent.badge}`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12.5px] font-bold text-white shadow-sm ${accent.badge}`}
                 >
                   {s.no}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] leading-snug font-bold text-gray-900">
+                  <p className="text-[15px] leading-snug font-bold text-gray-900">
                     {s.judul}
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-gray-700">
                     {s.isi}
                   </p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${accent.pelaksanaChip}`}
+                      className={`rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${accent.pelaksanaChip}`}
                     >
                       👤 {s.pelaksana}
                     </span>
-                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11.5px] font-semibold text-sky-700">
                       ⏱ {s.waktu}
                     </span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-semibold text-emerald-700">
                       📄 {s.output}
                     </span>
                   </div>
                 </div>
               </div>
               {i < SOP_STEPS_BUNGA.length - 1 && (
-                <div className={`ml-6.5 h-2.5 w-0.5 ${accent.line}`} />
+                <div className={`ml-7 h-2.5 w-0.5 ${accent.line}`} />
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4">
-        <p className="mb-2.5 text-xs font-bold tracking-wide text-amber-700 uppercase">
+      <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4.5">
+        <p className="mb-3 text-[13px] font-bold tracking-wide text-amber-700 uppercase">
           📌 Dasar Hukum
         </p>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {SOP_DASAR_HUKUM_BUNGA.map((d, i) => (
-            <div key={i} className="flex gap-2.5">
-              <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-white text-[9px] font-bold text-amber-600 ring-1 ring-amber-200">
+            <div key={i} className="flex gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10.5px] font-bold text-amber-700 ring-1 ring-amber-200">
                 {i + 1}
               </span>
-              <p className="text-[11px] leading-relaxed text-gray-600">{d}</p>
+              <p className="text-[13px] leading-relaxed text-gray-700">{d}</p>
             </div>
           ))}
         </div>
@@ -413,30 +516,120 @@ function ModalSOP() {
   );
 }
 
-function ModalFlowchart() {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm leading-relaxed text-gray-500">
-        Alur proses pengajuan penghapusan piutang dari OPD hingga persetujuan
-        akhir.
-      </p>
-      <div className="relative space-y-2">
-        {ALUR_FLOWCHART_BUNGA.map((item, i) => (
-          <div key={item.step} className="relative">
-            <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-600">
-                {item.step}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">
-                  {item.label}
-                </p>
-                <p className="text-xs text-gray-500">{item.sub}</p>
-              </div>
+function ModalUploadDokumen() {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active = FORMULIR_LIST.find((f) => f.id === activeId) ?? null;
+
+  // ── Mode fokus: satu formulir sedang dipratinjau, ambil seluruh lebar modal
+  if (active) {
+    return (
+      <div className="space-y-4">
+        {/* Bar navigasi kembali */}
+        <button
+          type="button"
+          onClick={() => setActiveId(null)}
+          className="group flex items-center gap-2 text-[13px] font-semibold text-gray-600 transition-colors hover:text-amber-700"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-amber-100">
+            <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+          </span>
+          Kembali ke daftar formulir
+        </button>
+
+        {/* Header dokumen aktif */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
+              <FileText className="h-5 w-5" />
             </div>
-            {i < ALUR_FLOWCHART_BUNGA.length - 1 && (
-              <div className="ml-5.5 h-3 w-0.5 bg-orange-200" />
-            )}
+            <div className="min-w-0">
+              <p className="text-[15px] leading-snug font-bold text-gray-900">
+                {active.judul}
+              </p>
+              <p className="text-[12.5px] leading-snug text-gray-600">
+                {active.sub}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href={`/dokumen/formulir/${active.file}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 py-2 text-[12.5px] font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Tab Baru
+            </a>
+            <a
+              href={`/dokumen/formulir/${active.file}`}
+              download
+              className="flex items-center gap-1.5 rounded-full bg-amber-500 px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-amber-600"
+            >
+              <Download className="h-4 w-4" />
+              Unduh
+            </a>
+          </div>
+        </div>
+
+        {/* Viewer PDF — full width, tinggi maksimal untuk keterbacaan */}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-inner">
+          <iframe
+            src={`/dokumen/formulir/${active.file}`}
+            title={active.judul}
+            className="h-[62vh] w-full sm:h-[68vh]"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mode daftar: grid formulir, belum ada yang dipilih
+  return (
+    <div className="space-y-5">
+      <p className="text-[15px] leading-relaxed text-gray-700">
+        Unduh atau lihat langsung{" "}
+        <span className="font-semibold text-gray-900">
+          template formulir resmi
+        </span>{" "}
+        yang dibutuhkan dalam proses pengajuan penghapusan piutang daerah.
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {FORMULIR_LIST.map((f) => (
+          <div
+            key={f.id}
+            className="flex items-start gap-3.5 rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-amber-200 hover:bg-amber-50/40"
+          >
+            <button
+              type="button"
+              onClick={() => setActiveId(f.id)}
+              className="flex min-w-0 flex-1 items-start gap-3.5 text-left"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14.5px] leading-snug font-bold text-gray-900">
+                  {f.judul}
+                </p>
+                <p className="mt-1 text-[12.5px] leading-snug text-gray-600">
+                  {f.sub}
+                </p>
+                <span className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700">
+                  Lihat dokumen
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              </div>
+            </button>
+            <a
+              href={`/dokumen/formulir/${f.file}`}
+              download
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-800"
+              aria-label={`Unduh ${f.judul}`}
+            >
+              <Download className="h-4.5 w-4.5" />
+            </a>
           </div>
         ))}
       </div>
@@ -618,17 +811,17 @@ function ModalInformasiUmum() {
   return (
     <div className="space-y-5">
       {/* Deskripsi umum */}
-      <div className="rounded-xl border border-gray-100 bg-orange-50/60 p-4">
-        <p className="mb-1 text-xs font-bold tracking-widest text-amber-600 uppercase">
+      <div className="rounded-xl border border-gray-100 bg-orange-50/60 p-4.5">
+        <p className="mb-1.5 text-[12.5px] font-bold tracking-widest text-amber-700 uppercase">
           Apa itu SI PUSPITA?
         </p>
-        <p className="text-base leading-relaxed text-gray-600">
-          <span className="font-semibold text-gray-800">
+        <p className="text-[15.5px] leading-relaxed text-gray-700">
+          <span className="font-semibold text-gray-900">
             SI PUSPITA (Sistem Pengajuan Penghapusan Piutang Terintegrasi)
           </span>{" "}
           adalah sebuah sistem layanan digital sederhana yang dirancang untuk:
         </p>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3.5 space-y-2.5">
           {[
             <>
               Memfasilitasi pengajuan penghapusan piutang oleh OPD secara{" "}
@@ -647,11 +840,11 @@ function ModalInformasiUmum() {
               piutang daerah
             </>,
           ].map((t, i) => (
-            <div key={i} className="flex gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+            <div key={i} className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[12.5px] font-bold text-white">
                 {i + 1}
               </span>
-              <p className="text-sm leading-relaxed text-gray-600">{t}</p>
+              <p className="text-[14.5px] leading-relaxed text-gray-700">{t}</p>
             </div>
           ))}
         </div>
@@ -659,11 +852,11 @@ function ModalInformasiUmum() {
 
       {/* Latar belakang singkat */}
       <div>
-        <p className="mb-2 text-base font-semibold text-gray-800">
+        <p className="mb-2.5 text-[17px] font-bold text-gray-900">
           Latar Belakang
         </p>
         <div className="space-y-3">
-          <p className="text-sm leading-relaxed text-gray-600">
+          <p className="text-[14.5px] leading-relaxed text-gray-700">
             Pengelolaan keuangan daerah merupakan salah satu aspek krusial dalam
             mewujudkan tata kelola pemerintah yang baik (
             <em>good governance</em>). Salah satu komponen penting dalam
@@ -678,7 +871,7 @@ function ModalInformasiUmum() {
             yang telah memenuhi kriteria untuk dilakukan penghapusan sesuai
             ketentuan peraturan perundang-undangan.
           </p>
-          <p className="text-sm leading-relaxed text-gray-600">
+          <p className="text-[14.5px] leading-relaxed text-gray-700">
             Hal tersebut selaras dengan Asta Cita ke 7 (tujuh) Presiden yakni
             penguatan reformasi birokrasi dan transformasi digital pemerintahan
             melalui inovasi tata kelola keuangan dan digitalisasi pengelolaan
@@ -689,12 +882,12 @@ function ModalInformasiUmum() {
 
       {/* Tujuan */}
       <div>
-        <p className="mb-2 text-base font-semibold text-gray-800">
+        <p className="mb-2.5 text-[17px] font-bold text-gray-900">
           Tujuan Utama
         </p>
-        <p className="text-sm leading-relaxed text-gray-500">
+        <p className="text-[14.5px] leading-relaxed text-gray-700">
           Mewujudkan tata kelola pengajuan penghapusan piutang daerah yang{" "}
-          <span className="font-medium text-gray-700">
+          <span className="font-semibold text-gray-900">
             efektif, terstandar, transparan, dan akuntabel
           </span>
           , guna mendukung optimalisasi pengelolaan piutang serta kualitas
@@ -704,19 +897,21 @@ function ModalInformasiUmum() {
 
       {/* Dasar hukum */}
       <div>
-        <p className="mb-2 text-base font-semibold text-gray-800">
+        <p className="mb-2.5 text-[17px] font-bold text-gray-900">
           Dasar Hukum
         </p>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {DASAR_HUKUM_BUNGA.map((item, i) => (
             <div
               key={i}
-              className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3"
+              className="flex gap-3 rounded-xl border border-gray-200 bg-white p-3.5"
             >
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[12.5px] font-bold text-amber-700">
                 {i + 1}
               </div>
-              <p className="text-sm leading-relaxed text-gray-500">{item}</p>
+              <p className="text-[14px] leading-relaxed text-gray-700">
+                {item}
+              </p>
             </div>
           ))}
         </div>
@@ -724,17 +919,17 @@ function ModalInformasiUmum() {
 
       {/* Makna logo */}
       <div>
-        <p className="mb-2 text-base font-semibold text-gray-800">
+        <p className="mb-2.5 text-[17px] font-bold text-gray-900">
           Makna Logo SI PUSPITA
         </p>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {MAKNA_LOGO_BUNGA.map((m) => (
             <div
               key={m.judul}
-              className="rounded-xl border border-gray-100 bg-orange-50/60 p-3"
+              className="rounded-xl border border-gray-100 bg-orange-50/60 p-3.5"
             >
-              <p className="text-sm font-semibold text-gray-800">{m.judul}</p>
-              <p className="mt-0.5 text-sm leading-relaxed text-gray-500">
+              <p className="text-[14.5px] font-bold text-gray-900">{m.judul}</p>
+              <p className="mt-1 text-[14px] leading-relaxed text-gray-700">
                 {m.isi}
               </p>
             </div>
@@ -804,7 +999,7 @@ const KELOPAK_LIST: KelopakItem[] = [
     icon: "🗂️",
     tooltip: "Upload Dokumen",
     modalTitle: "Upload Dokumen",
-    modalContent: <ModalFlowchart />,
+    modalContent: <ModalUploadDokumen />,
   },
   {
     id: "pengajuan",
@@ -914,7 +1109,11 @@ function ModalBunga({
     >
       <div
         className={`flex w-full overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95 ${
-          displayedItem.id === "informasi" ? "max-w-260" : "max-w-160"
+          displayedItem.id === "informasi" ||
+          displayedItem.id === "sop&flowchart" ||
+          displayedItem.id === "upload-dokumen"
+            ? "max-w-260"
+            : "max-w-160"
         }`}
         style={{
           opacity: visible ? 1 : 0,
@@ -1248,8 +1447,6 @@ export default function SiPuspitaLandingPage() {
     playKelopakSound();
     setBungaActiveId(null);
     setBungaCenterActive(true);
-    setModalItem(KELOPAK_DAFTAR);
-    setLastModalItem(KELOPAK_DAFTAR); // ← ganti dari ref
   };
 
   const handleCloseModal = () => {
