@@ -3,19 +3,9 @@
 import type { FormEvent } from "react";
 import {
   ArrowRight,
-  FileText,
-  Search,
-  UploadCloud,
-  LayoutDashboard,
   Phone,
   Menu,
   X,
-  CheckCircle2,
-  BookOpen,
-  ClipboardList,
-  Bell,
-  FileBadge,
-  Building2,
   LogIn,
   Eye,
   EyeOff,
@@ -47,12 +37,12 @@ interface KelopakItem {
 }
 
 const DASAR_HUKUM_BUNGA = [
-  "UU No. 25 Tahun 2009 tentang Pelayanan Publik",
-  "PP No. 76 Tahun 2013 tentang Pengelolaan Pengaduan Pelayanan Publik",
-  "PP No. 95 Tahun 2018 tentang Sistem Pemerintahan Berbasis Elektronik (SPBE)",
-  "PMK No. 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada PUPN",
-  "Perlan No. 6 Tahun 2022 tentang Penyelenggaraan Pelatihan Struktural Kepemimpinan",
-  "Perda Prov. Jateng No. 3 Tahun 2019 tentang Penyelenggaraan Inovasi Daerah",
+  "Undang-Undang Nomor 1 Tahun 2004 tentang Perbendaharaan Negara",
+  "Undang-Undang Nomor 17 Tahun 2003 tentang Keuangan Negara",
+  "Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah (HKPD)",
+  "PMK Nomor 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada Panitia Urusan Piutang Negara",
+  "Peraturan Pemerintah Nomor 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
+  "Peraturan Pemerintah Nomor 35 Tahun 2017 tentang Perubahan Kedua atas Peraturan Pemerintah Nomor 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
 ];
 
 const MAKNA_LOGO_BUNGA = [
@@ -290,9 +280,11 @@ const SUDUT_KELOPAK = [0, 72, 144, 216, 288];
 function SiPuspitaHeading({
   showSlogan = true,
   size = "lg",
+  className = "mb-5",
 }: {
   showSlogan?: boolean;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
+  className?: string;
 }) {
   const s = {
     xs: { h: "text-[17px] lg:text-[19px]", sl: "text-[11px] lg:text-[12px]" },
@@ -303,7 +295,9 @@ function SiPuspitaHeading({
   }[size];
 
   return (
-    <h1 className={`mb-5 leading-[1.1] font-extrabold tracking-tight ${s.h}`}>
+    <h1
+      className={`leading-[1.1] font-extrabold tracking-tight ${s.h} ${className}`}
+    >
       <span className="text-orange-400">SI </span>
       <span className="text-purple-400">PUS</span>
       <span className="text-green-400">PI</span>
@@ -625,39 +619,80 @@ function ModalInformasiUmum() {
     <div className="space-y-5">
       {/* Deskripsi umum */}
       <div className="rounded-xl border border-gray-100 bg-orange-50/60 p-4">
-        <p className="mb-1 text-[11px] font-bold tracking-widest text-amber-600 uppercase">
+        <p className="mb-1 text-xs font-bold tracking-widest text-amber-600 uppercase">
           Apa itu SI PUSPITA?
         </p>
-        <p className="text-sm leading-relaxed text-gray-600">
+        <p className="text-base leading-relaxed text-gray-600">
           <span className="font-semibold text-gray-800">
             SI PUSPITA (Sistem Pengajuan Penghapusan Piutang Terintegrasi)
           </span>{" "}
-          adalah layanan digital BPKAD Kabupaten Kendal yang mengintegrasikan
-          prosedur, dokumen, dan alur pengajuan penghapusan piutang daerah dalam
-          satu sistem — mulai dari pengajuan hingga verifikasi administratif dan
-          substantif oleh BPKAD Kabupaten Kendal.
+          adalah sebuah sistem layanan digital sederhana yang dirancang untuk:
         </p>
+        <div className="mt-3 space-y-2">
+          {[
+            <>
+              Memfasilitasi pengajuan penghapusan piutang oleh OPD secara{" "}
+              <em>online</em>
+            </>,
+            <>
+              Mengintegrasikan SOP, <em>flowchart</em>, dan alur persetujuan
+              antar-stakeholder terkait
+            </>,
+            <>
+              Menyediakan akses pelacakan status pengajuan secara{" "}
+              <em>real-time</em>
+            </>,
+            <>
+              Menyederhanakan dokumentasi dan validasi pada proses penghapusan
+              piutang daerah
+            </>,
+          ].map((t, i) => (
+            <div key={i} className="flex gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">
+                {i + 1}
+              </span>
+              <p className="text-sm leading-relaxed text-gray-600">{t}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Latar belakang singkat */}
       <div>
-        <p className="mb-2 text-sm font-semibold text-gray-800">
+        <p className="mb-2 text-base font-semibold text-gray-800">
           Latar Belakang
         </p>
-        <p className="text-xs leading-relaxed text-gray-500">
-          Piutang macet Kabupaten Kendal tercatat{" "}
-          <span className="font-semibold text-gray-700">
-            Rp81,79 miliar (45,31%)
-          </span>{" "}
-          dari total piutang daerah Rp180,53 miliar (audited 2025). SI PUSPITA
-          hadir agar pengelolaannya lebih tertib, transparan, dan akuntabel.
-        </p>
+        <div className="space-y-3">
+          <p className="text-sm leading-relaxed text-gray-600">
+            Pengelolaan keuangan daerah merupakan salah satu aspek krusial dalam
+            mewujudkan tata kelola pemerintah yang baik (
+            <em>good governance</em>). Salah satu komponen penting dalam
+            pengelolaan keuangan daerah adalah pengelolaan piutang daerah.
+            Permasalahan utama dalam pengelolaan piutang daerah di Kabupaten
+            Kendal adalah tingginya jumlah piutang yang tidak tertagih atau
+            macet. Pengelolaan piutang yang tidak optimal berpotensi menimbulkan
+            ketidakwajaran penyajian nilai piutang dalam neraca pemerintah
+            daerah. Oleh karena itu, diperlukan upaya pengelolaan piutang yang
+            tidak hanya berorientasi pada peningkatan penagihan, tetapi juga
+            mencakup penatausahaan, evaluasi, dan penyelesaian terhadap piutang
+            yang telah memenuhi kriteria untuk dilakukan penghapusan sesuai
+            ketentuan peraturan perundang-undangan.
+          </p>
+          <p className="text-sm leading-relaxed text-gray-600">
+            Hal tersebut selaras dengan Asta Cita ke 7 (tujuh) Presiden yakni
+            penguatan reformasi birokrasi dan transformasi digital pemerintahan
+            melalui inovasi tata kelola keuangan dan digitalisasi pengelolaan
+            piutang macet.
+          </p>
+        </div>
       </div>
 
       {/* Tujuan */}
       <div>
-        <p className="mb-2 text-sm font-semibold text-gray-800">Tujuan Utama</p>
-        <p className="text-xs leading-relaxed text-gray-500">
+        <p className="mb-2 text-base font-semibold text-gray-800">
+          Tujuan Utama
+        </p>
+        <p className="text-sm leading-relaxed text-gray-500">
           Mewujudkan tata kelola pengajuan penghapusan piutang daerah yang{" "}
           <span className="font-medium text-gray-700">
             efektif, terstandar, transparan, dan akuntabel
@@ -667,31 +702,21 @@ function ModalInformasiUmum() {
         </p>
       </div>
 
-      {/* Lokus */}
-      <div>
-        <p className="mb-2 text-sm font-semibold text-gray-800">Lokus</p>
-        <p className="text-xs leading-relaxed text-gray-500">
-          Pemerintah Kabupaten Kendal, dengan{" "}
-          <span className="font-medium text-gray-700">
-            BPKAD selaku fungsi SKPKD
-          </span>{" "}
-          sebagai koordinator utama proses penghapusan piutang.
-        </p>
-      </div>
-
       {/* Dasar hukum */}
       <div>
-        <p className="mb-2 text-sm font-semibold text-gray-800">Dasar Hukum</p>
+        <p className="mb-2 text-base font-semibold text-gray-800">
+          Dasar Hukum
+        </p>
         <div className="space-y-2">
           {DASAR_HUKUM_BUNGA.map((item, i) => (
             <div
               key={i}
               className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3"
             >
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-600">
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">
                 {i + 1}
               </div>
-              <p className="text-xs leading-relaxed text-gray-500">{item}</p>
+              <p className="text-sm leading-relaxed text-gray-500">{item}</p>
             </div>
           ))}
         </div>
@@ -699,7 +724,7 @@ function ModalInformasiUmum() {
 
       {/* Makna logo */}
       <div>
-        <p className="mb-2 text-sm font-semibold text-gray-800">
+        <p className="mb-2 text-base font-semibold text-gray-800">
           Makna Logo SI PUSPITA
         </p>
         <div className="space-y-2">
@@ -708,8 +733,8 @@ function ModalInformasiUmum() {
               key={m.judul}
               className="rounded-xl border border-gray-100 bg-orange-50/60 p-3"
             >
-              <p className="text-xs font-semibold text-gray-800">{m.judul}</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+              <p className="text-sm font-semibold text-gray-800">{m.judul}</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-gray-500">
                 {m.isi}
               </p>
             </div>
@@ -888,7 +913,9 @@ function ModalBunga({
       }}
     >
       <div
-        className="flex w-full max-w-160 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95"
+        className={`flex w-full overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95 ${
+          displayedItem.id === "informasi" ? "max-w-260" : "max-w-160"
+        }`}
         style={{
           opacity: visible ? 1 : 0,
           transform: visible
@@ -1142,120 +1169,6 @@ function BungaSVG({
   );
 }
 
-const FITUR = [
-  {
-    icon: <LayoutDashboard strokeWidth={1.8} />,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    border: "border-amber-100",
-    accent: "from-amber-500 to-amber-600",
-    badge: "Admin",
-    title: "Panel Admin BPKAD",
-    desc: "OPD mengisi data pemohon, data piutang, dasar permohonan, dan riwayat penagihan secara digital. Nomor registrasi otomatis diterbitkan setelah submit.",
-    points: [
-      "Wizard langkah demi langkah",
-      "Validasi otomatis",
-      "Nomor registrasi instan",
-    ],
-  },
-
-  {
-    icon: <UploadCloud strokeWidth={1.8} />,
-    color: "text-violet-600",
-    bg: "bg-violet-50",
-    border: "border-violet-100",
-    accent: "from-violet-500 to-violet-600",
-    badge: "Dokumen",
-    title: "Unggah Dokumen Persyaratan",
-    desc: "Upload SK Penetapan, BA Penagihan, BA Piutang Macet, dan dokumen pendukung lainnya dalam satu repositori digital yang aman dan mudah ditelusuri.",
-    points: [
-      "Format PDF tervalidasi",
-      "Repositori terpusat",
-      "Mudah ditelusuri saat audit",
-    ],
-  },
-  {
-    icon: <Search strokeWidth={1.8} />,
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-    border: "border-emerald-100",
-    accent: "from-emerald-500 to-emerald-600",
-    badge: "Real-time",
-    title: "Tracking Status Real-Time",
-    desc: "Pantau posisi berkas tanpa perlu datang ke kantor. Input nomor registrasi untuk melihat status: Diterima, Diverifikasi, Proses Telaah, hingga Selesai.",
-    points: [
-      "6 tahap termonitor",
-      "Tanpa perlu ke kantor",
-      "Notifikasi perubahan status",
-    ],
-  },
-  {
-    icon: <ClipboardList strokeWidth={1.8} />,
-    color: "text-blue-600",
-    bg: "bg-red-50",
-    border: "border-red-100",
-    accent: "from-red-500 to-red-600",
-    badge: "OPD",
-    title: "Formulir Pengajuan Online",
-    desc: "Petugas BPKAD dapat melihat daftar pengajuan masuk, memperbarui status, mengunggah hasil validasi, dan memantau log aktivitas dari satu dashboard.",
-    points: ["Dashboard terpadu", "Log aktivitas lengkap", "Multi-role akses"],
-  },
-];
-
-const KEUNGGULAN = [
-  {
-    num: "1",
-    title: "Proses Lebih Cepat & Terstandar",
-    desc: "SOP dan flowchart terintegrasi menghubungkan urutan proses antar unit: OPD → BPKAD → Bagian Hukum → Inspektorat dengan standar waktu yang jelas.",
-  },
-  {
-    num: "2",
-    title: "Satu Pintu Layanan Digital",
-    desc: "OPD tidak perlu bolak-balik antar unit. Ajukan permohonan, unggah dokumen, dan pantau status dari satu portal yang terintegrasi.",
-  },
-  {
-    num: "3",
-    title: "Transparan & Akuntabel",
-    desc: "Semua dokumen tersimpan dalam repositori digital, mudah ditelusuri untuk keperluan audit, pemeriksaan, dan pelaporan.",
-  },
-];
-
-const ALUR = [
-  {
-    icon: <BookOpen className="h-7 w-7 text-blue-600" strokeWidth={1.5} />,
-    num: "01",
-    title: "Baca SOP & Flowchart",
-    desc: "Pahami alur dan kelengkapan dokumen yang dibutuhkan sebelum mengajukan permohonan.",
-  },
-  {
-    icon: <ClipboardList className="h-7 w-7 text-blue-600" strokeWidth={1.5} />,
-    num: "02",
-    title: "Isi Formulir Pengajuan",
-    desc: "Lengkapi identitas OPD, data piutang, dasar permohonan, dan unggah dokumen persyaratan.",
-  },
-  {
-    icon: <FileBadge className="h-7 w-7 text-blue-600" strokeWidth={1.5} />,
-    num: "03",
-    title: "Terima Nomor Registrasi",
-    desc: "Sistem menerbitkan nomor registrasi otomatis sebagai tanda berkas telah diterima.",
-  },
-  {
-    icon: <Search className="h-7 w-7 text-blue-600" strokeWidth={1.5} />,
-    num: "04",
-    title: "Pantau Status Pengajuan",
-    desc: "Gunakan nomor registrasi untuk memantau posisi berkas secara real-time tanpa perlu ke kantor.",
-  },
-];
-
-const DOKUMEN_REQD = [
-  "SK Penetapan Piutang",
-  "BA Penagihan",
-  "BA Piutang Macet",
-  "Laporan Keuangan OPD",
-  "Surat Permohonan Penghapusan",
-  "Dokumen pendukung lainnya",
-];
-
 export default function SiPuspitaLandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -1378,16 +1291,19 @@ export default function SiPuspitaLandingPage() {
       <header className="sticky top-0 z-50">
         <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="mx-auto flex h-17 items-center justify-between px-26">
-            {/* Logo — hanya ikon bunga */}
-            <Image
-              src="/Logo_Si-Puspita_icon.png"
-              alt="Logo SI PUSPITA"
-              width={824}
-              height={824}
-              quality={100}
-              priority
-              className="h-11 w-11 shrink-0 rounded-full bg-white object-contain"
-            />
+            {/* Logo — ikon bunga + tulisan SI PUSPITA */}
+            <div className="flex shrink-0 items-center gap-2.5">
+              <Image
+                src="/Logo_Si-Puspita_icon.png"
+                alt="Logo SI PUSPITA"
+                width={824}
+                height={824}
+                quality={100}
+                priority
+                className="h-11 w-11 shrink-0 rounded-full bg-white object-contain"
+              />
+              <SiPuspitaHeading showSlogan={false} size="xs" className="" />
+            </div>
 
             {/* Desktop links */}
             <div className="hidden items-center gap-1 lg:flex"></div>
@@ -1455,7 +1371,7 @@ export default function SiPuspitaLandingPage() {
       >
         {/* Background glows — versi lembut untuk latar putih */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -right-32 h-150 w-150 rounded-full bg-[#0f2d5e]/[0.045] blur-3xl" />
+          <div className="absolute -top-32 -right-32 h-150 w-150 rounded-full bg-[#0f2d5e]/4.5 blur-3xl" />
           <div className="absolute -bottom-24 -left-24 h-100 w-100 rounded-full bg-[#e8c84a]/10 blur-3xl" />
         </div>
 
@@ -1511,7 +1427,7 @@ export default function SiPuspitaLandingPage() {
                   </a>
                   <a
                     href="#sop"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-6 py-3 text-[14px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/[0.03]"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-6 py-3 text-[14px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3"
                   >
                     Lihat SOP &amp; Alur
                   </a>
@@ -1596,7 +1512,7 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ FOOTER ══════════════════ */}
       <footer className="relative overflow-hidden bg-[#0a1b38] text-slate-300">
         {/* Garis emas atas — konsisten dengan hero */}
-        <div className="h-[3px] w-full bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
+        <div className="h-0.75 w-full bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
 
         {/* Tekstur & glow latar */}
         <div className="pointer-events-none absolute inset-0">
@@ -1608,7 +1524,7 @@ export default function SiPuspitaLandingPage() {
             }}
           />
           <div className="absolute -top-40 right-0 h-100 w-100 rounded-full bg-[#1a4e8f]/20 blur-3xl" />
-          <div className="absolute bottom-0 left-1/4 h-80 w-80 rounded-full bg-[#c8a020]/[0.06] blur-3xl" />
+          <div className="absolute bottom-0 left-1/4 h-80 w-80 rounded-full bg-[#c8a020]/6 blur-3xl" />
         </div>
 
         {/* ── Strip bantuan cepat ── */}
@@ -1655,7 +1571,7 @@ export default function SiPuspitaLandingPage() {
                 priority
                 className="mb-5 w-36 rounded-lg bg-white p-1.5"
               />
-              <p className="mb-6 max-w-[300px] text-[13px] leading-relaxed text-slate-400">
+              <p className="mb-6 max-w-75 text-[13px] leading-relaxed text-slate-400">
                 Sistem Pengajuan Penghapusan Piutang Terintegrasi — platform
                 digital layanan BPKAD Kabupaten Kendal untuk proses yang lebih
                 cepat, transparan, dan akuntabel.
@@ -1736,7 +1652,7 @@ export default function SiPuspitaLandingPage() {
                 <Clock className="h-3.5 w-3.5 text-[#e8c84a]" />
                 Jam Layanan
               </h4>
-              <div className="mb-6 flex flex-col gap-2.5 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+              <div className="mb-6 flex flex-col gap-2.5 rounded-xl border border-white/8 bg-white/3 p-4">
                 {[
                   { hari: "Senin — Kamis", jam: "08.00 — 15.30 WIB" },
                   { hari: "Jumat", jam: "08.00 — 11.00 WIB" },
@@ -1757,7 +1673,7 @@ export default function SiPuspitaLandingPage() {
               </div>
 
               {/* Email card */}
-              <div className="rounded-xl border border-[#e8c84a]/20 bg-[#e8c84a]/[0.06] p-4">
+              <div className="rounded-xl border border-[#e8c84a]/20 bg-[#e8c84a]/6 p-4">
                 <div className="mb-1 text-[10px] font-semibold tracking-widest text-[#e8c84a] uppercase">
                   Email Resmi
                 </div>

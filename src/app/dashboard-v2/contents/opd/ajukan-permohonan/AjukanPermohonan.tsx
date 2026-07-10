@@ -21,13 +21,17 @@ interface FormData {
   nomorSurat: string;
   tanggalSurat: string;
   fileSurat: File | null;
-  jumlahDebitur: string; // disimpan sebagai string angka
-  totalNilaiPiutang: string; // disimpan sebagai string angka (tanpa pemisah)
+  jumlahDebitur: string;
+  totalNilaiPiutang: string;
+  jenisPiutang: string;
   jenisPenghapusan: string;
   // Langkah 2 – Upload Dokumen
   suratPengantarUsulan: File | null;
   daftarNominatifPiutang: File | null;
   rekapitulasiSaldoPiutang: File | null;
+  neracaAwalPencatatanPiutang: File | null;
+  dokumenPendukungSuratTidakMampuBayar: File | null;
+  rekapitulasiAngsuran: File | null;
   // Riwayat Penagihan
   riwayatPenagihan1: File | null;
   riwayatPenagihan2: File | null;
@@ -37,8 +41,6 @@ interface FormData {
   // Dokumen Dasar Piutang
   dokumenDasarPiutang: File | null;
   opsiDokumenDasarPiutang: string;
-  // Dokumen pendukung lainnya
-  dokumenPendukungLainnya: File | null;
   // Langkah 3 – Pernyataan
   pernyataan: PernyataanOPD;
 }
@@ -53,7 +55,6 @@ const formatDisplayDate = (dateStr: string): string => {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 };
 
-// Fungsi format Rupiah (tanpa spasi, tanpa desimal)
 const formatRupiah = (value: string): string => {
   if (!value) return "";
   const num = parseFloat(value.replace(/,/g, ""));
@@ -68,7 +69,6 @@ const formatRupiah = (value: string): string => {
     .replace(/\s/g, "");
 };
 
-// Fungsi untuk mengambil angka dari string Rupiah
 const parseRupiah = (value: string): string => {
   return value.replace(/[^0-9]/g, "");
 };
@@ -150,7 +150,7 @@ interface StepConfig {
 
 const steps: StepConfig[] = [
   {
-    id: "step1",
+    id: "dataPengajuan",
     label: "Data Pengajuan",
     fields: [
       {
@@ -191,7 +191,7 @@ const steps: StepConfig[] = [
     ],
   },
   {
-    id: "nominatif",
+    id: "dokumenPendukung",
     label: "Dokumen Pendukung",
     fields: [
       {
@@ -204,7 +204,7 @@ const steps: StepConfig[] = [
       },
       {
         name: "daftarNominatifPiutang",
-        label: "Daftar Nominatif Piutang",
+        label: "Daftar Nominatif Usulan Piutang SKPD",
         type: "file",
         accept: ".pdf",
         required: true,
@@ -212,24 +212,16 @@ const steps: StepConfig[] = [
       },
       {
         name: "rekapitulasiSaldoPiutang",
-        label: "Rekapitulasi saldo piutang",
+        label: "Rekapitulasi saldo piutang (Rp)",
         type: "file",
         accept: ".pdf",
         required: true,
         maxSizeText: "10 MB",
       },
-      {
-        name: "dokumenPendukungLainnya",
-        label: "Dokumen Pendukung Lainnya (opsional)",
-        type: "file",
-        accept: ".pdf",
-        required: false,
-        maxSizeText: "10 MB",
-      },
     ],
   },
   {
-    id: "step3",
+    id: "pernyataan",
     label: "Pernyataan OPD",
   },
 ];
@@ -246,10 +238,14 @@ const initialForm: FormData = {
   fileSurat: null,
   jumlahDebitur: "",
   totalNilaiPiutang: "",
+  jenisPiutang: "",
   jenisPenghapusan: "",
   suratPengantarUsulan: null,
   daftarNominatifPiutang: null,
   rekapitulasiSaldoPiutang: null,
+  neracaAwalPencatatanPiutang: null,
+  dokumenPendukungSuratTidakMampuBayar: null,
+  rekapitulasiAngsuran: null,
   riwayatPenagihan1: null,
   riwayatPenagihan2: null,
   riwayatPenagihan3: null,
@@ -257,7 +253,6 @@ const initialForm: FormData = {
   opsiRiwayatPenagihan: "",
   dokumenDasarPiutang: null,
   opsiDokumenDasarPiutang: "",
-  dokumenPendukungLainnya: null,
   pernyataan: {
     dataBenar: false,
     dokumenResmi: false,
@@ -297,6 +292,10 @@ function useFormWizard(initialOverrides?: Partial<FormData>) {
         if ((value as string).trim() && !/^\d+$/.test(value as string))
           return "Harus berupa angka";
         return "";
+      case "jenisPiutang":
+        return !(value as string).trim() && required ? "Wajib dipilih" : "";
+      case "jenisPenghapusan":
+        return !(value as string).trim() && required ? "Wajib dipilih" : "";
       default:
         if (value instanceof File) {
           if (value.type !== "application/pdf") return "Hanya PDF";
@@ -379,6 +378,60 @@ const FileUploadCard = ({
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Drag‑and‑drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dropRef.current && !dropRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const syntheticEvent = {
+        target: { files: e.dataTransfer.files },
+      } as unknown as ChangeEvent<HTMLInputElement>;
+      onFileChange(syntheticEvent);
+    }
+  };
+
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && modalOpen) {
+        setModalOpen(false);
+        previousFocusRef.current?.focus();
+      }
+    };
+    if (modalOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      modalRef.current?.focus();
+    }
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [modalOpen]);
+
+  const openModal = () => {
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    setModalOpen(true);
+  };
 
   if (file) {
     return (
@@ -387,9 +440,9 @@ const FileUploadCard = ({
           {label}
           {required ? <span className="text-red-500"> *</span> : ""}
         </label>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-linear-to-r from-gray-50 to-white px-4 py-3 shadow-sm">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-red-50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-50">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 text-red-500"
@@ -412,10 +465,10 @@ const FileUploadCard = ({
               </p>
             </div>
           </div>
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={openModal}
               className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
             >
               Lihat
@@ -430,26 +483,44 @@ const FileUploadCard = ({
           </div>
         </div>
         {touched && error && <p className="text-sm text-red-600">{error}</p>}
+
         {modalOpen && previewUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Preview ${file.name}`}
+            ref={modalRef}
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setModalOpen(false);
+                previousFocusRef.current?.focus();
+              }
+            }}
+          >
             <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-md bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b px-4 py-3">
                 <span className="truncate text-sm font-medium text-gray-700">
                   {file.name}
                 </span>
                 <button
-                  onClick={() => setModalOpen(false)}
+                  onClick={() => {
+                    setModalOpen(false);
+                    previousFocusRef.current?.focus();
+                  }}
                   className="text-xl leading-none text-gray-400 hover:text-gray-600"
+                  aria-label="Close preview"
                 >
                   &times;
                 </button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <embed
+                <iframe
                   src={previewUrl}
-                  type="application/pdf"
-                  className="w-full"
-                  style={{ height: "calc(90vh - 57px)" }}
+                  className="h-full w-full"
+                  style={{ border: "none" }}
+                  title={`Preview ${file.name}`}
                 />
               </div>
             </div>
@@ -466,7 +537,18 @@ const FileUploadCard = ({
         {required ? <span className="text-red-500"> *</span> : ""}
       </label>
       <div
-        className={`rounded-md border-2 border-dashed p-4 text-center transition-colors ${touched && error ? "border-red-400 bg-red-50" : "border-gray-300 bg-gray-50 hover:border-blue-400"}`}
+        ref={dropRef}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`rounded-md border-2 border-dashed p-4 text-center transition-colors ${
+          touched && error
+            ? "border-red-400 bg-red-50"
+            : isDragOver
+              ? "border-blue-400 bg-blue-50"
+              : "border-gray-300 bg-gray-50 hover:border-blue-400"
+        }`}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -483,9 +565,21 @@ const FileUploadCard = ({
           />
         </svg>
         <p className="mt-1 text-sm text-gray-600">
-          <label className="relative cursor-pointer rounded font-medium text-blue-700 hover:text-blue-800">
+          <label
+            htmlFor={label.replace(/\s+/g, "-")}
+            className="relative cursor-pointer rounded font-medium text-blue-700 hover:text-blue-800"
+            tabIndex={0}
+            role="button"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+          >
             <span>Pilih file</span>
             <input
+              id={label.replace(/\s+/g, "-")}
               type="file"
               accept={accept}
               onChange={onFileChange}
@@ -526,38 +620,70 @@ export default function AjukanPermohonanWizard() {
   const [previewPendukung, setPreviewPendukung] = useState<
     Record<string, string | null>
   >({});
-  const inputRef = useRef<HTMLInputElement>(null);
+  const stepContentRef = useRef<HTMLDivElement>(null);
+
+  const objectUrlsRef = useRef<Set<string>>(new Set());
 
   const totalSteps = steps.length;
   const current = steps[currentStep];
 
   useEffect(() => {
-    if (inputRef.current) inputRef.current.focus();
+    if (stepContentRef.current) {
+      const firstFocusable = stepContentRef.current.querySelector<HTMLElement>(
+        'input:not([type="hidden"]), select, textarea, button, [tabindex]:not([tabindex="-1"])',
+      );
+      firstFocusable?.focus();
+    }
   }, [currentStep]);
+
+  useEffect(() => {
+    const urls = objectUrlsRef.current;
+    return () => {
+      urls.forEach(URL.revokeObjectURL);
+      urls.clear();
+    };
+  }, []);
+
+  const createAndTrackURL = (file: File) => {
+    const url = URL.createObjectURL(file);
+    objectUrlsRef.current.add(url);
+    return url;
+  };
+
+  const revokeURL = (url: string) => {
+    URL.revokeObjectURL(url);
+    objectUrlsRef.current.delete(url);
+  };
 
   const handleFilePendukung =
     (fieldName: keyof FormData) => (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0] || null;
       updateField(fieldName, file);
+
       setPreviewPendukung((prev) => {
         const next = { ...prev };
-        if (next[fieldName]) URL.revokeObjectURL(next[fieldName]!);
-        next[fieldName] =
-          file && file.type === "application/pdf"
-            ? URL.createObjectURL(file)
-            : null;
+        if (next[fieldName]) {
+          revokeURL(next[fieldName]!);
+        }
+        if (file && file.type === "application/pdf") {
+          next[fieldName] = createAndTrackURL(file);
+        } else {
+          next[fieldName] = null;
+        }
         return next;
       });
     };
 
   const resetFile = (fieldName: keyof FormData) => {
     updateField(fieldName, null);
-    if (fieldName === "fileSurat") setPreviewSurat(null);
-    else {
+    if (fieldName === "fileSurat") {
+      if (previewSurat) revokeURL(previewSurat);
+      setPreviewSurat(null);
+    } else {
       setPreviewPendukung((prev) => {
         const next = { ...prev };
         if (next[fieldName]) {
-          URL.revokeObjectURL(next[fieldName]!);
+          revokeURL(next[fieldName]!);
           next[fieldName] = null;
         }
         return next;
@@ -565,11 +691,10 @@ export default function AjukanPermohonanWizard() {
     }
   };
 
-  // Validasi step khusus untuk nominatif
   const validateNominatifStep = (): boolean => {
     let valid = true;
 
-    // 1. Validasi field biasa
+    // Validasi tiga field dari konfigurasi langkah
     current.fields?.forEach((field) => {
       const value = form[field.name];
       const isRequired = field.required !== false;
@@ -588,7 +713,26 @@ export default function AjukanPermohonanWizard() {
       if (err) valid = false;
     });
 
-    // 2. Opsi riwayat penagihan
+    // Validasi tiga upload baru yang wajib
+    const newFields: (keyof FormData)[] = [
+      "neracaAwalPencatatanPiutang",
+      "dokumenPendukungSuratTidakMampuBayar",
+      "rekapitulasiAngsuran",
+    ];
+    newFields.forEach((fieldName) => {
+      const file = form[fieldName] as File | null;
+      const err = validateField(fieldName, file, true);
+      setErrors((prev) => {
+        const next = { ...prev };
+        if (err) next[fieldName] = err;
+        else delete next[fieldName];
+        return next;
+      });
+      markTouched(fieldName);
+      if (err) valid = false;
+    });
+
+    // Opsi riwayat penagihan
     const opsi = form.opsiRiwayatPenagihan;
     markTouched("opsiRiwayatPenagihan");
     if (!opsi) {
@@ -659,7 +803,7 @@ export default function AjukanPermohonanWizard() {
       }
     }
 
-    // 3. Opsi dokumen dasar piutang
+    // Opsi dokumen dasar piutang
     const opsiDok = form.opsiDokumenDasarPiutang;
     markTouched("opsiDokumenDasarPiutang");
     if (!opsiDok) {
@@ -698,10 +842,10 @@ export default function AjukanPermohonanWizard() {
   };
 
   const validateCurrentStep = (): boolean => {
-    if (current.id === "nominatif") {
+    if (current.id === "dokumenPendukung") {
       return validateNominatifStep();
     }
-    if (current.id === "step3") {
+    if (current.id === "pernyataan") {
       const { pernyataan } = form;
       const allChecked =
         pernyataan.dataBenar &&
@@ -742,9 +886,7 @@ export default function AjukanPermohonanWizard() {
         if (err) allValid = false;
       }
 
-      // Validasi tambahan untuk step1: jumlahDebitur, totalNilaiPiutang, jenisPenghapusan
-      if (current.id === "step1") {
-        // jumlahDebitur
+      if (current.id === "dataPengajuan") {
         const jml = form.jumlahDebitur;
         const errJml = validateField("jumlahDebitur", jml, true);
         if (errJml) {
@@ -759,7 +901,6 @@ export default function AjukanPermohonanWizard() {
           });
         }
 
-        // totalNilaiPiutang
         const total = form.totalNilaiPiutang;
         const errTotal = validateField("totalNilaiPiutang", total, true);
         if (errTotal) {
@@ -774,7 +915,21 @@ export default function AjukanPermohonanWizard() {
           });
         }
 
-        // jenisPenghapusan
+        if (!form.jenisPiutang) {
+          setErrors((prev) => ({
+            ...prev,
+            jenisPiutang: "Pilih jenis piutang",
+          }));
+          markTouched("jenisPiutang");
+          allValid = false;
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.jenisPiutang;
+            return next;
+          });
+        }
+
         if (!form.jenisPenghapusan) {
           setErrors((prev) => ({
             ...prev,
@@ -836,12 +991,12 @@ export default function AjukanPermohonanWizard() {
         onFileChange = (e) => {
           const file = e.target.files?.[0] || null;
           updateField("fileSurat", file);
-          setPreviewSurat((prev) => {
-            if (prev) URL.revokeObjectURL(prev);
-            return file && file.type === "application/pdf"
-              ? URL.createObjectURL(file)
-              : null;
-          });
+          if (previewSurat) revokeURL(previewSurat);
+          setPreviewSurat(
+            file && file.type === "application/pdf"
+              ? createAndTrackURL(file)
+              : null,
+          );
         };
         onReset = () => resetFile("fileSurat");
       } else {
@@ -909,7 +1064,6 @@ export default function AjukanPermohonanWizard() {
           onBlur={() => markTouched(field.name)}
           placeholder={field.placeholder}
           disabled={field.disabled}
-          ref={field.name === "namaPenanggungJawab" ? inputRef : undefined}
           className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
             field.disabled
               ? "cursor-not-allowed bg-gray-100 text-gray-600"
@@ -923,183 +1077,257 @@ export default function AjukanPermohonanWizard() {
     );
   };
 
-  const renderNominatifStep = () => (
-    <div className="space-y-6">
-      {current.fields?.map((field) => renderField(field))}
+  // Step 2 rendering with the exact specified order
+  const renderDokumenPendukungStep = () => {
+    // Helper to create a field config for a file field by name
+    const fieldConfig = (name: keyof FormData, label: string): FieldConfig => ({
+      name,
+      label,
+      type: "file",
+      accept: ".pdf",
+      required: true,
+      maxSizeText: "10 MB",
+    });
 
-      {/* Dokumen Dasar Piutang */}
-      <fieldset className="rounded-md border border-gray-200 p-4">
-        <legend className="px-2 text-sm font-semibold text-gray-700">
-          Dokumen Dasar Piutang
-        </legend>
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Apakah terdapat dokumen yang menjadi dasar timbulnya piutang?
-          </p>
-          <div className="flex flex-col gap-2">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="opsiDokumenDasarPiutang"
-                value="ada"
-                checked={form.opsiDokumenDasarPiutang === "ada"}
-                onChange={() => updateField("opsiDokumenDasarPiutang", "ada")}
-                className="h-4 w-4 border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">Ada dokumen dasar</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="opsiDokumenDasarPiutang"
-                value="tidak_ada"
-                checked={form.opsiDokumenDasarPiutang === "tidak_ada"}
-                onChange={() =>
-                  updateField("opsiDokumenDasarPiutang", "tidak_ada")
-                }
-                className="h-4 w-4 border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">Tidak ada dokumen dasar</span>
-            </label>
-          </div>
-          {touched.opsiDokumenDasarPiutang &&
-            errors.opsiDokumenDasarPiutang && (
-              <p className="text-sm text-red-600">
-                {errors.opsiDokumenDasarPiutang}
+    return (
+      <div className="space-y-6">
+        {/* 1. Surat Pengantar Usulan */}
+        {renderField(
+          fieldConfig("suratPengantarUsulan", "Surat Pengantar Usulan"),
+        )}
+
+        {/* 2. Daftar Nominatif Usulan Piutang SKPD */}
+        {renderField(
+          fieldConfig(
+            "daftarNominatifPiutang",
+            "Daftar Nominatif Usulan Piutang SKPD",
+          ),
+        )}
+
+        {/* 3. Dokumen yang menjadi dasar timbulnya piutang (ada / tidak ada) */}
+        <fieldset className="rounded-md border border-gray-200 p-4">
+          <legend className="px-2 text-sm font-semibold text-gray-700">
+            Dokumen yang menjadi dasar timbulnya piutang
+          </legend>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Apakah terdapat dokumen dasar piutang?
+            </p>
+            <div className="flex flex-col gap-2">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiDokumenDasarPiutang"
+                  value="ada"
+                  checked={form.opsiDokumenDasarPiutang === "ada"}
+                  onChange={() => updateField("opsiDokumenDasarPiutang", "ada")}
+                  className="h-4 w-4 border-gray-300 text-blue-600"
+                />
+                <span className="text-sm">Ada</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiDokumenDasarPiutang"
+                  value="tidak_ada"
+                  checked={form.opsiDokumenDasarPiutang === "tidak_ada"}
+                  onChange={() =>
+                    updateField("opsiDokumenDasarPiutang", "tidak_ada")
+                  }
+                  className="h-4 w-4 border-gray-300 text-blue-600"
+                />
+                <span className="text-sm">Tidak ada</span>
+              </label>
+            </div>
+            {touched.opsiDokumenDasarPiutang &&
+              errors.opsiDokumenDasarPiutang && (
+                <p className="text-sm text-red-600">
+                  {errors.opsiDokumenDasarPiutang}
+                </p>
+              )}
+            {form.opsiDokumenDasarPiutang === "ada" && (
+              <div className="mt-4">
+                <FileUploadCard
+                  label="Dokumen Dasar Piutang (SKRD/SK/Perjanjian)"
+                  file={form.dokumenDasarPiutang}
+                  previewUrl={previewPendukung.dokumenDasarPiutang ?? null}
+                  onFileChange={handleFilePendukung("dokumenDasarPiutang")}
+                  onReset={() => resetFile("dokumenDasarPiutang")}
+                  error={errors.dokumenDasarPiutang}
+                  touched={touched.dokumenDasarPiutang}
+                  required
+                />
+              </div>
+            )}
+            {form.opsiDokumenDasarPiutang === "tidak_ada" && (
+              <p className="mt-2 text-sm text-gray-500">
+                Tidak perlu unggah dokumen.
               </p>
             )}
-          {form.opsiDokumenDasarPiutang === "ada" && (
-            <div className="mt-4">
-              <FileUploadCard
-                label="Dokumen Dasar Piutang (SKRD, Perjanjian, dll)"
-                file={form.dokumenDasarPiutang}
-                previewUrl={previewPendukung.dokumenDasarPiutang ?? null}
-                onFileChange={handleFilePendukung("dokumenDasarPiutang")}
-                onReset={() => resetFile("dokumenDasarPiutang")}
-                error={errors.dokumenDasarPiutang}
-                touched={touched.dokumenDasarPiutang}
-                required
-              />
-            </div>
-          )}
-          {form.opsiDokumenDasarPiutang === "tidak_ada" && (
-            <p className="mt-2 text-sm text-gray-500">
-              Tidak perlu unggah dokumen.
-            </p>
-          )}
-        </div>
-      </fieldset>
-
-      {/* Riwayat Penagihan */}
-      <fieldset className="rounded-md border border-gray-200 p-4">
-        <legend className="px-2 text-sm font-semibold text-gray-700">
-          Riwayat Penagihan
-        </legend>
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Apakah terdapat bukti riwayat penagihan?
-          </p>
-          <div className="flex flex-col gap-2">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="opsiRiwayatPenagihan"
-                value="riwayat"
-                checked={form.opsiRiwayatPenagihan === "riwayat"}
-                onChange={() => updateField("opsiRiwayatPenagihan", "riwayat")}
-                className="h-4 w-4 border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">Ada bukti riwayat penagihan</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="opsiRiwayatPenagihan"
-                value="pernyataan"
-                checked={form.opsiRiwayatPenagihan === "pernyataan"}
-                onChange={() =>
-                  updateField("opsiRiwayatPenagihan", "pernyataan")
-                }
-                className="h-4 w-4 border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">Ada bukti pernyataan dari OPD</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="opsiRiwayatPenagihan"
-                value="tidak_ada"
-                checked={form.opsiRiwayatPenagihan === "tidak_ada"}
-                onChange={() =>
-                  updateField("opsiRiwayatPenagihan", "tidak_ada")
-                }
-                className="h-4 w-4 border-gray-300 text-blue-600"
-              />
-              <span className="text-sm">Tidak ada bukti</span>
-            </label>
           </div>
-          {touched.opsiRiwayatPenagihan && errors.opsiRiwayatPenagihan && (
-            <p className="text-sm text-red-600">
-              {errors.opsiRiwayatPenagihan}
+        </fieldset>
+
+        {/* 4. Rekapitulasi saldo piutang (Rp) */}
+        {renderField(
+          fieldConfig(
+            "rekapitulasiSaldoPiutang",
+            "Rekapitulasi saldo piutang (Rp)",
+          ),
+        )}
+
+        {/* 5. Riwayat penagihan (wajib 3 kali) */}
+        <fieldset className="rounded-md border border-gray-200 p-4">
+          <legend className="px-2 text-sm font-semibold text-gray-700">
+            Riwayat Penagihan (wajib 3 kali)
+          </legend>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Apakah terdapat bukti riwayat penagihan?
             </p>
-          )}
-          {form.opsiRiwayatPenagihan === "riwayat" && (
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <FileUploadCard
-                label="Penagihan ke-1"
-                file={form.riwayatPenagihan1}
-                previewUrl={previewPendukung.riwayatPenagihan1 ?? null}
-                onFileChange={handleFilePendukung("riwayatPenagihan1")}
-                onReset={() => resetFile("riwayatPenagihan1")}
-                error={errors.riwayatPenagihan1}
-                touched={touched.riwayatPenagihan1}
-                required
-              />
-              <FileUploadCard
-                label="Penagihan ke-2"
-                file={form.riwayatPenagihan2}
-                previewUrl={previewPendukung.riwayatPenagihan2 ?? null}
-                onFileChange={handleFilePendukung("riwayatPenagihan2")}
-                onReset={() => resetFile("riwayatPenagihan2")}
-                error={errors.riwayatPenagihan2}
-                touched={touched.riwayatPenagihan2}
-                required
-              />
-              <FileUploadCard
-                label="Penagihan ke-3"
-                file={form.riwayatPenagihan3}
-                previewUrl={previewPendukung.riwayatPenagihan3 ?? null}
-                onFileChange={handleFilePendukung("riwayatPenagihan3")}
-                onReset={() => resetFile("riwayatPenagihan3")}
-                error={errors.riwayatPenagihan3}
-                touched={touched.riwayatPenagihan3}
-                required
-              />
+            <div className="flex flex-col gap-2">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiRiwayatPenagihan"
+                  value="riwayat"
+                  checked={form.opsiRiwayatPenagihan === "riwayat"}
+                  onChange={() =>
+                    updateField("opsiRiwayatPenagihan", "riwayat")
+                  }
+                  className="h-4 w-4 border-gray-300 text-blue-600"
+                />
+                <span className="text-sm">Ada bukti riwayat penagihan</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiRiwayatPenagihan"
+                  value="pernyataan"
+                  checked={form.opsiRiwayatPenagihan === "pernyataan"}
+                  onChange={() =>
+                    updateField("opsiRiwayatPenagihan", "pernyataan")
+                  }
+                  className="h-4 w-4 border-gray-300 text-blue-600"
+                />
+                <span className="text-sm">Ada bukti pernyataan dari OPD</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiRiwayatPenagihan"
+                  value="tidak_ada"
+                  checked={form.opsiRiwayatPenagihan === "tidak_ada"}
+                  onChange={() =>
+                    updateField("opsiRiwayatPenagihan", "tidak_ada")
+                  }
+                  className="h-4 w-4 border-gray-300 text-blue-600"
+                />
+                <span className="text-sm">Tidak ada bukti</span>
+              </label>
             </div>
+            {touched.opsiRiwayatPenagihan && errors.opsiRiwayatPenagihan && (
+              <p className="text-sm text-red-600">
+                {errors.opsiRiwayatPenagihan}
+              </p>
+            )}
+            {form.opsiRiwayatPenagihan === "riwayat" && (
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <FileUploadCard
+                  label="Penagihan ke-1"
+                  file={form.riwayatPenagihan1}
+                  previewUrl={previewPendukung.riwayatPenagihan1 ?? null}
+                  onFileChange={handleFilePendukung("riwayatPenagihan1")}
+                  onReset={() => resetFile("riwayatPenagihan1")}
+                  error={errors.riwayatPenagihan1}
+                  touched={touched.riwayatPenagihan1}
+                  required
+                />
+                <FileUploadCard
+                  label="Penagihan ke-2"
+                  file={form.riwayatPenagihan2}
+                  previewUrl={previewPendukung.riwayatPenagihan2 ?? null}
+                  onFileChange={handleFilePendukung("riwayatPenagihan2")}
+                  onReset={() => resetFile("riwayatPenagihan2")}
+                  error={errors.riwayatPenagihan2}
+                  touched={touched.riwayatPenagihan2}
+                  required
+                />
+                <FileUploadCard
+                  label="Penagihan ke-3"
+                  file={form.riwayatPenagihan3}
+                  previewUrl={previewPendukung.riwayatPenagihan3 ?? null}
+                  onFileChange={handleFilePendukung("riwayatPenagihan3")}
+                  onReset={() => resetFile("riwayatPenagihan3")}
+                  error={errors.riwayatPenagihan3}
+                  touched={touched.riwayatPenagihan3}
+                  required
+                />
+              </div>
+            )}
+            {form.opsiRiwayatPenagihan === "pernyataan" && (
+              <div className="mt-4">
+                <FileUploadCard
+                  label="Dokumen Pernyataan OPD"
+                  file={form.filePernyataanOPD}
+                  previewUrl={previewPendukung.filePernyataanOPD ?? null}
+                  onFileChange={handleFilePendukung("filePernyataanOPD")}
+                  onReset={() => resetFile("filePernyataanOPD")}
+                  error={errors.filePernyataanOPD}
+                  touched={touched.filePernyataanOPD}
+                  required
+                />
+              </div>
+            )}
+            {form.opsiRiwayatPenagihan === "tidak_ada" && (
+              <p className="mt-2 text-sm text-gray-500">
+                Tidak perlu unggah dokumen.
+              </p>
+            )}
+          </div>
+        </fieldset>
+
+        {/* 6. Neraca awal pencatatan piutang */}
+        <FileUploadCard
+          label="Neraca awal pencatatan piutang"
+          file={form.neracaAwalPencatatanPiutang}
+          previewUrl={previewPendukung.neracaAwalPencatatanPiutang ?? null}
+          onFileChange={handleFilePendukung("neracaAwalPencatatanPiutang")}
+          onReset={() => resetFile("neracaAwalPencatatanPiutang")}
+          error={errors.neracaAwalPencatatanPiutang}
+          touched={touched.neracaAwalPencatatanPiutang}
+          required
+        />
+
+        {/* 7. Rekapitulasi angsuran (Rp) */}
+        <FileUploadCard
+          label="Rekapitulasi angsuran (Rp)"
+          file={form.rekapitulasiAngsuran}
+          previewUrl={previewPendukung.rekapitulasiAngsuran ?? null}
+          onFileChange={handleFilePendukung("rekapitulasiAngsuran")}
+          onReset={() => resetFile("rekapitulasiAngsuran")}
+          error={errors.rekapitulasiAngsuran}
+          touched={touched.rekapitulasiAngsuran}
+          required
+        />
+
+        {/* 8. Dokumen pendukung lainnya (Surat tidak mampu bayar) */}
+        <FileUploadCard
+          label="Dokumen pendukung lainnya (Surat tidak mampu bayar)"
+          file={form.dokumenPendukungSuratTidakMampuBayar}
+          previewUrl={
+            previewPendukung.dokumenPendukungSuratTidakMampuBayar ?? null
+          }
+          onFileChange={handleFilePendukung(
+            "dokumenPendukungSuratTidakMampuBayar",
           )}
-          {form.opsiRiwayatPenagihan === "pernyataan" && (
-            <div className="mt-4">
-              <FileUploadCard
-                label="Dokumen Pernyataan OPD"
-                file={form.filePernyataanOPD}
-                previewUrl={previewPendukung.filePernyataanOPD ?? null}
-                onFileChange={handleFilePendukung("filePernyataanOPD")}
-                onReset={() => resetFile("filePernyataanOPD")}
-                error={errors.filePernyataanOPD}
-                touched={touched.filePernyataanOPD}
-                required
-              />
-            </div>
-          )}
-          {form.opsiRiwayatPenagihan === "tidak_ada" && (
-            <p className="mt-2 text-sm text-gray-500">
-              Tidak perlu unggah dokumen.
-            </p>
-          )}
-        </div>
-      </fieldset>
-    </div>
-  );
+          onReset={() => resetFile("dokumenPendukungSuratTidakMampuBayar")}
+          error={errors.dokumenPendukungSuratTidakMampuBayar}
+          touched={touched.dokumenPendukungSuratTidakMampuBayar}
+          required
+        />
+      </div>
+    );
+  };
 
   if (submitted) {
     return (
@@ -1135,7 +1363,15 @@ export default function AjukanPermohonanWizard() {
   return (
     <>
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Konfirmasi Pengiriman"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setShowConfirm(false);
+          }}
+        >
           <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-5 shadow-lg">
             <h3 className="mb-2 font-semibold text-gray-800">
               Konfirmasi Pengiriman
@@ -1179,16 +1415,16 @@ export default function AjukanPermohonanWizard() {
               />
             </div>
           </div>
-          <div className="px-6 py-6">
+          <div className="px-6 py-6" ref={stepContentRef}>
             <form onSubmit={(e) => e.preventDefault()} noValidate>
-              {current.id === "nominatif" ? (
+              {current.id === "dokumenPendukung" ? (
                 <fieldset className="rounded-md border border-gray-300 p-4">
                   <legend className="px-2 text-xl font-bold text-gray-800">
                     Checklist Persyaratan Administrasi
                   </legend>
-                  {renderNominatifStep()}
+                  {renderDokumenPendukungStep()}
                 </fieldset>
-              ) : current.id === "step3" ? (
+              ) : current.id === "pernyataan" ? (
                 <fieldset className="rounded-md border border-gray-300 p-4">
                   <legend className="px-2 text-xl font-bold text-gray-800">
                     Pernyataan OPD
@@ -1236,7 +1472,7 @@ export default function AjukanPermohonanWizard() {
                     )}
                   </div>
                 </fieldset>
-              ) : current.id === "step1" ? (
+              ) : current.id === "dataPengajuan" ? (
                 <fieldset className="rounded-md border border-gray-300 p-4">
                   <legend className="px-2 text-xl font-bold text-gray-800">
                     Identitas Usulan
@@ -1244,7 +1480,6 @@ export default function AjukanPermohonanWizard() {
                   <div className="space-y-4">
                     {current.fields?.map((field) => renderField(field))}
 
-                    {/* Input baru: Jumlah Debitur */}
                     <div className="space-y-1.5">
                       <label
                         htmlFor="jumlahDebitur"
@@ -1276,7 +1511,6 @@ export default function AjukanPermohonanWizard() {
                       )}
                     </div>
 
-                    {/* Input baru: Total Nilai Piutang (Rupiah) */}
                     <div className="space-y-1.5">
                       <label
                         htmlFor="totalNilaiPiutang"
@@ -1310,7 +1544,75 @@ export default function AjukanPermohonanWizard() {
                         )}
                     </div>
 
-                    {/* Jenis Penghapusan (di bawah dua input di atas) */}
+                    {/* Jenis Piutang */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Jenis Piutang <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="jenisPiutang"
+                            value="Piutang Retribusi Daerah"
+                            checked={
+                              form.jenisPiutang === "Piutang Retribusi Daerah"
+                            }
+                            onChange={() =>
+                              updateField(
+                                "jenisPiutang",
+                                "Piutang Retribusi Daerah",
+                              )
+                            }
+                            className="h-4 w-4 border-gray-300 text-blue-600"
+                          />
+                          <span className="text-sm">
+                            Piutang Retribusi Daerah
+                          </span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="jenisPiutang"
+                            value="Piutang Lain-lain PAD yang Sah"
+                            checked={
+                              form.jenisPiutang ===
+                              "Piutang Lain-lain PAD yang Sah"
+                            }
+                            onChange={() =>
+                              updateField(
+                                "jenisPiutang",
+                                "Piutang Lain-lain PAD yang Sah",
+                              )
+                            }
+                            className="h-4 w-4 border-gray-300 text-blue-600"
+                          />
+                          <span className="text-sm">
+                            Piutang Lain-lain PAD yang Sah
+                          </span>
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name="jenisPiutang"
+                            value="Piutang Lainnya"
+                            checked={form.jenisPiutang === "Piutang Lainnya"}
+                            onChange={() =>
+                              updateField("jenisPiutang", "Piutang Lainnya")
+                            }
+                            className="h-4 w-4 border-gray-300 text-blue-600"
+                          />
+                          <span className="text-sm">Piutang Lainnya</span>
+                        </label>
+                      </div>
+                      {touched.jenisPiutang && errors.jenisPiutang && (
+                        <p className="text-sm text-red-600">
+                          {errors.jenisPiutang}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Jenis Penghapusan */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-gray-700">
                         Jenis Penghapusan{" "}
