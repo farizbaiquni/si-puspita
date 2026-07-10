@@ -21,6 +21,8 @@ interface FormData {
   nomorSurat: string;
   tanggalSurat: string;
   fileSurat: File | null;
+  jumlahDebitur: string; // disimpan sebagai string angka
+  totalNilaiPiutang: string; // disimpan sebagai string angka (tanpa pemisah)
   jenisPenghapusan: string;
   // Langkah 2 – Upload Dokumen
   suratPengantarUsulan: File | null;
@@ -49,6 +51,26 @@ const formatDisplayDate = (dateStr: string): string => {
   const parts = dateStr.split("-");
   if (parts.length !== 3) return dateStr;
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
+};
+
+// Fungsi format Rupiah (tanpa spasi, tanpa desimal)
+const formatRupiah = (value: string): string => {
+  if (!value) return "";
+  const num = parseFloat(value.replace(/,/g, ""));
+  if (isNaN(num)) return "";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+    .format(num)
+    .replace(/\s/g, "");
+};
+
+// Fungsi untuk mengambil angka dari string Rupiah
+const parseRupiah = (value: string): string => {
+  return value.replace(/[^0-9]/g, "");
 };
 
 /* ------------------------------------------------------------------ */
@@ -222,6 +244,8 @@ const initialForm: FormData = {
   nomorSurat: "",
   tanggalSurat: "",
   fileSurat: null,
+  jumlahDebitur: "",
+  totalNilaiPiutang: "",
   jenisPenghapusan: "",
   suratPengantarUsulan: null,
   daftarNominatifPiutang: null,
@@ -263,6 +287,16 @@ function useFormWizard(initialOverrides?: Partial<FormData>) {
         return !(value as string).trim() && required ? "Wajib diisi" : "";
       case "tanggalSurat":
         return !value && required ? "Tanggal wajib diisi" : "";
+      case "jumlahDebitur":
+        if (required && !(value as string).trim()) return "Wajib diisi";
+        if ((value as string).trim() && !/^\d+$/.test(value as string))
+          return "Harus berupa angka";
+        return "";
+      case "totalNilaiPiutang":
+        if (required && !(value as string).trim()) return "Wajib diisi";
+        if ((value as string).trim() && !/^\d+$/.test(value as string))
+          return "Harus berupa angka";
+        return "";
       default:
         if (value instanceof File) {
           if (value.type !== "application/pdf") return "Hanya PDF";
@@ -708,8 +742,39 @@ export default function AjukanPermohonanWizard() {
         if (err) allValid = false;
       }
 
-      // Validasi tambahan untuk step1: jenis penghapusan
+      // Validasi tambahan untuk step1: jumlahDebitur, totalNilaiPiutang, jenisPenghapusan
       if (current.id === "step1") {
+        // jumlahDebitur
+        const jml = form.jumlahDebitur;
+        const errJml = validateField("jumlahDebitur", jml, true);
+        if (errJml) {
+          setErrors((prev) => ({ ...prev, jumlahDebitur: errJml }));
+          markTouched("jumlahDebitur");
+          allValid = false;
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.jumlahDebitur;
+            return next;
+          });
+        }
+
+        // totalNilaiPiutang
+        const total = form.totalNilaiPiutang;
+        const errTotal = validateField("totalNilaiPiutang", total, true);
+        if (errTotal) {
+          setErrors((prev) => ({ ...prev, totalNilaiPiutang: errTotal }));
+          markTouched("totalNilaiPiutang");
+          allValid = false;
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.totalNilaiPiutang;
+            return next;
+          });
+        }
+
+        // jenisPenghapusan
         if (!form.jenisPenghapusan) {
           setErrors((prev) => ({
             ...prev,
@@ -1179,7 +1244,73 @@ export default function AjukanPermohonanWizard() {
                   <div className="space-y-4">
                     {current.fields?.map((field) => renderField(field))}
 
-                    {/* Input baru: Jenis Penghapusan */}
+                    {/* Input baru: Jumlah Debitur */}
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="jumlahDebitur"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Jumlah Debitur <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="jumlahDebitur"
+                        type="text"
+                        name="jumlahDebitur"
+                        value={form.jumlahDebitur}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          updateField("jumlahDebitur", val);
+                        }}
+                        onBlur={() => markTouched("jumlahDebitur")}
+                        placeholder="Masukkan jumlah debitur"
+                        className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
+                          touched.jumlahDebitur && errors.jumlahDebitur
+                            ? "border-red-400 bg-red-50"
+                            : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
+                        }`}
+                      />
+                      {touched.jumlahDebitur && errors.jumlahDebitur && (
+                        <p className="text-sm text-red-600">
+                          {errors.jumlahDebitur}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Input baru: Total Nilai Piutang (Rupiah) */}
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="totalNilaiPiutang"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Total Nilai Piutang yang Diusulkan{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="totalNilaiPiutang"
+                        type="text"
+                        name="totalNilaiPiutang"
+                        value={formatRupiah(form.totalNilaiPiutang)}
+                        onChange={(e) => {
+                          const raw = parseRupiah(e.target.value);
+                          updateField("totalNilaiPiutang", raw);
+                        }}
+                        onBlur={() => markTouched("totalNilaiPiutang")}
+                        placeholder="Masukkan total nilai piutang"
+                        className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
+                          touched.totalNilaiPiutang && errors.totalNilaiPiutang
+                            ? "border-red-400 bg-red-50"
+                            : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
+                        }`}
+                      />
+                      {touched.totalNilaiPiutang &&
+                        errors.totalNilaiPiutang && (
+                          <p className="text-sm text-red-600">
+                            {errors.totalNilaiPiutang}
+                          </p>
+                        )}
+                    </div>
+
+                    {/* Jenis Penghapusan (di bawah dua input di atas) */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-gray-700">
                         Jenis Penghapusan{" "}
