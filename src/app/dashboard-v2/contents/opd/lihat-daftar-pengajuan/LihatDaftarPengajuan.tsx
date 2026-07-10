@@ -1,266 +1,36 @@
 "use client";
 
-/**
- * LihatDaftarPengajuan.tsx
- * Halaman daftar pengajuan penghapusan piutang untuk user OPD.
- * Path: src/app/dashboard/contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan.tsx
- *
- * Styling menggunakan Tailwind CSS (className). Warna khusus yang belum
- * tersedia di palet default Tailwind ditulis dengan arbitrary value,
- * mis. bg-[#1a4e8f], agar tetap selaras dengan AjukanPermohonan.tsx.
- */
-
 import React, { useState, useMemo } from "react";
 import type {
-  Pengajuan,
-  StatusPengajuan,
-  JalurPengajuan,
-  JenisPiutang,
-} from "@/types/types";
+  FormulirPenghapusanPiutangOPDRecord,
+  StatusFormulir,
+} from "@/types/types-v2";
+import { MOCK_DATA } from "../../dummyData";
+import {
+  IconSearch,
+  IconFilter,
+  IconClose,
+  IconEye,
+  IconUser,
+  IconBriefcase,
+  IconDocument,
+  IconCalendar,
+  IconTag,
+  IconUsers,
+  IconCash,
+  IconTrash,
+  IconFile,
+} from "./icons";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Mock data — 12 pengajuan sample
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const MOCK_PENGAJUAN: Pengajuan[] = [
-  {
-    id: "PGJ-2025-001",
-    tanggalDibuat: "2025-01-08T09:23:00Z",
-    status: "DISETUJUI",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "Budi Santoso",
-      alamatWP: "Jl. Mawar No. 12, Kendal",
-      nik: "3317010101800001",
-      pekerjaan: "Wiraswasta",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 12500000,
-      nomorSKRD: "SKRD/2022/0412",
-      nomorSTRD: "STRD/2023/0087",
-      sebabPiutangMacet: "Usaha bangkrut, aset tidak mencukupi",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-002",
-    tanggalDibuat: "2025-01-15T11:05:00Z",
-    status: "DALAM_REVIEW",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Siti Rahayu",
-      alamatWP: "Jl. Kenanga No. 5, Weleri",
-      nik: "3317015505750002",
-      pekerjaan: "Pedagang",
-      jenisPiutang: "LAINNYA",
-      nominalUtang: 4200000,
-      sebabPiutangMacet: "Meninggal dunia, ahli waris tidak mampu",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-003",
-    tanggalDibuat: "2025-02-03T08:44:00Z",
-    status: "DIAJUKAN",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "PT Karya Maju Sejahtera",
-      alamatWP: "Jl. Industri Raya Km 7, Kaliwungu",
-      nik: "3317000000000003",
-      pekerjaan: "Perusahaan Manufaktur",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 87000000,
-      nomorSKRD: "SKRD/2021/0188",
-      nomorSTRD: "STRD/2022/0044",
-      sebabPiutangMacet:
-        "Perusahaan pailit, putusan PN No. 12/Pdt.Sus-Pailit/2023",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-004",
-    tanggalDibuat: "2025-02-18T14:30:00Z",
-    status: "PERLU_REVISI",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Ahmad Fauzi",
-      alamatWP: "Desa Tunjungsari RT 02/04, Patebon",
-      nik: "3317012908820004",
-      pekerjaan: "Buruh Tani",
-      jenisPiutang: "TP",
-      nominalUtang: 2750000,
-      sebabPiutangMacet: "Tidak diketahui keberadaannya",
-    },
-    dokumen: [],
-    catatanReviewer:
-      "Dokumen Berita Acara Identifikasi belum dilampirkan. Mohon dilengkapi.",
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-005",
-    tanggalDibuat: "2025-03-01T09:10:00Z",
-    status: "DIAJUKAN",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Dewi Kusumawati",
-      alamatWP: "Jl. Cempaka No. 8, Kendal Kota",
-      nik: "3317014404900005",
-      pekerjaan: "Ibu Rumah Tangga",
-      jenisPiutang: "TGR",
-      nominalUtang: 5500000,
-      sebabPiutangMacet: "Tidak mampu membayar",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-006",
-    tanggalDibuat: "2025-03-12T10:55:00Z",
-    status: "DITOLAK",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "CV Sumber Berkah",
-      alamatWP: "Ruko Kaliwungu Baru Blok D No. 3",
-      nik: "3317000000000006",
-      pekerjaan: "Perdagangan Umum",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 145000000,
-      nomorSKRD: "SKRD/2020/0092",
-      nomorSTRD: "STRD/2021/0031",
-      sebabPiutangMacet: "Aset tidak cukup menutupi kewajiban",
-      adaBLUD: true,
-    },
-    dokumen: [],
-    catatanReviewer:
-      "Persyaratan PUPN tidak terpenuhi. Piutang belum berumur 5 tahun sejak STRD terakhir.",
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-007",
-    tanggalDibuat: "2025-03-25T13:20:00Z",
-    status: "DIAJUKAN",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Mujiono",
-      alamatWP: "Desa Gempolsewu Blok A, Rowosari",
-      nik: "3317011205710007",
-      pekerjaan: "Nelayan",
-      jenisPiutang: "LAINNYA",
-      nominalUtang: 3100000,
-      sebabPiutangMacet: "Wafat, ahli waris tidak mampu membayar",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-008",
-    tanggalDibuat: "2025-04-07T08:00:00Z",
-    status: "DALAM_REVIEW",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "PT Sinar Harapan Bersama",
-      alamatWP: "Kawasan Industri Kendal Blok G-12",
-      nik: "3317000000000008",
-      pekerjaan: "Industri Tekstil",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 320000000,
-      nomorSKRD: "SKRD/2019/0041",
-      nomorSTRD: "STRD/2020/0019",
-      sebabPiutangMacet: "Kepailitan, proses likuidasi aset masih berjalan",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-009",
-    tanggalDibuat: "2025-04-20T15:45:00Z",
-    status: "DISETUJUI",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Suharno",
-      alamatWP: "Jl. Pahlawan No. 3, Sukorejo",
-      nik: "3317013003680009",
-      pekerjaan: "Pensiunan PNS",
-      jenisPiutang: "TP",
-      nominalUtang: 1800000,
-      sebabPiutangMacet: "Sudah meninggal, tidak ada ahli waris yang mampu",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-010",
-    tanggalDibuat: "2025-05-05T10:15:00Z",
-    status: "PERLU_REVISI",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Rubiyah",
-      alamatWP: "Desa Kalirejo Kidul, Brangsong",
-      nik: "3317014006720010",
-      pekerjaan: "Petani",
-      jenisPiutang: "LAINNYA",
-      nominalUtang: 950000,
-      sebabPiutangMacet: "Tidak diketahui keberadaannya lebih dari 5 tahun",
-    },
-    dokumen: [],
-    catatanReviewer:
-      "Lampiran surat keterangan dari lurah belum ada. Harap dilengkapi dalam 7 hari kerja.",
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-011",
-    tanggalDibuat: "2025-05-19T09:30:00Z",
-    status: "DIAJUKAN",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "UD Mitra Usaha Jaya",
-      alamatWP: "Pasar Boja Kios 22, Boja",
-      nik: "3317000000000011",
-      pekerjaan: "Perdagangan Sembako",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 58000000,
-      nomorSKRD: "SKRD/2020/0231",
-      nomorSTRD: "STRD/2021/0118",
-      sebabPiutangMacet: "Usaha gulung tikar, tidak ada aset tersisa",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-012",
-    tanggalDibuat: "2025-06-02T11:00:00Z",
-    status: "DIAJUKAN",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "Hendra Wijaya",
-      alamatWP: "Perumahan Griya Asri Blok C5, Kendal",
-      nik: "3317012107850012",
-      pekerjaan: "Kontraktor",
-      jenisPiutang: "TGR",
-      nominalUtang: 22000000,
-      sebabPiutangMacet: "Pekerjaan terbengkalai, aset tidak ada",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function formatRupiah(nominal: number): string {
-  return "Rp " + nominal.toLocaleString("id-ID");
+// ────────────────────────────── HELPERS ─────────────────────────────────────
+function formatRupiah(angka: string): string {
+  const num = parseInt(angka, 10);
+  return isNaN(num) ? "Rp 0" : "Rp " + num.toLocaleString("id-ID");
 }
 
 function formatTanggal(iso: string): string {
-  const d = new Date(iso);
+  if (!iso) return "";
+  const d = new Date(iso + (iso.endsWith("Z") ? "" : "T00:00:00Z"));
   return d.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
@@ -268,251 +38,43 @@ function formatTanggal(iso: string): string {
   });
 }
 
-function labelJenisPiutang(j: JenisPiutang): string {
-  const map: Record<NonNullable<JenisPiutang>, string> = {
-    RETRIBUSI: "Retribusi",
-    TP: "Tunt. Perbend.",
-    TGR: "Tunt. Ganti Rugi",
-    LAINNYA: "Lainnya",
-    PAJAK: "Pajak",
-  };
-  return j ? map[j] : "-";
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Status badge config
-// ─────────────────────────────────────────────────────────────────────────────
-
-type StatusConfig = {
-  label: string;
-  badgeClass: string;
-  dotClass: string;
-};
-
-const STATUS_CONFIG: Record<StatusPengajuan, StatusConfig> = {
-  DRAFT: {
-    label: "Draft",
-    badgeClass: "bg-[#f1f3f5] text-[#6b7280] border-[#e5e7eb]",
-    dotClass: "bg-[#9ca3af]",
-  },
-  DIAJUKAN: {
+// ────────────────────────────── STATUS CONFIG ───────────────────────────────
+const STATUS_CONFIG: Record<
+  StatusFormulir,
+  { label: string; badgeClass: string; dotClass: string }
+> = {
+  diajukan: {
     label: "Diajukan",
     badgeClass: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
     dotClass: "bg-[#3b82f6]",
   },
-  DALAM_REVIEW: {
-    label: "Dalam Review",
-    badgeClass: "bg-[#fffbeb] text-[#92400e] border-[#fde68a]",
-    dotClass: "bg-[#f59e0b]",
-  },
-  DISETUJUI: {
-    label: "Disetujui",
-    badgeClass: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
-    dotClass: "bg-[#10b981]",
-  },
-  DITOLAK: {
-    label: "Ditolak",
-    badgeClass: "bg-[#fef2f2] text-[#991b1b] border-[#fecaca]",
-    dotClass: "bg-[#ef4444]",
-  },
-  PERLU_REVISI: {
-    label: "Perlu Revisi",
+  revisi: {
+    label: "Revisi",
     badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dotClass: "bg-[#f97316]",
   },
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Jalur badge config
-// ─────────────────────────────────────────────────────────────────────────────
-
-const JALUR_CONFIG: Record<
-  NonNullable<JalurPengajuan>,
-  { label: string; badgeClass: string }
-> = {
-  PUPN: {
-    label: "PUPN",
-    badgeClass: "bg-[#eff6ff] text-[#1e40af] border-[#bfdbfe]",
-  },
-  NON_PUPN: {
-    label: "Non-PUPN",
-    badgeClass: "bg-[#f5f3ff] text-[#5b21b6] border-[#ddd6fe]",
+  lolos_verifikasi: {
+    label: "Lolos Verifikasi",
+    badgeClass: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
+    dotClass: "bg-[#10b981]",
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Icons
-// ─────────────────────────────────────────────────────────────────────────────
-
-const IconSearch = () => (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 15 15"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-  >
-    <circle cx="6.5" cy="6.5" r="4.5" />
-    <path d="M10 10l3 3" strokeLinecap="round" />
-  </svg>
-);
-
-const IconFilter = () => (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 15 15"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-  >
-    <path d="M1.5 3.5h12M4 7.5h7M6.5 11.5h2" strokeLinecap="round" />
-  </svg>
-);
-
-const IconEye = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-  >
-    <path d="M1 7s2-4.5 6-4.5S13 7 13 7s-2 4.5-6 4.5S1 7 1 7z" />
-    <circle cx="7" cy="7" r="1.5" />
-  </svg>
-);
-
-const IconEdit = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-  >
-    <path
-      d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconChevronUp = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 12 12"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path d="M2 8l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const IconChevronDown = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 12 12"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const IconClose = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path d="M3 3l8 8M11 3l-8 8" strokeLinecap="round" />
-  </svg>
-);
-
-const IconWarning = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-  >
-    <path d="M7 1L13 12H1L7 1z" strokeLinejoin="round" />
-    <path d="M7 5.5v3M7 10h.01" strokeLinecap="round" />
-  </svg>
-);
-
-const IconFileText = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.4"
-  >
-    <path
-      d="M18 3H8a2 2 0 00-2 2v22a2 2 0 002 2h16a2 2 0 002-2V11L18 3z"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M18 3v8h8M11 17h10M11 21h7" strokeLinecap="round" />
-  </svg>
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// StatusBadge
-// ─────────────────────────────────────────────────────────────────────────────
-
-const StatusBadge: React.FC<{ status: StatusPengajuan }> = ({ status }) => {
-  const cfg = STATUS_CONFIG[status];
-  return (
-    <span
-      className={`inline-flex items-center gap-[5px] rounded-full border px-[9px] py-[3px] text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.badgeClass}`}
-    >
-      <span
-        className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dotClass}`}
-      />
-      {cfg.label}
-    </span>
+// ──────────────────────── SORT INDICATOR ────────────────────────────────────
+const SortIndicator: React.FC<{
+  sortKey: string;
+  currentKey: string;
+  currentDir: "asc" | "desc";
+}> = ({ sortKey, currentKey, currentDir }) => {
+  if (sortKey !== currentKey) return null;
+  return currentDir === "asc" ? (
+    <span className="ml-1 inline-block text-[10px]">▲</span>
+  ) : (
+    <span className="ml-1 inline-block text-[10px]">▼</span>
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// JalurBadge
-// ─────────────────────────────────────────────────────────────────────────────
-
-const JalurBadge: React.FC<{ jalur: JalurPengajuan }> = ({ jalur }) => {
-  if (!jalur) {
-    return <span className="text-xs text-[#7a8899]">—</span>;
-  }
-  const cfg = JALUR_CONFIG[jalur];
-  return (
-    <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${cfg.badgeClass}`}
-    >
-      {cfg.label}
-    </span>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Summary stats cards
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ──────────────────────────── STAT CARD ─────────────────────────────────────
 const StatCard: React.FC<{
   label: string;
   value: number | string;
@@ -521,10 +83,10 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
 }> = ({ label, value, accentClass, cardClass, icon }) => (
   <div
-    className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border px-[18px] py-3.5 ${cardClass}`}
+    className={`flex min-w-0 flex-1 items-center gap-3 rounded-md border px-4.5 py-3.5 ${cardClass}`}
   >
     <div
-      className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-white ${accentClass}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${accentClass}`}
     >
       {icon}
     </div>
@@ -537,271 +99,436 @@ const StatCard: React.FC<{
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Detail Modal
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────── STATUS BADGE ─────────────────────────────────────
+const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.badgeClass}`}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
+      {cfg.label}
+    </span>
+  );
+};
 
-const ModalDetail: React.FC<{
-  pengajuan: Pengajuan;
+// ──────────────────── MODAL PREVIEW PDF (FULLSCREEN DENGAN PADDING KECIL) ────
+const PdfPreviewModal: React.FC<{
+  url: string;
+  title: string;
   onClose: () => void;
-}> = ({ pengajuan, onClose }) => {
-  const dp = pengajuan.dataPenanggung;
-  const isDitolak = pengajuan.status === "DITOLAK";
-
+}> = ({ url, title, onClose }) => {
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,20,40,0.45)] p-6 backdrop-blur-[3px]"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-2 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="max-h-[88vh] w-full max-w-[560px] overflow-y-auto rounded-2xl bg-white shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
+        className="flex h-full max-h-full w-full max-w-5xl flex-col rounded-lg bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal header */}
-        <div className="sticky top-0 z-[1] flex items-start justify-between gap-3 rounded-t-2xl border-b border-[#e2e8f2] bg-white px-6 pt-5 pb-4">
-          <div>
-            <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
-              Nomor Registrasi
-            </div>
-            <div className="text-[17px] font-bold text-[#1a1a2e]">
-              {pengajuan.id}
-            </div>
-          </div>
-          <div className="flex flex-shrink-0 items-center gap-2">
-            <StatusBadge status={pengajuan.status} />
-            <button
-              onClick={onClose}
-              className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899]"
-            >
-              <IconClose />
-            </button>
-          </div>
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <span className="truncate text-sm font-medium text-gray-700">
+            {title}
+          </span>
+          <button
+            onClick={onClose}
+            className="text-xl leading-none text-gray-400 hover:text-gray-600"
+          >
+            &times;
+          </button>
         </div>
-
-        <div className="px-6 pt-5 pb-6">
-          {/* Catatan reviewer jika ada */}
-          {pengajuan.catatanReviewer && (
-            <div
-              className={`mb-[18px] flex gap-2.5 rounded-[10px] border p-[12px_14px] ${
-                isDitolak
-                  ? "border-[#f5c2c7] bg-[#fdecea]"
-                  : "border-[#fcd9a4] bg-[#fff3e6]"
-              }`}
-            >
-              <span
-                className={`mt-0.5 flex-shrink-0 ${
-                  isDitolak ? "text-[#c0392b]" : "text-[#e07020]"
-                }`}
-              >
-                <IconWarning />
-              </span>
-              <div>
-                <div
-                  className={`mb-[3px] text-[11px] font-bold tracking-[0.06em] uppercase ${
-                    isDitolak ? "text-[#c0392b]" : "text-[#e07020]"
-                  }`}
-                >
-                  Catatan Reviewer
-                </div>
-                <div
-                  className={`text-[13px] leading-[1.55] ${
-                    isDitolak ? "text-[#7b1a1a]" : "text-[#7a4010]"
-                  }`}
-                >
-                  {pengajuan.catatanReviewer}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Info row */}
-          <div className="mb-[18px] grid grid-cols-2 gap-x-5 gap-y-2.5">
-            {[
-              {
-                label: "Tanggal Dibuat",
-                value: formatTanggal(pengajuan.tanggalDibuat),
-              },
-              {
-                label: "Jalur",
-                value: <JalurBadge jalur={pengajuan.jalur} />,
-              },
-              {
-                label: "Jenis Piutang",
-                value: labelJenisPiutang(dp.jenisPiutang),
-              },
-              {
-                label: "Nominal Utang",
-                value: (
-                  <span className="font-bold text-[#1a4e8f]">
-                    {formatRupiah(dp.nominalUtang)}
-                  </span>
-                ),
-              },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                  {label}
-                </div>
-                <div className="text-[13px] text-[#1a1a2e]">{value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Divider */}
-          <div className="my-4 h-px bg-[#e2e8f2]" />
-
-          {/* Data penanggung */}
-          <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-            Data Penanggung Utang
-          </div>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-            {[
-              { label: "Nama", value: dp.namaWP },
-              { label: "NIK", value: dp.nik },
-              { label: "Pekerjaan", value: dp.pekerjaan },
-              { label: "Alamat", value: dp.alamatWP },
-              ...(dp.nomorSKRD
-                ? [{ label: "Nomor SKRD", value: dp.nomorSKRD }]
-                : []),
-              ...(dp.nomorSTRD
-                ? [{ label: "Nomor STRD", value: dp.nomorSTRD }]
-                : []),
-              { label: "Sebab Piutang Macet", value: dp.sebabPiutangMacet },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className={
-                  label === "Alamat" || label === "Sebab Piutang Macet"
-                    ? "col-span-2"
-                    : undefined
-                }
-              >
-                <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                  {label}
-                </div>
-                <div className="text-[13px] text-[#1a1a2e]">{value}</div>
-              </div>
-            ))}
-          </div>
+        <div className="flex-1 overflow-hidden">
+          <iframe
+            src={url}
+            className="h-full w-full"
+            title={title}
+            style={{ border: "none" }}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Filter / Search bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-type SortKey = "tanggal" | "nominal" | "status";
-type SortDir = "asc" | "desc";
-
-interface FilterState {
-  search: string;
-  status: StatusPengajuan | "SEMUA";
-  jalur: JalurPengajuan | "SEMUA";
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Table column definitions
-// ─────────────────────────────────────────────────────────────────────────────
-
-const COLUMNS: { label: string; key: SortKey | null; widthClass: string }[] = [
-  { label: "No", key: null, widthClass: "w-8" },
-  { label: "Pengajuan", key: null, widthClass: "" },
-  { label: "Piutang & Nominal", key: "nominal", widthClass: "w-[200px]" },
-  { label: "Status", key: "status", widthClass: "w-[130px]" },
-  { label: "Aksi", key: null, widthClass: "w-[72px]" },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function LihatDaftarPengajuan({
-  semuaPengajuan,
-}: {
-  semuaPengajuan?: Pengajuan[];
-} = {}) {
-  // Gunakan data dari parent (single source of truth).
-  // Fallback ke MOCK_PENGAJUAN jika dipanggil tanpa props (standalone).
-  const dataPengajuan = useMemo(
-    () => semuaPengajuan ?? MOCK_PENGAJUAN,
-    [semuaPengajuan],
-  );
-
-  const [filter, setFilter] = useState<FilterState>({
-    search: "",
-    status: "SEMUA",
-    jalur: "SEMUA",
-  });
-  const [sortKey, setSortKey] = useState<SortKey>("tanggal");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [detailPengajuan, setDetailPengajuan] = useState<Pengajuan | null>(
+// ──────────────────────── MODAL DETAIL ──────────────────────────
+const ModalDetail: React.FC<{
+  record: FormulirPenghapusanPiutangOPDRecord;
+  onClose: () => void;
+}> = ({ record, onClose }) => {
+  const nom = record.nominatif;
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(
     null,
   );
 
-  // ── Derived stats ────────────────────────────────────────────────────────
+  const identitasRows = [
+    { icon: <IconUser />, uraian: "OPD Pengusul", value: record.namaOPD },
+    {
+      icon: <IconUser />,
+      uraian: "Nama Penanggung Jawab",
+      value: record.namaPenanggungJawab,
+    },
+    {
+      icon: <IconBriefcase />,
+      uraian: "Jabatan (Ka OPD)",
+      value: record.jabatan,
+    },
+    {
+      icon: <IconDocument />,
+      uraian: "Nomor Surat Pengantar",
+      value: record.nomorSurat,
+    },
+    {
+      icon: <IconCalendar />,
+      uraian: "Tanggal Surat",
+      value: formatTanggal(record.tanggalSurat),
+    },
+    { icon: <IconTag />, uraian: "Jenis Piutang", value: record.jenisPiutang },
+    {
+      icon: <IconUsers />,
+      uraian: "Jumlah Debitur",
+      value: record.jumlahDebitur,
+    },
+    {
+      icon: <IconCash />,
+      uraian: "Total Nilai Piutang yang Diusulkan",
+      value: formatRupiah(record.totalNilaiPiutang),
+    },
+    {
+      icon: <IconTrash />,
+      uraian: "Jenis Penghapusan",
+      value: record.jenisPenghapusan,
+    },
+    {
+      icon: <IconFile />,
+      uraian: "File Surat Pengantar",
+      value: record.fileSurat ? "Tersedia" : "Tidak ada",
+    },
+  ];
 
+  const dokumenChecklist = [
+    { label: "Surat Pengantar Usulan", file: nom.suratPengantarUsulan },
+    {
+      label: "Daftar Nominatif Usulan Piutang SKPD",
+      file: nom.daftarNominatifPiutang,
+    },
+    {
+      label: "Dokumen Dasar Piutang",
+      file:
+        nom.opsiDokumenDasarPiutang === "ada" ? nom.dokumenDasarPiutang : null,
+      keterangan:
+        nom.opsiDokumenDasarPiutang === "tidak_ada" ? "Tidak ada" : undefined,
+    },
+    {
+      label: "Rekapitulasi saldo piutang (Rp)",
+      file: nom.rekapitulasiSaldoPiutang,
+    },
+    {
+      label: "Neraca awal pencatatan piutang",
+      file: nom.neracaAwalPencatatanPiutang,
+    },
+    { label: "Rekapitulasi angsuran (Rp)", file: nom.rekapitulasiAngsuran },
+    {
+      label: "Dokumen pendukung lainnya (Surat tidak mampu bayar)",
+      file: nom.dokumenPendukungSuratTidakMampuBayar,
+    },
+    // Riwayat penagihan (1) – muncul selalu, file hanya ada jika opsi "riwayat"
+    {
+      label: "Riwayat penagihan (1)",
+      file:
+        nom.opsiRiwayatPenagihan === "riwayat" ? nom.riwayatPenagihan1 : null,
+    },
+    // Riwayat penagihan (2)
+    {
+      label: "Riwayat penagihan (2)",
+      file:
+        nom.opsiRiwayatPenagihan === "riwayat" ? nom.riwayatPenagihan2 : null,
+    },
+    // Riwayat penagihan (3)
+    {
+      label: "Riwayat penagihan (3)",
+      file:
+        nom.opsiRiwayatPenagihan === "riwayat" ? nom.riwayatPenagihan3 : null,
+    },
+    // Surat Pernyataan OPD – muncul selalu, file hanya ada jika opsi "pernyataan"
+    {
+      label: "Surat Pernyataan OPD",
+      file:
+        nom.opsiRiwayatPenagihan === "pernyataan"
+          ? nom.filePernyataanOPD
+          : null,
+    },
+  ];
+
+  return (
+    <>
+      {preview && (
+        <PdfPreviewModal
+          url={preview.url}
+          title={preview.title}
+          onClose={() => setPreview(null)}
+        />
+      )}
+
+      <div
+        className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,20,40,0.45)] p-4 backdrop-blur-sm sm:p-6"
+        onClick={onClose}
+      >
+        <div
+          className="animate-scale-in flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-md bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header ringkas */}
+          <div className="shrink-0 bg-linear-to-r from-[#1a4e8f] to-[#0e3b6e] px-6 py-3 text-white">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold">{record.id}</h2>
+                  <StatusBadge status={record.status} />
+                </div>
+                <p className="text-sm text-blue-100">{record.namaOPD}</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+                title="Tutup"
+              >
+                <IconClose />
+              </button>
+            </div>
+          </div>
+
+          {/* Body dengan scroll */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {/* Tabel 1: Identitas Usulan */}
+            <div className="mb-6">
+              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+                Identitas Usulan
+              </h3>
+              <div className="overflow-hidden rounded-md border border-[#e2e8f2] bg-white">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#f1f5f9] text-[#475569]">
+                      <th className="w-2/5 px-4 py-2.5 text-left font-semibold tracking-wider uppercase">
+                        Uraian
+                      </th>
+                      <th className="px-4 py-2.5 text-left font-semibold tracking-wider uppercase">
+                        Keterangan
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e2e8f2]">
+                    {identitasRows.map((item, i) => (
+                      <tr
+                        key={i}
+                        className={`transition-colors hover:bg-[#f8fafc] ${i % 2 === 0 ? "bg-white" : "bg-[#fafbfc]"}`}
+                      >
+                        <td className="flex items-center gap-2 px-4 py-2.5 font-medium text-[#334155]">
+                          {item.icon}
+                          {item.uraian}
+                        </td>
+                        <td className="px-4 py-2.5 font-semibold text-[#0f172a]">
+                          {item.value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Tabel 2: Persyaratan Administrasi */}
+            <div>
+              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+                Persyaratan Administrasi
+              </h3>
+              <div className="overflow-hidden rounded-md border border-[#e2e8f2] bg-white">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#f1f5f9] text-[#475569]">
+                      <th className="w-2/5 px-4 py-2.5 text-left font-semibold tracking-wider uppercase">
+                        Nama Dokumen
+                      </th>
+                      <th className="w-1/5 px-4 py-2.5 text-center font-semibold tracking-wider uppercase">
+                        Status
+                      </th>
+                      <th className="px-4 py-2.5 text-center font-semibold tracking-wider uppercase">
+                        Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e2e8f2]">
+                    {dokumenChecklist.map((doc, idx) => {
+                      const tersedia = !!doc.file;
+                      return (
+                        <tr
+                          key={idx}
+                          className={`transition-colors hover:bg-[#f8fafc] ${idx % 2 === 0 ? "bg-white" : "bg-[#fafbfc]"}`}
+                        >
+                          <td className="px-4 py-2.5 font-medium text-[#0f172a]">
+                            {doc.label}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {tersedia ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[11px] font-semibold text-[#065f46]">
+                                <svg
+                                  className="h-3 w-3"
+                                  fill="none"
+                                  viewBox="0 0 14 14"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path
+                                    d="M3 7l3 3 5-5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                                Tersedia
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[#fef2f2] px-2 py-0.5 text-[11px] font-semibold text-[#991b1b]">
+                                <svg
+                                  className="h-3 w-3"
+                                  fill="none"
+                                  viewBox="0 0 14 14"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path
+                                    d="M4 4l6 6M10 4l-6 6"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                                {doc.keterangan ?? "Tidak ada"}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {tersedia ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreview({
+                                    url: doc.file!.url,
+                                    title: `${doc.label} (${doc.file!.namaFile})`,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1.5 text-[11px] font-semibold text-[#1a4e8f] shadow-sm transition-all hover:bg-[#dbeafe] hover:shadow-md"
+                              >
+                                <IconEye />
+                                Preview
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-[#cbd5e1]">
+                                —
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Animasi */}
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes scale-in {
+          from {
+            transform: scale(0.96);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+        .animate-scale-in {
+          animation: scale-in 0.2s ease-out;
+        }
+      `}</style>
+    </>
+  );
+};
+
+// ──────────────────────────── MAIN COMPONENT ─────────────────────────────────
+export default function DaftarPengajuanOPDBaru({
+  data: dataProp,
+}: {
+  data?: FormulirPenghapusanPiutangOPDRecord[];
+}) {
+  const data = useMemo(() => dataProp ?? MOCK_DATA, [dataProp]);
+
+  const [filter, setFilter] = useState<{
+    search: string;
+    status: StatusFormulir | "SEMUA";
+  }>({ search: "", status: "SEMUA" });
+
+  const [sortKey, setSortKey] = useState<"tanggal" | "total">("tanggal");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selectedRecord, setSelectedRecord] =
+    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+
+  // ── Derived stats ──
   const stats = useMemo(() => {
-    const total = dataPengajuan.length;
-    const diajukan = dataPengajuan.filter(
-      (p) => p.status === "DIAJUKAN" || p.status === "DALAM_REVIEW",
-    ).length;
-    const disetujui = dataPengajuan.filter(
-      (p) => p.status === "DISETUJUI",
-    ).length;
-    const perluRevisi = dataPengajuan.filter(
-      (p) => p.status === "PERLU_REVISI" || p.status === "DITOLAK",
-    ).length;
-    const totalNominal = dataPengajuan.reduce(
-      (s, p) => s + p.dataPenanggung.nominalUtang,
-      0,
-    );
-    return { total, diajukan, disetujui, perluRevisi, totalNominal };
-  }, [dataPengajuan]);
+    const total = data.length;
+    const diajukan = data.filter((r) => r.status === "diajukan").length;
+    const revisi = data.filter((r) => r.status === "revisi").length;
+    const lolos = data.filter((r) => r.status === "lolos_verifikasi").length;
+    return { total, diajukan, revisi, lolos };
+  }, [data]);
 
-  // ── Filtered + sorted data ───────────────────────────────────────────────
-
+  // ── Filtered + sorted ──
   const filtered = useMemo(() => {
-    let data = [...dataPengajuan];
+    let result = [...data];
 
     if (filter.search) {
       const q = filter.search.toLowerCase();
-      data = data.filter(
-        (p) =>
-          p.id.toLowerCase().includes(q) ||
-          p.dataPenanggung.namaWP.toLowerCase().includes(q) ||
-          p.dataPenanggung.nik.includes(q),
+      result = result.filter(
+        (r) =>
+          r.id.toLowerCase().includes(q) ||
+          r.namaPenanggungJawab.toLowerCase().includes(q) ||
+          r.nomorSurat.toLowerCase().includes(q),
       );
     }
 
     if (filter.status !== "SEMUA") {
-      data = data.filter((p) => p.status === filter.status);
+      result = result.filter((r) => r.status === filter.status);
     }
 
-    if (filter.jalur !== "SEMUA") {
-      data = data.filter((p) => p.jalur === filter.jalur);
-    }
-
-    data.sort((a, b) => {
+    result.sort((a, b) => {
       let cmp = 0;
       if (sortKey === "tanggal") {
-        cmp = a.tanggalDibuat.localeCompare(b.tanggalDibuat);
-      } else if (sortKey === "nominal") {
-        cmp = a.dataPenanggung.nominalUtang - b.dataPenanggung.nominalUtang;
-      } else if (sortKey === "status") {
-        cmp = a.status.localeCompare(b.status);
+        cmp = a.tanggalSurat.localeCompare(b.tanggalSurat);
+      } else {
+        const totalA = parseInt(a.totalNilaiPiutang, 10) || 0;
+        const totalB = parseInt(b.totalNilaiPiutang, 10) || 0;
+        cmp = totalA - totalB;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
 
-    return data;
-  }, [dataPengajuan, filter, sortKey, sortDir]);
+    return result;
+  }, [data, filter, sortKey, sortDir]);
 
-  // ── Sort toggle ──────────────────────────────────────────────────────────
-
-  const handleSort = (key: SortKey) => {
+  // ── Toggle sort key ──
+  const toggleSortKey = (key: "tanggal" | "total") => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -810,37 +537,17 @@ export default function LihatDaftarPengajuan({
     }
   };
 
-  const SortIcon: React.FC<{ col: SortKey }> = ({ col }) => {
-    if (sortKey !== col)
-      return (
-        <span className="inline-flex flex-col gap-px text-slate-100">
-          <IconChevronUp />
-          <IconChevronDown />
-        </span>
-      );
-    return sortDir === "asc" ? (
-      <span className="text-slate-100">
-        <IconChevronUp />
-      </span>
-    ) : (
-      <span className="text-slate-100">
-        <IconChevronDown />
-      </span>
-    );
-  };
-
-  // ── Render ───────────────────────────────────────────────────────────────
-
+  // ── Render ──
   return (
     <div className="font-inherit">
-      {detailPengajuan && (
+      {selectedRecord && (
         <ModalDetail
-          pengajuan={detailPengajuan}
-          onClose={() => setDetailPengajuan(null)}
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
         />
       )}
 
-      {/* ── Summary Stats ── */}
+      {/* Stat cards */}
       <div className="mb-5 flex flex-wrap gap-3">
         <StatCard
           label="Total Pengajuan"
@@ -866,7 +573,7 @@ export default function LihatDaftarPengajuan({
           }
         />
         <StatCard
-          label="Dalam Proses"
+          label="Diajukan"
           value={stats.diajukan}
           accentClass="bg-[#2563eb]"
           cardClass="bg-[#eff6ff] border-[#bfdbfe]"
@@ -889,32 +596,10 @@ export default function LihatDaftarPengajuan({
           }
         />
         <StatCard
-          label="Disetujui"
-          value={stats.disetujui}
-          accentClass="bg-[#0f9b6e]"
-          cardClass="bg-[#e6f7f2] border-[#a7e8d4]"
-          icon={
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.8"
-            >
-              <path
-                d="M3 8l3.5 3.5L13 4.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Perlu Tindakan"
-          value={stats.perluRevisi}
-          accentClass="bg-[#e07020]"
-          cardClass="bg-[#fff3e6] border-[#f5c97a]"
+          label="Revisi"
+          value={stats.revisi}
+          accentClass="bg-[#f97316]"
+          cardClass="bg-[#fff7ed] border-[#fed7aa]"
           icon={
             <svg
               width="16"
@@ -933,18 +618,39 @@ export default function LihatDaftarPengajuan({
             </svg>
           }
         />
+        <StatCard
+          label="Lolos Verifikasi"
+          value={stats.lolos}
+          accentClass="bg-[#10b981]"
+          cardClass="bg-[#ecfdf5] border-[#a7f3d0]"
+          icon={
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="white"
+              strokeWidth="1.8"
+            >
+              <path
+                d="M3 8l3.5 3.5L13 4.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          }
+        />
       </div>
 
-      {/* ── Filter & Search Bar ── */}
-      <div className="mb-3.5 flex flex-wrap items-center gap-2.5 rounded-xl border border-[#e2e8f2] bg-white p-[14px_16px]">
-        {/* Search */}
-        <div className="flex min-w-[160px] flex-[1_1_200px] items-center gap-2 rounded-lg border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-[7px]">
-          <span className="flex-shrink-0 text-[#7a8899]">
+      {/* Filter & Search Bar */}
+      <div className="mb-3.5 flex flex-wrap items-center gap-2.5 rounded-md border border-[#e2e8f2] bg-white p-[14px_16px]">
+        <div className="flex min-w-40 flex-[1_1_200px] items-center gap-2 rounded-lg border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75">
+          <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
           <input
             type="text"
-            placeholder="Cari Nomor Registrasi, nama, atau NIK…"
+            placeholder="Cari nomor registrasi, nama, atau nomor surat…"
             value={filter.search}
             onChange={(e) =>
               setFilter((f) => ({ ...f, search: e.target.value }))
@@ -960,9 +666,7 @@ export default function LihatDaftarPengajuan({
             </button>
           )}
         </div>
-
-        {/* Filter status */}
-        <div className="flex flex-shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <span className="text-[#7a8899]">
             <IconFilter />
           </span>
@@ -971,51 +675,44 @@ export default function LihatDaftarPengajuan({
             onChange={(e) =>
               setFilter((f) => ({
                 ...f,
-                status: e.target.value as StatusPengajuan | "SEMUA",
+                status: e.target.value as StatusFormulir | "SEMUA",
               }))
             }
             className="cursor-pointer rounded-[7px] border border-[#e2e8f2] bg-white px-2.5 py-1.5 text-xs text-[#1a1a2e] outline-none"
           >
             <option value="SEMUA">Semua Status</option>
-            {(Object.keys(STATUS_CONFIG) as StatusPengajuan[]).map((s) => (
+            {(Object.keys(STATUS_CONFIG) as StatusFormulir[]).map((s) => (
               <option key={s} value={s}>
                 {STATUS_CONFIG[s].label}
               </option>
             ))}
           </select>
         </div>
-
-        {/* Filter jalur */}
-        <select
-          value={filter.jalur ?? "SEMUA"}
-          onChange={(e) => {
-            const val = e.target.value;
-            setFilter((f) => ({
-              ...f,
-              jalur: (val === "SEMUA" ? "SEMUA" : val) as
-                | JalurPengajuan
-                | "SEMUA",
-            }));
-          }}
-          className="flex-shrink-0 cursor-pointer rounded-[7px] border border-[#e2e8f2] bg-white px-2.5 py-1.5 text-xs text-[#1a1a2e] outline-none"
-        >
-          <option value="SEMUA">Semua Jalur</option>
-          <option value="PUPN">PUPN</option>
-          <option value="NON_PUPN">Non-PUPN</option>
-        </select>
-
-        <div className="ml-auto flex-shrink-0 text-xs text-[#7a8899]">
-          {filtered.length} dari {dataPengajuan.length} pengajuan
+        <div className="ml-auto shrink-0 text-xs text-[#7a8899]">
+          {filtered.length} dari {data.length} pengajuan
         </div>
       </div>
 
-      {/* ── Table ── */}
-      <div className="overflow-hidden rounded-xl border border-[#e2e8f2] bg-white">
+      {/* Table */}
+      <div className="overflow-hidden rounded-md border border-[#e2e8f2] bg-white">
         {filtered.length === 0 ? (
-          /* Empty state */
           <div className="flex flex-col items-center justify-center gap-3 p-[56px_24px] text-[#7a8899]">
             <div className="text-[#1a4e8f] opacity-35">
-              <IconFileText />
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              >
+                <path
+                  d="M18 3H8a2 2 0 00-2 2v22a2 2 0 002 2h16a2 2 0 002-2V11L18 3z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path d="M18 3v8h8M11 17h10M11 21h7" strokeLinecap="round" />
+              </svg>
             </div>
             <div className="text-sm font-semibold text-[#8a96a3]">
               Tidak ada pengajuan yang cocok
@@ -1028,108 +725,96 @@ export default function LihatDaftarPengajuan({
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="border-b border-[#e2e8f2] bg-[#263e6e]">
-                {COLUMNS.map(({ label, key, widthClass }, idx) => (
-                  <th
-                    key={idx}
-                    onClick={key ? () => handleSort(key) : undefined}
-                    className={`p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase select-none ${
-                      key ? "cursor-pointer" : "cursor-default"
-                    } ${widthClass}`}
-                  >
-                    <span
-                      className={`inline-flex items-center gap-1 ${
-                        key && sortKey === key ? "text-slate-100" : ""
-                      }`}
-                    >
-                      {label}
-                      {key && <SortIcon col={key} />}
-                    </span>
-                  </th>
-                ))}
+                <th className="w-8 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  No
+                </th>
+                <th className="p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  Pengajuan
+                </th>
+                <th
+                  className="w-30 cursor-pointer p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none"
+                  onClick={() => toggleSortKey("tanggal")}
+                >
+                  Tanggal Surat{" "}
+                  <SortIndicator
+                    sortKey={sortKey}
+                    currentKey="tanggal"
+                    currentDir={sortDir}
+                  />
+                </th>
+                <th
+                  className="w-45 cursor-pointer p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none"
+                  onClick={() => toggleSortKey("total")}
+                >
+                  Total Piutang{" "}
+                  <SortIndicator
+                    sortKey={sortKey}
+                    currentKey="total"
+                    currentDir={sortDir}
+                  />
+                </th>
+                <th className="w-20 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  Debitur
+                </th>
+                <th className="w-32.5 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  Status
+                </th>
+                <th className="w-18 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, idx) => {
-                const isLast = idx === filtered.length - 1;
-
-                return (
-                  <tr
-                    key={p.id}
-                    className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
-                      isLast ? "" : "border-b border-[#e2e8f2]"
-                    }`}
-                  >
-                    {/* No */}
-                    <td className="p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
-                      {idx + 1}
-                    </td>
-
-                    {/* Kolom gabungan: No Reg + Nama + Tgl */}
-                    <td className="p-[12px_14px]">
-                      <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                        {p.id}
-                      </div>
-                      <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                        {p.dataPenanggung.namaWP}
-                      </div>
-                      <div className="mt-px text-[11px] text-[#7a8899]">
-                        {formatTanggal(p.tanggalDibuat)}
-                      </div>
-                    </td>
-
-                    {/* Kolom gabungan: Nominal + Jalur + Jenis */}
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-bold text-[#1a1a2e]">
-                          {formatRupiah(p.dataPenanggung.nominalUtang)}
-                        </span>
-                        <JalurBadge jalur={p.jalur} />
-                      </div>
-                      <div className="mt-0.5 text-xs text-[#5a6474]">
-                        {labelJenisPiutang(p.dataPenanggung.jenisPiutang)}
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <StatusBadge status={p.status} />
-                    </td>
-
-                    {/* Aksi */}
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setDetailPengajuan(p)}
-                          title="Lihat Detail"
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-                        >
-                          <IconEye />
-                        </button>
-                        {(p.status === "DRAFT" ||
-                          p.status === "PERLU_REVISI") && (
-                          <button
-                            title="Edit / Revisi"
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#f5c97a] hover:bg-[#fff3e6] hover:text-[#e07020]"
-                          >
-                            <IconEdit />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.map((record, idx) => (
+                <tr
+                  key={record.id}
+                  className={`transition-colors duration-150 hover:bg-[#fafbfc] ${idx === filtered.length - 1 ? "" : "border-b border-[#e2e8f2]"}`}
+                >
+                  <td className="p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
+                    {idx + 1}
+                  </td>
+                  <td className="p-[12px_14px]">
+                    <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
+                      {record.id}
+                    </div>
+                    <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
+                      {record.namaPenanggungJawab}
+                    </div>
+                    <div className="mt-px text-[11px] text-[#7a8899]">
+                      {record.jabatan}
+                    </div>
+                  </td>
+                  <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
+                    {formatTanggal(record.tanggalSurat)}
+                  </td>
+                  <td className="p-[12px_14px] font-bold whitespace-nowrap text-[#1a4e8f]">
+                    {formatRupiah(record.totalNilaiPiutang)}
+                  </td>
+                  <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
+                    {record.jumlahDebitur} orang
+                  </td>
+                  <td className="p-[12px_14px] whitespace-nowrap">
+                    <StatusBadge status={record.status} />
+                  </td>
+                  <td className="p-[12px_14px] whitespace-nowrap">
+                    <button
+                      onClick={() => setSelectedRecord(record)}
+                      title="Lihat Detail"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                    >
+                      <IconEye />
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}
       </div>
 
-      {/* ── Footer info ── */}
       {filtered.length > 0 && (
         <div className="mt-2.5 text-right text-[11px] text-[#b0bac5]">
-          Menampilkan {filtered.length} dari {dataPengajuan.length} pengajuan
-          &nbsp;·&nbsp; Unit:{" "}
-          <span className="font-semibold">{dataPengajuan[0].unitPengaju}</span>
+          Menampilkan {filtered.length} dari {data.length} pengajuan
         </div>
       )}
     </div>
