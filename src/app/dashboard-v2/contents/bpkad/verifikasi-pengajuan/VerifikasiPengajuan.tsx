@@ -307,12 +307,12 @@ const ModalPreviewPDF: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-1100 flex items-center justify-center bg-[rgba(10,20,40,0.55)] p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-1100 flex items-center justify-center bg-[rgba(10,20,40,0.55)] p-0 backdrop-blur-[2px] sm:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-sm bg-white shadow-2xl">
+      <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:rounded-sm">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e2e8f2] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
@@ -500,7 +500,7 @@ const PanelVerifikasi: React.FC<{
   };
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-400">
       {previewDoc && (
         <ModalPreviewPDF
           namaFile={previewDoc.file.namaFile}
@@ -538,7 +538,7 @@ const PanelVerifikasi: React.FC<{
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-3">
               {[
                 { label: "Nama OPD", value: pengajuan.namaOPD },
                 {
@@ -575,7 +575,7 @@ const PanelVerifikasi: React.FC<{
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Penanggung Jawab OPD
             </div>
-            <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+            <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
               {[
                 { label: "Nama", value: pengajuan.namaPenanggungJawab },
                 { label: "Jabatan", value: pengajuan.jabatan },
@@ -673,7 +673,7 @@ const PanelVerifikasi: React.FC<{
 
         {/* ── Kolom kanan: form keputusan ── */}
         <div className="lg:col-span-1">
-          <div className="sticky top-4 rounded-sm border border-[#e2e8f2] bg-white p-5">
+          <div className="rounded-sm border border-[#e2e8f2] bg-white p-5 lg:sticky lg:top-4">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Hasil Verifikasi
             </div>
@@ -745,6 +745,80 @@ const PanelVerifikasi: React.FC<{
     </div>
   );
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kartu baris — versi mobile (< sm) pengganti tabel yang kolomnya kebanyakan
+// untuk layar sempit
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PengajuanRowCardMobile: React.FC<{
+  p: FormulirPenghapusanPiutangOPDRecord;
+  no: number;
+  onVerifikasi: () => void;
+}> = ({ p, no, onVerifikasi }) => (
+  <div className="space-y-2.5 p-4">
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <div className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
+          #{no} · {p.id}
+        </div>
+        <div className="mt-0.5 truncate text-[14px] font-semibold text-[#1a1a2e]">
+          {p.namaOPD}
+        </div>
+        <div className="mt-px truncate text-[11px] text-[#7a8899]">
+          {p.namaPenanggungJawab}
+        </div>
+      </div>
+      <div className="shrink-0">
+        <StatusBadge status={p.status} />
+      </div>
+    </div>
+
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[13px] font-bold text-[#1a1a2e]">
+        {formatRupiah(p.totalNilaiPiutang)}
+      </span>
+      <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
+    </div>
+
+    <div className="flex items-center justify-between gap-2 text-[11px] text-[#7a8899]">
+      <span className="truncate">{labelJenisPiutang(p.jenisPiutang)}</span>
+      <span className="shrink-0">{formatTanggal(p.tanggalSurat)}</span>
+    </div>
+
+    {p.status === "diajukan" && (
+      <button
+        onClick={onVerifikasi}
+        className="w-full rounded-sm bg-[#1a4e8f] py-2 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
+      >
+        Verifikasi
+      </button>
+    )}
+  </div>
+);
+
+const RiwayatRowCardMobile: React.FC<{
+  pengajuan: FormulirPenghapusanPiutangOPDRecord;
+  keputusan: StatusFormulir;
+  catatan: string;
+}> = ({ pengajuan, keputusan, catatan }) => (
+  <div className="space-y-1.5 p-4">
+    <div className="flex items-center justify-between gap-2">
+      <span className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
+        {pengajuan.id}
+      </span>
+      <StatusBadge status={keputusan} />
+    </div>
+    <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
+      {pengajuan.namaOPD}
+    </div>
+    <div className="text-[11px] text-[#5a6474]">
+      {catatan || (
+        <span className="text-[#b0bac5] italic">Tidak ada catatan</span>
+      )}
+    </div>
+  </div>
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
@@ -868,10 +942,10 @@ export default function VerifikasiPengajuan({
 
   // ── Render: daftar antrean ────────────────────────────────────────────────
   return (
-    <div className="font-inherit">
+    <div className="font-inherit mx-auto w-full max-w-400">
       {/* ── Summary ── */}
-      <div className="mb-5 flex flex-wrap gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-4.5 py-3.5">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-4.5 py-3.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-white">
             <svg
               width="16"
@@ -899,7 +973,7 @@ export default function VerifikasiPengajuan({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-4.5 py-3.5">
+        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-4.5 py-3.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#0f9b6e] text-white">
             <IconCheck />
           </div>
@@ -913,7 +987,7 @@ export default function VerifikasiPengajuan({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4.5 py-3.5">
+        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4.5 py-3.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#c0392b] text-white">
             <IconX />
           </div>
@@ -929,8 +1003,8 @@ export default function VerifikasiPengajuan({
       </div>
 
       {/* ── Search bar ── */}
-      <div className="mb-3.5 flex items-center gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px]">
-        <div className="flex min-w-40 flex-1 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75">
+      <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
+        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
           <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
@@ -939,12 +1013,12 @@ export default function VerifikasiPengajuan({
             placeholder="Cari Nomor Registrasi, nama OPD, atau penanggung jawab…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border-none bg-transparent text-[13px] text-[#1a1a2e] outline-none"
+            className="w-full min-w-0 border-none bg-transparent text-[13px] text-[#1a1a2e] outline-none"
           />
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="flex cursor-pointer border-none bg-transparent p-0 text-[#7a8899]"
+              className="flex shrink-0 cursor-pointer border-none bg-transparent p-0 text-[#7a8899]"
             >
               <IconClose />
             </button>
@@ -974,95 +1048,112 @@ export default function VerifikasiPengajuan({
             </div>
           </div>
         ) : (
-          <table className="w-full border-collapse text-[13px]">
-            <thead>
-              <tr className="border-b border-[#e2e8f2] bg-[#263e6e]">
-                {[
-                  "No",
-                  "Pengajuan",
-                  "Piutang & Nominal",
-                  "Status",
-                  "Tgl Surat",
-                  "Aksi",
-                ].map((label, idx) => (
-                  <th
-                    key={idx}
-                    className="p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase"
-                  >
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, idx) => {
-                const isLast = idx === filtered.length - 1;
-                return (
-                  <tr
-                    key={p.id}
-                    className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
-                      isLast ? "" : "border-b border-[#e2e8f2]"
-                    }`}
-                  >
-                    {/* No */}
-                    <td className="w-8 p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
-                      {idx + 1}
-                    </td>
+          <>
+            {/* Kartu — tampilan mobile (< sm) */}
+            <div className="divide-y divide-[#e2e8f2] sm:hidden">
+              {filtered.map((p, idx) => (
+                <PengajuanRowCardMobile
+                  key={p.id}
+                  p={p}
+                  no={idx + 1}
+                  onVerifikasi={() => setSelected(p)}
+                />
+              ))}
+            </div>
 
-                    {/* Kolom gabungan: No Reg + OPD + Penanggung Jawab */}
-                    <td className="p-[12px_14px]">
-                      <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                        {p.id}
-                      </div>
-                      <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                        {p.namaOPD}
-                      </div>
-                      <div className="mt-px text-[11px] text-[#7a8899]">
-                        {p.namaPenanggungJawab}
-                      </div>
-                    </td>
-
-                    {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-bold text-[#1a1a2e]">
-                          {formatRupiah(p.totalNilaiPiutang)}
-                        </span>
-                        <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
-                      </div>
-                      <div className="mt-0.5 text-xs text-[#5a6474]">
-                        {labelJenisPiutang(p.jenisPiutang)}
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <StatusBadge status={p.status} />
-                    </td>
-
-                    {/* Tgl Surat */}
-                    <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
-                      {formatTanggal(p.tanggalSurat)}
-                    </td>
-
-                    {/* Tombol Aksi — hanya muncul untuk status "diajukan" */}
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      {p.status === "diajukan" ? (
-                        <button
-                          onClick={() => setSelected(p)}
-                          className="rounded-sm bg-[#1a4e8f] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
-                        >
-                          Verifikasi
-                        </button>
-                      ) : (
-                        <span className="text-xs text-[#b0bac5]">—</span>
-                      )}
-                    </td>
+            {/* Tabel — tampilan tablet & desktop (>= sm) */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr className="border-b border-[#e2e8f2] bg-[#263e6e]">
+                    {[
+                      "No",
+                      "Pengajuan",
+                      "Piutang & Nominal",
+                      "Status",
+                      "Tgl Surat",
+                      "Aksi",
+                    ].map((label, idx) => (
+                      <th
+                        key={idx}
+                        className="p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase"
+                      >
+                        {label}
+                      </th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {filtered.map((p, idx) => {
+                    const isLast = idx === filtered.length - 1;
+                    return (
+                      <tr
+                        key={p.id}
+                        className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
+                          isLast ? "" : "border-b border-[#e2e8f2]"
+                        }`}
+                      >
+                        {/* No */}
+                        <td className="w-8 p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
+                          {idx + 1}
+                        </td>
+
+                        {/* Kolom gabungan: No Reg + OPD + Penanggung Jawab */}
+                        <td className="p-[12px_14px]">
+                          <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
+                            {p.id}
+                          </div>
+                          <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
+                            {p.namaOPD}
+                          </div>
+                          <div className="mt-px text-[11px] text-[#7a8899]">
+                            {p.namaPenanggungJawab}
+                          </div>
+                        </td>
+
+                        {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
+                        <td className="p-[12px_14px] whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-bold text-[#1a1a2e]">
+                              {formatRupiah(p.totalNilaiPiutang)}
+                            </span>
+                            <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
+                          </div>
+                          <div className="mt-0.5 text-xs text-[#5a6474]">
+                            {labelJenisPiutang(p.jenisPiutang)}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-[12px_14px] whitespace-nowrap">
+                          <StatusBadge status={p.status} />
+                        </td>
+
+                        {/* Tgl Surat */}
+                        <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
+                          {formatTanggal(p.tanggalSurat)}
+                        </td>
+
+                        {/* Tombol Aksi — hanya muncul untuk status "diajukan" */}
+                        <td className="p-[12px_14px] whitespace-nowrap">
+                          {p.status === "diajukan" ? (
+                            <button
+                              onClick={() => setSelected(p)}
+                              className="rounded-sm bg-[#1a4e8f] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
+                            >
+                              Verifikasi
+                            </button>
+                          ) : (
+                            <span className="text-xs text-[#b0bac5]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -1073,37 +1164,52 @@ export default function VerifikasiPengajuan({
             Riwayat Verifikasi (Sesi Ini)
           </div>
           <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
-            <table className="w-full border-collapse text-[13px]">
-              <tbody>
-                {riwayat.map(({ pengajuan, keputusan, catatan }, idx) => (
-                  <tr
-                    key={pengajuan.id}
-                    className={
-                      idx === riwayat.length - 1
-                        ? ""
-                        : "border-b border-[#e2e8f2]"
-                    }
-                  >
-                    <td className="p-[12px_14px] font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                      {pengajuan.id}
-                    </td>
-                    <td className="p-[12px_14px] text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                      {pengajuan.namaOPD}
-                    </td>
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <StatusBadge status={keputusan} />
-                    </td>
-                    <td className="p-[12px_14px] text-xs text-[#5a6474]">
-                      {catatan || (
-                        <span className="text-[#b0bac5] italic">
-                          Tidak ada catatan
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Kartu — tampilan mobile (< sm) */}
+            <div className="divide-y divide-[#e2e8f2] sm:hidden">
+              {riwayat.map(({ pengajuan, keputusan, catatan }) => (
+                <RiwayatRowCardMobile
+                  key={pengajuan.id}
+                  pengajuan={pengajuan}
+                  keputusan={keputusan}
+                  catatan={catatan}
+                />
+              ))}
+            </div>
+
+            {/* Tabel — tampilan tablet & desktop (>= sm) */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full border-collapse text-[13px]">
+                <tbody>
+                  {riwayat.map(({ pengajuan, keputusan, catatan }, idx) => (
+                    <tr
+                      key={pengajuan.id}
+                      className={
+                        idx === riwayat.length - 1
+                          ? ""
+                          : "border-b border-[#e2e8f2]"
+                      }
+                    >
+                      <td className="p-[12px_14px] font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
+                        {pengajuan.id}
+                      </td>
+                      <td className="p-[12px_14px] text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
+                        {pengajuan.namaOPD}
+                      </td>
+                      <td className="p-[12px_14px] whitespace-nowrap">
+                        <StatusBadge status={keputusan} />
+                      </td>
+                      <td className="p-[12px_14px] text-xs text-[#5a6474]">
+                        {catatan || (
+                          <span className="text-[#b0bac5] italic">
+                            Tidak ada catatan
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
