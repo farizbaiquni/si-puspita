@@ -45,10 +45,6 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
   return j ? map[j] : "-";
 }
 
-function labelJenisPenghapusan(j: JenisPenghapusan | ""): string {
-  return j || "-";
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Daftar dokumen — dibangun dari field NominatifPiutangRecord + fileSurat
 // ─────────────────────────────────────────────────────────────────────────────
@@ -512,7 +508,11 @@ type Keputusan = Extract<StatusFormulir, "lolos_verifikasi" | "revisi">;
 const PanelVerifikasi: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onBack: () => void;
-  onSubmit: (keputusan: Keputusan, catatan: string) => void;
+  onSubmit: (
+    keputusan: Keputusan,
+    catatan: string,
+    checklistSubstantif: Record<string, boolean>,
+  ) => void;
 }> = ({ pengajuan, onBack, onSubmit }) => {
   const [keputusan, setKeputusan] = useState<Keputusan | null>(null);
   const [catatan, setCatatan] = useState("");
@@ -549,7 +549,7 @@ const PanelVerifikasi: React.FC<{
       return;
     }
     setError("");
-    onSubmit(keputusan, catatan.trim());
+    onSubmit(keputusan, catatan.trim(), checklist);
   };
 
   return (
@@ -807,12 +807,20 @@ interface VerifikasiPengajuanProps {
   /** Seluruh pengajuan dari parent (single source of truth), mis. MOCK_DATA */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
   /** Dipanggil setelah BPKAD memutuskan verifikasi — parent yang update status */
-  onStatusUpdate?: (id: string, status: Keputusan, catatan?: string) => void;
+  onStatusUpdate?: (
+    id: string,
+    status: Keputusan,
+    catatan?: string,
+    checklistSubstantif?: Record<string, boolean>,
+  ) => void;
+  /** ID / nama akun verifikator BPKAD yang sedang login (untuk jejak audit) */
+  verifikatorId?: string;
 }
 
 export default function VerifikasiPengajuan({
   semuaPengajuan,
   onStatusUpdate,
+  verifikatorId,
 }: VerifikasiPengajuanProps = {}) {
   // Urutan prioritas status: diajukan (perlu ditindak) paling atas, lalu
   // revisi, dan lolos_verifikasi paling bawah. Di dalam grup status yang
@@ -866,19 +874,34 @@ export default function VerifikasiPengajuan({
     );
   }, [daftarPengajuan, search]);
 
-  const handleSubmitVerifikasi = (keputusan: Keputusan, catatan: string) => {
+  const handleSubmitVerifikasi = (
+    keputusan: Keputusan,
+    catatan: string,
+    checklistSubstantif: Record<string, boolean>,
+  ) => {
     if (!selected) return;
+
+    const tanggalVerifikasi = new Date().toISOString();
 
     const hasil: FormulirPenghapusanPiutangOPDRecord = {
       ...selected,
       status: keputusan,
+      checklistSubstantif,
+      verifikatorId,
+      tanggalVerifikasi,
     };
 
     // Catat di riwayat sesi ini
     setRiwayat((prev) => [{ pengajuan: hasil, keputusan, catatan }, ...prev]);
-    // Beritahu parent — parent update status di shared state,
-    // antrean otomatis reaktif karena di-derive via useMemo dari props.
-    onStatusUpdate?.(selected.id, keputusan, catatan || undefined);
+    // Beritahu parent — parent update status (+ jejak audit checklist) di
+    // shared state; antrean otomatis reaktif karena di-derive via useMemo
+    // dari props.
+    onStatusUpdate?.(
+      selected.id,
+      keputusan,
+      catatan || undefined,
+      checklistSubstantif,
+    );
     setSelected(null);
   };
 

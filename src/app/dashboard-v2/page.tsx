@@ -377,6 +377,7 @@ interface MainContentProps {
     id: string,
     status: StatusFormulir,
     catatan?: string,
+    checklistSubstantif?: Record<string, boolean>,
   ) => void;
 }
 
@@ -403,8 +404,9 @@ const MainContent: React.FC<MainContentProps> = ({
       ) : activeMenu === "verifikasi-pengajuan" ? (
         <VerifikasiPengajuan
           semuaPengajuan={semuaPengajuan}
-          onStatusUpdate={(id, status, catatan) =>
-            onStatusUpdate(id, status, catatan)
+          verifikatorId="BPKAD"
+          onStatusUpdate={(id, status, catatan, checklistSubstantif) =>
+            onStatusUpdate(id, status, catatan, checklistSubstantif)
           }
         />
       ) : (
@@ -468,13 +470,27 @@ const DashboardContent: React.FC = () => {
   const handleStatusUpdate = (
     id: string,
     status: StatusFormulir,
-    // catatan hasil verifikasi BPKAD — belum ada field penyimpanannya di
-    // FormulirPenghapusanPiutangOPDRecord, jadi untuk saat ini hanya
-    // diterima di sini (siap dipakai kalau field-nya sudah ditambahkan).
-    catatan?: string,
+    _catatan?: string,
+    checklistSubstantif?: Record<string, boolean>,
   ) => {
     setSemuaPengajuan((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status } : p)),
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              status,
+              // Jejak audit verifikasi — hanya diisi saat keputusan berasal
+              // dari panel verifikasi (checklistSubstantif ada isinya).
+              ...(checklistSubstantif
+                ? {
+                    checklistSubstantif,
+                    verifikatorId: "BPKAD",
+                    tanggalVerifikasi: new Date().toISOString(),
+                  }
+                : {}),
+            }
+          : p,
+      ),
     );
   };
 

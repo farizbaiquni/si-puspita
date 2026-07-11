@@ -186,6 +186,23 @@ export interface FormulirPenghapusanPiutangOPDRecord {
   nominatif: NominatifPiutangRecord;
 
   pernyataan: PernyataanOPD;
+
+  /* -------------------- Jejak audit verifikasi BPKAD -------------------- */
+  /* Opsional: hanya terisi setelah pengajuan diverifikasi (status !=       */
+  /* "diajukan"). Checklist Persyaratan Substantif diisi manual oleh        */
+  /* verifikator saat meninjau dokumen — disimpan di sini agar jadi jejak   */
+  /* audit permanen (siapa verifikator, poin mana yang dicentang, kapan),   */
+  /* alih-alih hilang sebagai state lokal panel saat panel ditutup.         */
+
+  /** Peta id item checklist -> status centang (lihat ChecklistItemDef.id  */
+  /*  di VerifikasiPengajuan.tsx, mis. "tidak_ada_jaminan", "status_macet") */
+  checklistSubstantif?: Record<string, boolean>;
+
+  /** ID / nama akun verifikator BPKAD yang mengeluarkan keputusan.        */
+  verifikatorId?: string;
+
+  /** Tanggal & waktu keputusan verifikasi dikeluarkan (ISO date).         */
+  tanggalVerifikasi?: string;
 }
 
 /* ==================================================================== */
