@@ -160,42 +160,90 @@ interface SidebarProps {
   role: UserRole;
   active: MenuKey;
   onNavigate: (key: MenuKey) => void;
+  /** Status drawer terbuka di layar sempit (mobile/tablet). Diabaikan di lg+. */
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, active, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  role,
+  active,
+  onNavigate,
+  mobileOpen,
+  onCloseMobile,
+}) => {
   const menus = role === "OPD" ? OPD_MENUS : BPKAD_MENUS;
 
+  const handleNavigate = (key: MenuKey) => {
+    onNavigate(key);
+    onCloseMobile();
+  };
+
   return (
-    <aside className="flex min-h-screen w-60 shrink-0 flex-col border-r border-[#f0f0f0] bg-white">
-      <div className="px-5 pb-8">
-        <SiPuspitaLogo />
-      </div>
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          onClick={onCloseMobile}
+          aria-hidden="true"
+        />
+      )}
 
-      <div className="mb-4 flex-1 px-3">
-        <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
-          Menu
-        </p>
-        {menus.map((item) => (
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 max-w-[80vw] shrink-0 flex-col overflow-y-auto border-r border-[#f0f0f0] bg-white transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:w-60 lg:max-w-none lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between px-5 pt-4 pb-8 lg:justify-start lg:pt-0">
+          <SiPuspitaLogo />
+          <button
+            onClick={onCloseMobile}
+            className="rounded-lg p-1.5 text-[#7a8899] hover:bg-[#f0f4fb] lg:hidden"
+            aria-label="Tutup menu"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+            >
+              <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mb-4 flex-1 px-3">
+          <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
+            Menu
+          </p>
+          {menus.map((item) => (
+            <NavItem
+              key={item.key}
+              icon={item.icon}
+              label={item.label}
+              badge={item.badge}
+              active={active === item.key}
+              onClick={() => handleNavigate(item.key)}
+            />
+          ))}
+        </div>
+
+        <div className="border-t border-[#f0f0f0] px-3 pt-3 pb-3">
+          <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
+            General
+          </p>
           <NavItem
-            key={item.key}
-            icon={item.icon}
-            label={item.label}
-            badge={item.badge}
-            active={active === item.key}
-            onClick={() => onNavigate(item.key)}
+            icon={<IconSettings />}
+            label="Settings"
+            onClick={() => {}}
           />
-        ))}
-      </div>
-
-      <div className="border-t border-[#f0f0f0] px-3 pt-3 pb-3">
-        <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
-          General
-        </p>
-        <NavItem icon={<IconSettings />} label="Settings" onClick={() => {}} />
-        <NavItem icon={<IconHelp />} label="Help" onClick={() => {}} />
-        <NavItem icon={<IconLogout />} label="Logout" onClick={() => {}} />
-      </div>
-    </aside>
+          <NavItem icon={<IconHelp />} label="Help" onClick={() => {}} />
+          <NavItem icon={<IconLogout />} label="Logout" onClick={() => {}} />
+        </div>
+      </aside>
+    </>
   );
 };
 
@@ -281,9 +329,14 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
 interface HeaderProps {
   role: UserRole;
   onRoleChange: (role: UserRole) => void;
+  onOpenMobileMenu: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ role, onRoleChange }) => {
+const Header: React.FC<HeaderProps> = ({
+  role,
+  onRoleChange,
+  onOpenMobileMenu,
+}) => {
   const userData: Record<
     UserRole,
     {
@@ -310,33 +363,52 @@ const Header: React.FC<HeaderProps> = ({ role, onRoleChange }) => {
   const currentUser = userData[role];
 
   return (
-    <header className="flex h-17 shrink-0 items-center gap-4 border-b border-[#f0f0f0] bg-white px-8">
-      <div className="flex max-w-85 flex-1 items-center gap-2.5 rounded-xl border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5">
+    <header className="flex h-auto min-h-17 shrink-0 flex-wrap items-center gap-3 border-b border-[#f0f0f0] bg-white px-4 py-2.5 sm:px-6 lg:px-8">
+      {/* Tombol menu, hanya tampil di layar < lg (sidebar jadi drawer) */}
+      <button
+        onClick={onOpenMobileMenu}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] lg:hidden"
+        aria-label="Buka menu"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+        >
+          <path d="M3 5h14M3 10h14M3 15h14" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      {/* Kotak pencarian: disembunyikan di layar paling sempit, ringkas di tablet */}
+      <div className="order-3 flex w-full items-center gap-2.5 rounded-xl border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5 sm:order-0 sm:w-auto sm:max-w-85 sm:flex-1">
         <IconSearch />
         <span className="flex-1 text-sm text-[#b0bac5]">Search</span>
-        <div className="flex items-center gap-1 rounded-md border border-[#e0e0e0] px-1.5 py-0.5 text-xs text-[#b0bac5]">
+        <div className="hidden items-center gap-1 rounded-md border border-[#e0e0e0] px-1.5 py-0.5 text-xs text-[#b0bac5] md:flex">
           <span>⌘</span>
           <span>F</span>
         </div>
       </div>
-      <div className="flex-1" />
+      <div className="hidden flex-1 sm:block" />
 
       <RoleDropdown role={role} onChange={onRoleChange} />
 
-      <button className="flex h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f]">
+      <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconMail />
       </button>
-      <button className="flex h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f]">
+      <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconBell />
       </button>
-      <div className="h-8 w-px bg-[#ebebeb]" />
+      <div className="hidden h-8 w-px bg-[#ebebeb] sm:block" />
       <div className="flex items-center gap-3">
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br ${currentUser.avatarGradient} text-sm font-semibold text-white`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${currentUser.avatarGradient} text-sm font-semibold text-white`}
         >
           {currentUser.initials}
         </div>
-        <div className="flex flex-col">
+        <div className="hidden flex-col md:flex">
           <span className="text-sm leading-tight font-semibold text-slate-800">
             {currentUser.name}
           </span>
@@ -391,10 +463,10 @@ const MainContent: React.FC<MainContentProps> = ({
   const meta = PAGE_META[activeMenu];
 
   return (
-    <main className="flex-1 overflow-y-auto bg-[#f7f8fa] px-8 py-4">
+    <main className="flex-1 overflow-y-auto bg-[#f7f8fa] px-4 py-4 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-start justify-between leading-snug">
         <div>
-          <h1 className="text-xl font-bold text-[#1a1a1a] uppercase">
+          <h1 className="text-lg font-bold text-[#1a1a1a] uppercase sm:text-xl">
             {meta.title}
           </h1>
         </div>
@@ -448,6 +520,12 @@ const DashboardContent: React.FC = () => {
     DEFAULT_MENU_BY_ROLE[role],
   );
 
+  // Status drawer sidebar untuk layar < lg (mobile/tablet).
+  // Ditutup langsung di tempat kejadian (handleRoleChange, blok penyesuaian
+  // role di bawah, dan di dalam Sidebar saat navigasi menu) — bukan lewat
+  // useEffect, supaya tidak memicu cascading render.
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Lacak role sebelumnya supaya bisa reset activeMenu saat role berubah
   // (mis. lewat URL back/forward, link luar), TANPA pakai useEffect.
   // Pola ini "adjusting state during render" — direkomendasikan React
@@ -457,6 +535,7 @@ const DashboardContent: React.FC = () => {
   if (role !== prevRole) {
     setPrevRole(role);
     setActiveMenu(DEFAULT_MENU_BY_ROLE[role]);
+    setMobileMenuOpen(false);
   }
 
   const [semuaPengajuan, setSemuaPengajuan] = useState<
@@ -464,6 +543,7 @@ const DashboardContent: React.FC = () => {
   >(() => [...MOCK_DATA]);
 
   const handleRoleChange = (newRole: UserRole) => {
+    setMobileMenuOpen(false);
     const params = new URLSearchParams(searchParams.toString());
     params.set(ROLE_QUERY_PARAM, newRole.toLowerCase());
     router.push(`${pathname}?${params.toString()}`);
@@ -478,7 +558,7 @@ const DashboardContent: React.FC = () => {
   const handleStatusUpdate = (
     id: string,
     status: StatusFormulir,
-    _catatan?: string,
+    catatan?: string,
     checklistSubstantif?: Record<string, boolean>,
   ) => {
     setSemuaPengajuan((prev) =>
@@ -494,6 +574,7 @@ const DashboardContent: React.FC = () => {
                     checklistSubstantif,
                     verifikatorId: "BPKAD",
                     tanggalVerifikasi: new Date().toISOString(),
+                    catatanVerifikasi: catatan,
                   }
                 : {}),
             }
@@ -504,9 +585,19 @@ const DashboardContent: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f7f8fa] font-sans">
-      <Sidebar role={role} active={activeMenu} onNavigate={setActiveMenu} />
+      <Sidebar
+        role={role}
+        active={activeMenu}
+        onNavigate={setActiveMenu}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header role={role} onRoleChange={handleRoleChange} />
+        <Header
+          role={role}
+          onRoleChange={handleRoleChange}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+        />
         <MainContent
           activeMenu={activeMenu}
           semuaPengajuan={semuaPengajuan}

@@ -9,6 +9,12 @@ import type {
   StatusFormulir,
   UploadedFileRef,
 } from "@/types/types-v2";
+import {
+  ALL_CHECKLIST_ITEMS,
+  CHECKLIST_STATUS_PIUTANG,
+  CHECKLIST_UPAYA_PENAGIHAN,
+  type ChecklistItemDef,
+} from "@/lib/checklistPersyaratan";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -397,68 +403,9 @@ const DokumenItem: React.FC<{
 // panel verifikasi per sesi peninjauan.
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface ChecklistItemDef {
-  id: string;
-  label: string;
-  /** Opsi dokumen pendukung alternatif (cukup salah satu) */
-  subItems?: string[];
-}
-
-const CHECKLIST_STATUS_PIUTANG: ChecklistItemDef[] = [
-  {
-    id: "tidak_ada_jaminan",
-    label: "Tidak ada barang jaminan / barang jaminan tidak bernilai ekonomis",
-  },
-  {
-    id: "status_macet",
-    label: "Piutang telah berstatus macet (SKRD / SK / Surat Perjanjian)",
-  },
-  {
-    id: "usia_pencatatan",
-    label:
-      "Usia pencatatan piutang telah memenuhi ketentuan (neraca awal terjadinya piutang)",
-  },
-  {
-    id: "tidak_ke_pupn",
-    label: "Piutang tidak dapat diserahkan kepada PUPN (sesuai Ps. 4 ayat 2)",
-  },
-  {
-    id: "nilai_sesuai",
-    label:
-      "Nilai piutang telah sesuai ketentuan (Daftar Nominatif Usulan Piutang SKPD)",
-  },
-  {
-    id: "angsuran_minim",
-    label:
-      "Tidak terdapat angsuran / angsuran < 10% dari total kewajiban (Daftar Nominatif Usulan Piutang SKPD)",
-  },
-  {
-    id: "tidak_mampu_bayar",
-    label: "Tidak mempunyai kemampuan untuk menyelesaikan utang",
-    subItems: [
-      "Kartu keluarga miskin",
-      "Putusan pailit",
-      "Surat keterangan dari kelurahan/kepala desa/kepala lingkungan/instansi berwenang/PPKD yang menyatakan Penanggung Utang tidak mampu membayar atau tidak diketahui tempat tinggalnya",
-      "Bukti penerimaan asuransi kesehatan bagi masyarakat miskin",
-      "Bukti penerima manfaat bansos (BPNT, BST, PKH, atau program sejenis)",
-      "Bukti kunjungan penagihan / berita acara petugas PPKD yang menyimpulkan Penanggung Utang tidak mampu membayar atau tidak diketahui tempat tinggalnya",
-    ],
-  },
-];
-
-const CHECKLIST_UPAYA_PENAGIHAN: ChecklistItemDef[] = [
-  { id: "surat_tagihan", label: "Surat tagihan telah diterbitkan (3x)" },
-  {
-    id: "upaya_optimal",
-    label: "Telah dilakukan upaya optimal sesuai ketentuan (jika ada)",
-  },
-  { id: "hasil_gagal", label: "Hasil penagihan tidak berhasil" },
-];
-
-const ALL_CHECKLIST_ITEMS: ChecklistItemDef[] = [
-  ...CHECKLIST_STATUS_PIUTANG,
-  ...CHECKLIST_UPAYA_PENAGIHAN,
-];
+// Definisi item checklist (id, label, subItems) diimpor dari
+// "@/lib/checklistPersyaratan" — satu sumber kebenaran yang dipakai juga
+// oleh LihatDaftarPengajuan.tsx untuk menampilkan poin revisi ke OPD.
 
 const ChecklistItemRow: React.FC<{
   item: ChecklistItemDef;
@@ -817,20 +764,23 @@ interface VerifikasiPengajuanProps {
   verifikatorId?: string;
 }
 
+// Urutan prioritas status: diajukan (perlu ditindak) paling atas, lalu
+// revisi, dan lolos_verifikasi paling bawah. Di dalam grup status yang
+// sama, urutkan dari updatedAt paling baru ke paling lama.
+// Didefinisikan di module scope (bukan di dalam komponen) supaya jadi
+// referensi yang stabil antar-render — tidak perlu masuk dependency array
+// useMemo di bawah.
+const STATUS_PRIORITY: Record<StatusFormulir, number> = {
+  diajukan: 0,
+  revisi: 1,
+  lolos_verifikasi: 2,
+};
+
 export default function VerifikasiPengajuan({
   semuaPengajuan,
   onStatusUpdate,
   verifikatorId,
 }: VerifikasiPengajuanProps = {}) {
-  // Urutan prioritas status: diajukan (perlu ditindak) paling atas, lalu
-  // revisi, dan lolos_verifikasi paling bawah. Di dalam grup status yang
-  // sama, urutkan dari updatedAt paling baru ke paling lama.
-  const STATUS_PRIORITY: Record<StatusFormulir, number> = {
-    diajukan: 0,
-    revisi: 1,
-    lolos_verifikasi: 2,
-  };
-
   // Derive daftar pengajuan langsung dari props — tidak perlu state lokal
   // terpisah. Parent (page.tsx) adalah single source of truth; saat
   // onStatusUpdate dipanggil, parent mengubah status di semuaPengajuan, dan

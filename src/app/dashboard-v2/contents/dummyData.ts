@@ -145,6 +145,24 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "lolos_verifikasi",
     createdAt: "2025-01-08T09:23:00Z",
     updatedAt: "2025-01-10T11:00:00Z",
+    // Jejak audit verifikasi BPKAD — seluruh poin checklist terpenuhi,
+    // sehingga pengajuan dinyatakan lolos.
+    checklistSubstantif: {
+      tidak_ada_jaminan: true,
+      status_macet: true,
+      usia_pencatatan: true,
+      tidak_ke_pupn: true,
+      nilai_sesuai: true,
+      angsuran_minim: true,
+      tidak_mampu_bayar: true,
+      surat_tagihan: true,
+      upaya_optimal: true,
+      hasil_gagal: true,
+    },
+    verifikatorId: "BPKAD",
+    tanggalVerifikasi: "2025-01-10T11:00:00Z",
+    catatanVerifikasi:
+      "Seluruh dokumen dan riwayat penagihan lengkap. Pengajuan dinyatakan lolos verifikasi.",
     namaPenanggungJawab: "Dr. Andi Pratama",
     jabatan: "Direktur RSUD",
     nomorSurat: "001/RSUD/I/2025",
@@ -186,7 +204,27 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     createdBy: "user-dishub",
     status: "revisi",
     createdAt: "2025-02-15T11:05:00Z",
-    updatedAt: "2025-02-15T11:05:00Z",
+    updatedAt: "2025-02-16T09:00:00Z",
+    // Jejak audit verifikasi BPKAD — poin yang false sengaja dicocokkan
+    // dengan dokumen yang memang null di nominatif di bawah (daftar
+    // nominatif, neraca awal, rekap angsuran belum dilampirkan; riwayat
+    // penagihan baru 1 dari 3 kali).
+    checklistSubstantif: {
+      tidak_ada_jaminan: true,
+      status_macet: true,
+      usia_pencatatan: false,
+      tidak_ke_pupn: true,
+      nilai_sesuai: false,
+      angsuran_minim: false,
+      tidak_mampu_bayar: true,
+      surat_tagihan: true,
+      upaya_optimal: true,
+      hasil_gagal: true,
+    },
+    verifikatorId: "BPKAD",
+    tanggalVerifikasi: "2025-02-16T09:00:00Z",
+    catatanVerifikasi:
+      "Daftar Nominatif Usulan Piutang SKPD, Neraca Awal Pencatatan Piutang, dan Rekapitulasi Angsuran belum dilampirkan. Mohon lengkapi dokumen tersebut sebelum mengajukan kembali.",
     namaPenanggungJawab: "Ir. Bambang Hermawan",
     jabatan: "Kepala Dinas Perhubungan",
     nomorSurat: "020/DISHUB/II/2025",
@@ -271,6 +309,24 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "lolos_verifikasi",
     createdAt: "2025-04-20T15:45:00Z",
     updatedAt: "2025-04-22T09:30:00Z",
+    // Jejak audit verifikasi BPKAD — seluruh poin checklist terpenuhi
+    // (Surat Pernyataan OPD dipakai sebagai pengganti riwayat penagihan).
+    checklistSubstantif: {
+      tidak_ada_jaminan: true,
+      status_macet: true,
+      usia_pencatatan: true,
+      tidak_ke_pupn: true,
+      nilai_sesuai: true,
+      angsuran_minim: true,
+      tidak_mampu_bayar: true,
+      surat_tagihan: true,
+      upaya_optimal: true,
+      hasil_gagal: true,
+    },
+    verifikatorId: "BPKAD",
+    tanggalVerifikasi: "2025-04-22T09:30:00Z",
+    catatanVerifikasi:
+      "Dokumen lengkap dan Surat Pernyataan OPD telah sesuai ketentuan. Pengajuan dinyatakan lolos verifikasi.",
     namaPenanggungJawab: "Drs. Haryono, M.Si.",
     jabatan: "Kepala Dinas Perdagangan Koperasi dan UKM",
     nomorSurat: "050/DAGKOP/IV/2025",
@@ -312,7 +368,26 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     createdBy: "user-setwan",
     status: "revisi",
     createdAt: "2025-05-10T10:15:00Z",
-    updatedAt: "2025-05-10T10:15:00Z",
+    updatedAt: "2025-05-11T13:20:00Z",
+    // Jejak audit verifikasi BPKAD — hampir seluruh dokumen pendukung
+    // dan bukti penagihan belum dilampirkan, sehingga sebagian besar
+    // poin checklist belum bisa dinyatakan terpenuhi.
+    checklistSubstantif: {
+      tidak_ada_jaminan: true,
+      status_macet: false,
+      usia_pencatatan: false,
+      tidak_ke_pupn: true,
+      nilai_sesuai: false,
+      angsuran_minim: false,
+      tidak_mampu_bayar: false,
+      surat_tagihan: false,
+      upaya_optimal: false,
+      hasil_gagal: false,
+    },
+    verifikatorId: "BPKAD",
+    tanggalVerifikasi: "2025-05-11T13:20:00Z",
+    catatanVerifikasi:
+      "Belum ada bukti/riwayat penagihan sama sekali (surat tagihan, upaya penagihan, maupun Surat Pernyataan OPD). Daftar Nominatif, Neraca Awal, Rekapitulasi Angsuran, dan dokumen dasar piutang juga belum dilampirkan. Selain itu, seluruh Pernyataan OPD pada Langkah 3 belum dicentang. Mohon lengkapi ulang dari awal sebelum mengajukan kembali.",
     namaPenanggungJawab: "Drs. Suhartono",
     jabatan: "Sekretaris Dewan",
     nomorSurat: "007/SETWAN/V/2025",

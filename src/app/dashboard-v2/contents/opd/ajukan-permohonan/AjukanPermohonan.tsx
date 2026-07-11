@@ -528,7 +528,7 @@ const FileUploadCard = ({
           {label}
           {required ? <span className="text-red-500"> *</span> : ""}
         </label>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-linear-to-r from-gray-50 to-white px-4 py-3 shadow-sm">
+        <div className="flex flex-col gap-3 rounded-md border border-gray-200 bg-linear-to-r from-gray-50 to-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-50">
               <svg
@@ -557,14 +557,14 @@ const FileUploadCard = ({
             <button
               type="button"
               onClick={openModal}
-              className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+              className="flex-1 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 sm:flex-initial"
             >
               Lihat
             </button>
             <button
               type="button"
               onClick={onReset}
-              className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              className="flex-1 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 sm:flex-initial"
             >
               Hapus
             </button>
@@ -587,8 +587,8 @@ const FileUploadCard = ({
               }
             }}
           >
-            <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-md bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex h-[85vh] w-full max-w-4xl flex-col rounded-md bg-white shadow-2xl sm:h-auto sm:max-h-[90vh]">
+              <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
                 <span className="truncate text-sm font-medium text-gray-700">
                   {file.name}
                 </span>
@@ -1200,7 +1200,7 @@ export default function AjukanPermohonanWizard({
         )}
 
         {/* 3. Dokumen yang menjadi dasar timbulnya piutang (ada / tidak ada) */}
-        <fieldset className="rounded-md border border-gray-200 p-4">
+        <fieldset className="rounded-md border border-gray-200 p-3 sm:p-4">
           <legend className="px-2 text-sm font-semibold text-gray-700">
             Dokumen yang menjadi dasar timbulnya piutang
           </legend>
@@ -1208,7 +1208,7 @@ export default function AjukanPermohonanWizard({
             <p className="text-sm text-gray-600">
               Apakah terdapat dokumen dasar piutang?
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="radio"
@@ -1271,7 +1271,7 @@ export default function AjukanPermohonanWizard({
         )}
 
         {/* 5. Riwayat penagihan (wajib 3 kali) */}
-        <fieldset className="rounded-md border border-gray-200 p-4">
+        <fieldset className="rounded-md border border-gray-200 p-3 sm:p-4">
           <legend className="px-2 text-sm font-semibold text-gray-700">
             Riwayat Penagihan (wajib 3 kali)
           </legend>
@@ -1279,7 +1279,7 @@ export default function AjukanPermohonanWizard({
             <p className="text-sm text-gray-600">
               Apakah terdapat bukti riwayat penagihan?
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="radio"
@@ -1426,7 +1426,7 @@ export default function AjukanPermohonanWizard({
 
   if (submitted) {
     return (
-      <div className="w-full py-10">
+      <div className="mx-auto w-full max-w-4xl py-10">
         <div className="rounded-md border border-gray-200 bg-white p-6 text-center">
           <p className="mb-2 text-lg font-semibold text-gray-800">
             ✅ Pengiriman Berhasil
@@ -1474,18 +1474,18 @@ export default function AjukanPermohonanWizard({
             <p className="mb-4 text-sm text-gray-600">
               Apakah data dan dokumen sudah benar?
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={isSubmitting}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 sm:w-auto sm:py-1.5"
               >
                 Batal
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-1 rounded-md bg-[#1a4e8f] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0e3b6e]"
+                className="flex w-full items-center justify-center gap-1 rounded-md bg-[#1a4e8f] px-3 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-1.5"
               >
                 {isSubmitting ? "Mengirim..." : "Ya, Kirim"}
               </button>
@@ -1494,14 +1494,14 @@ export default function AjukanPermohonanWizard({
         </div>
       )}
 
-      <div className="w-full">
+      <div className="mx-auto w-full max-w-4xl">
         <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
-          <div className="px-6 pt-4 pb-2">
-            <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+          <div className="px-4 pt-4 pb-2 sm:px-6">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-gray-500">
               <span>
                 Langkah {currentStep + 1} dari {totalSteps}
               </span>
-              <span>{current.label}</span>
+              <span className="font-medium text-gray-600">{current.label}</span>
             </div>
             <div className="h-1 w-full rounded-full bg-gray-200">
               <div
@@ -1510,18 +1510,18 @@ export default function AjukanPermohonanWizard({
               />
             </div>
           </div>
-          <div className="px-6 py-6" ref={stepContentRef}>
+          <div className="px-4 py-5 sm:px-6 sm:py-6" ref={stepContentRef}>
             <form onSubmit={(e) => e.preventDefault()} noValidate>
               {current.id === "dokumenPendukung" ? (
-                <fieldset className="rounded-md border border-gray-300 p-4">
-                  <legend className="px-2 text-xl font-bold text-gray-800">
+                <fieldset className="rounded-md border border-gray-300 p-3 sm:p-4">
+                  <legend className="px-2 text-lg font-bold text-gray-800 sm:text-xl">
                     Checklist Persyaratan Administrasi
                   </legend>
                   {renderDokumenPendukungStep()}
                 </fieldset>
               ) : current.id === "pernyataan" ? (
-                <fieldset className="rounded-md border border-gray-300 p-4">
-                  <legend className="px-2 text-xl font-bold text-gray-800">
+                <fieldset className="rounded-md border border-gray-300 p-3 sm:p-4">
+                  <legend className="px-2 text-lg font-bold text-gray-800 sm:text-xl">
                     Pernyataan OPD
                   </legend>
                   <div className="space-y-4">
@@ -1568,11 +1568,11 @@ export default function AjukanPermohonanWizard({
                   </div>
                 </fieldset>
               ) : current.id === "dataPengajuan" ? (
-                <fieldset className="rounded-md border border-gray-300 p-4">
-                  <legend className="px-2 text-xl font-bold text-gray-800">
+                <fieldset className="rounded-md border border-gray-300 p-3 sm:p-4">
+                  <legend className="px-2 text-lg font-bold text-gray-800 sm:text-xl">
                     Identitas Usulan
                   </legend>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                     {current.fields?.map((field) => renderField(field))}
 
                     <div className="space-y-1.5">
@@ -1639,123 +1639,136 @@ export default function AjukanPermohonanWizard({
                         )}
                     </div>
 
-                    {/* Jenis Piutang */}
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Jenis Piutang <span className="text-red-500">*</span>
-                      </label>
-                      <div className="flex flex-col gap-2">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="jenisPiutang"
-                            value="Piutang Retribusi Daerah"
-                            checked={
-                              form.jenisPiutang === "Piutang Retribusi Daerah"
-                            }
-                            onChange={() =>
-                              updateField(
-                                "jenisPiutang",
-                                "Piutang Retribusi Daerah",
-                              )
-                            }
-                            className="h-4 w-4 border-gray-300 text-blue-600"
-                          />
-                          <span className="text-sm">
-                            Piutang Retribusi Daerah
-                          </span>
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="jenisPiutang"
-                            value="Piutang Lain-lain PAD yang Sah"
-                            checked={
-                              form.jenisPiutang ===
-                              "Piutang Lain-lain PAD yang Sah"
-                            }
-                            onChange={() =>
-                              updateField(
-                                "jenisPiutang",
-                                "Piutang Lain-lain PAD yang Sah",
-                              )
-                            }
-                            className="h-4 w-4 border-gray-300 text-blue-600"
-                          />
-                          <span className="text-sm">
-                            Piutang Lain-lain PAD yang Sah
-                          </span>
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="jenisPiutang"
-                            value="Piutang Lainnya"
-                            checked={form.jenisPiutang === "Piutang Lainnya"}
-                            onChange={() =>
-                              updateField("jenisPiutang", "Piutang Lainnya")
-                            }
-                            className="h-4 w-4 border-gray-300 text-blue-600"
-                          />
-                          <span className="text-sm">Piutang Lainnya</span>
-                        </label>
-                      </div>
-                      {touched.jenisPiutang && errors.jenisPiutang && (
-                        <p className="text-sm text-red-600">
-                          {errors.jenisPiutang}
-                        </p>
-                      )}
-                    </div>
+                    {/* Jenis Piutang & Jenis Penghapusan — dua fieldset terpisah, disejajarkan */}
+                    <div className="sm:col-span-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <fieldset className="rounded-md border border-gray-200 p-3 sm:p-4">
+                          <legend className="px-2 text-sm font-medium text-gray-700">
+                            Jenis Piutang{" "}
+                            <span className="text-red-500">*</span>
+                          </legend>
+                          <div className="flex flex-col gap-2">
+                            <label className="flex cursor-pointer items-center gap-2">
+                              <input
+                                type="radio"
+                                name="jenisPiutang"
+                                value="Piutang Retribusi Daerah"
+                                checked={
+                                  form.jenisPiutang ===
+                                  "Piutang Retribusi Daerah"
+                                }
+                                onChange={() =>
+                                  updateField(
+                                    "jenisPiutang",
+                                    "Piutang Retribusi Daerah",
+                                  )
+                                }
+                                className="h-4 w-4 border-gray-300 text-blue-600"
+                              />
+                              <span className="text-sm">
+                                Piutang Retribusi Daerah
+                              </span>
+                            </label>
+                            <label className="flex cursor-pointer items-center gap-2">
+                              <input
+                                type="radio"
+                                name="jenisPiutang"
+                                value="Piutang Lain-lain PAD yang Sah"
+                                checked={
+                                  form.jenisPiutang ===
+                                  "Piutang Lain-lain PAD yang Sah"
+                                }
+                                onChange={() =>
+                                  updateField(
+                                    "jenisPiutang",
+                                    "Piutang Lain-lain PAD yang Sah",
+                                  )
+                                }
+                                className="h-4 w-4 border-gray-300 text-blue-600"
+                              />
+                              <span className="text-sm">
+                                Piutang Lain-lain PAD yang Sah
+                              </span>
+                            </label>
+                            <label className="flex cursor-pointer items-center gap-2">
+                              <input
+                                type="radio"
+                                name="jenisPiutang"
+                                value="Piutang Lainnya"
+                                checked={
+                                  form.jenisPiutang === "Piutang Lainnya"
+                                }
+                                onChange={() =>
+                                  updateField("jenisPiutang", "Piutang Lainnya")
+                                }
+                                className="h-4 w-4 border-gray-300 text-blue-600"
+                              />
+                              <span className="text-sm">Piutang Lainnya</span>
+                            </label>
+                          </div>
+                          {touched.jenisPiutang && errors.jenisPiutang && (
+                            <p className="mt-2 text-sm text-red-600">
+                              {errors.jenisPiutang}
+                            </p>
+                          )}
+                        </fieldset>
 
-                    {/* Jenis Penghapusan */}
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Jenis Penghapusan{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <div className="flex flex-col gap-2">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="jenisPenghapusan"
-                            value="Penghapusan Bersyarat"
-                            checked={
-                              form.jenisPenghapusan === "Penghapusan Bersyarat"
-                            }
-                            onChange={() =>
-                              updateField(
-                                "jenisPenghapusan",
-                                "Penghapusan Bersyarat",
-                              )
-                            }
-                            className="h-4 w-4 border-gray-300 text-blue-600"
-                          />
-                          <span className="text-sm">Penghapusan Bersyarat</span>
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="radio"
-                            name="jenisPenghapusan"
-                            value="Penghapusan Mutlak"
-                            checked={
-                              form.jenisPenghapusan === "Penghapusan Mutlak"
-                            }
-                            onChange={() =>
-                              updateField(
-                                "jenisPenghapusan",
-                                "Penghapusan Mutlak",
-                              )
-                            }
-                            className="h-4 w-4 border-gray-300 text-blue-600"
-                          />
-                          <span className="text-sm">Penghapusan Mutlak</span>
-                        </label>
+                        <fieldset className="rounded-md border border-gray-200 p-3 sm:p-4">
+                          <legend className="px-2 text-sm font-medium text-gray-700">
+                            Jenis Penghapusan{" "}
+                            <span className="text-red-500">*</span>
+                          </legend>
+                          <div className="flex flex-col gap-2">
+                            <label className="flex cursor-pointer items-center gap-2">
+                              <input
+                                type="radio"
+                                name="jenisPenghapusan"
+                                value="Penghapusan Bersyarat"
+                                checked={
+                                  form.jenisPenghapusan ===
+                                  "Penghapusan Bersyarat"
+                                }
+                                onChange={() =>
+                                  updateField(
+                                    "jenisPenghapusan",
+                                    "Penghapusan Bersyarat",
+                                  )
+                                }
+                                className="h-4 w-4 border-gray-300 text-blue-600"
+                              />
+                              <span className="text-sm">
+                                Penghapusan Bersyarat
+                              </span>
+                            </label>
+                            <label className="flex cursor-pointer items-center gap-2">
+                              <input
+                                type="radio"
+                                name="jenisPenghapusan"
+                                value="Penghapusan Mutlak"
+                                checked={
+                                  form.jenisPenghapusan === "Penghapusan Mutlak"
+                                }
+                                onChange={() =>
+                                  updateField(
+                                    "jenisPenghapusan",
+                                    "Penghapusan Mutlak",
+                                  )
+                                }
+                                className="h-4 w-4 border-gray-300 text-blue-600"
+                              />
+                              <span className="text-sm">
+                                Penghapusan Mutlak
+                              </span>
+                            </label>
+                          </div>
+                          {touched.jenisPenghapusan &&
+                            errors.jenisPenghapusan && (
+                              <p className="mt-2 text-sm text-red-600">
+                                {errors.jenisPenghapusan}
+                              </p>
+                            )}
+                        </fieldset>
                       </div>
-                      {touched.jenisPenghapusan && errors.jenisPenghapusan && (
-                        <p className="text-sm text-red-600">
-                          {errors.jenisPenghapusan}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </fieldset>
@@ -1765,12 +1778,12 @@ export default function AjukanPermohonanWizard({
                 </div>
               )}
 
-              <div className="mt-8 flex justify-between border-t border-gray-100 pt-4">
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                 <button
                   type="button"
                   onClick={goPrev}
                   disabled={currentStep === 0}
-                  className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                  className={`w-full rounded-md px-4 py-2.5 text-sm font-medium transition sm:w-auto sm:py-2 ${
                     currentStep === 0
                       ? "cursor-not-allowed bg-gray-50 text-gray-400"
                       : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -1783,7 +1796,7 @@ export default function AjukanPermohonanWizard({
                     type="button"
                     onClick={goNext}
                     disabled={!allChecked}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                    className={`w-full rounded-md px-4 py-2.5 text-sm font-medium transition sm:w-auto sm:py-2 ${
                       allChecked
                         ? "bg-[#1a4e8f] text-white hover:bg-[#0e3b6e]"
                         : "cursor-not-allowed bg-gray-300 text-gray-500"
@@ -1795,7 +1808,7 @@ export default function AjukanPermohonanWizard({
                   <button
                     type="button"
                     onClick={goNext}
-                    className="rounded-md bg-[#1a4e8f] px-4 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e]"
+                    className="w-full rounded-md bg-[#1a4e8f] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-2"
                   >
                     Berikutnya
                   </button>

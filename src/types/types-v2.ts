@@ -203,6 +203,11 @@ export interface FormulirPenghapusanPiutangOPDRecord {
 
   /** Tanggal & waktu keputusan verifikasi dikeluarkan (ISO date).         */
   tanggalVerifikasi?: string;
+
+  /** Keterangan/catatan dari BPKAD — terutama alasan revisi, agar OPD    */
+  /*  tahu persis apa yang perlu diperbaiki (lihat panel "Hasil           */
+  /*  Verifikasi" pada VerifikasiPengajuan.tsx).                          */
+  catatanVerifikasi?: string;
 }
 
 /* ==================================================================== */
