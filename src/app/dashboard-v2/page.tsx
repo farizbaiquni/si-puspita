@@ -109,7 +109,7 @@ const SiPuspitaLogo = () => (
         height={640}
         quality={100}
         priority
-        className="w-40 bg-white"
+        className="mt-3 w-40 bg-white"
       />
     </Link>
   </div>

@@ -19,10 +19,15 @@ import {
   Link2,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import AjukanPermohonanWizard from "@/app/dashboard-v2/contents/opd/ajukan-permohonan/AjukanPermohonan";
+import { MOCK_DATA } from "../dashboard-v2/contents/dummyData";
+import type {
+  FormulirPenghapusanPiutangOPDRecord,
+  StatusFormulir,
+} from "@/types/types-v2";
 
 // ─── Bunga Menu — Data & Types ────────────────────────────────────────────────
 
@@ -259,40 +264,45 @@ function getSopAccent(pelaksana: string) {
   };
 }
 
-const DAFTAR_PENGAJUAN_BUNGA = [
-  {
-    no: "001/PP/2025",
-    opd: "Dinas Kesehatan",
-    nilai: "Rp 12.500.000",
-    jalur: "PUPN",
-    status: "Verifikasi BPKAD",
-    warna: "bg-blue-100 text-blue-700 border-blue-200",
+// Konfigurasi label & warna status — disamakan dengan STATUS_CONFIG pada
+// LihatDaftarPengajuan.tsx / VerifikasiPengajuan.tsx supaya konsisten di
+// seluruh aplikasi (landing page & dashboard).
+const STATUS_CONFIG_LACAK: Record<
+  StatusFormulir,
+  { label: string; badgeClass: string; dotClass: string }
+> = {
+  diajukan: {
+    label: "Diajukan",
+    badgeClass: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+    dotClass: "bg-[#3b82f6]",
   },
-  {
-    no: "002/PP/2025",
-    opd: "Dinas Pendidikan",
-    nilai: "Rp 4.750.000",
-    jalur: "Non-PUPN",
-    status: "Review Hukum",
-    warna: "bg-amber-100 text-amber-700 border-amber-200",
+  revisi: {
+    label: "Revisi",
+    badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dotClass: "bg-[#f97316]",
   },
-  {
-    no: "003/PP/2025",
-    opd: "DPUPR",
-    nilai: "Rp 28.000.000",
-    jalur: "PUPN",
-    status: "Inspektorat",
-    warna: "bg-purple-100 text-purple-700 border-purple-200",
+  lolos_verifikasi: {
+    label: "Lolos Verifikasi",
+    badgeClass: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
+    dotClass: "bg-[#10b981]",
   },
-  {
-    no: "004/PP/2025",
-    opd: "Dinas Perhubungan",
-    nilai: "Rp 3.200.000",
-    jalur: "Non-PUPN",
-    status: "Selesai ✓",
-    warna: "bg-green-100 text-green-700 border-green-200",
-  },
-];
+};
+
+function formatRupiahLacak(angka: string): string {
+  const num = parseInt(angka, 10);
+  return isNaN(num) ? "Rp 0" : "Rp " + num.toLocaleString("id-ID");
+}
+
+function formatTanggalLacak(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso + (iso.endsWith("Z") ? "" : "T00:00:00Z"));
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 const WARNA_KELOPAK = ["#e85d04", "#f97316", "#fbbf24", "#f59e0b", "#f97316"];
 const SUDUT_KELOPAK = [0, 72, 144, 216, 288];
@@ -648,96 +658,237 @@ function ModalPengajuan() {
   return <AjukanPermohonanWizard />;
 }
 
-function ModalLacak() {
-  const [noRef, setNoRef] = useState("");
-  const [hasil, setHasil] = useState<
-    (typeof DAFTAR_PENGAJUAN_BUNGA)[0] | null | "not-found"
-  >(null);
+// Badge status kecil untuk kartu hasil pencarian & daftar pengajuan terbaru.
+function StatusBadgeLacak({ status }: { status: StatusFormulir }) {
+  const cfg = STATUS_CONFIG_LACAK[status];
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[10.5px] font-semibold whitespace-nowrap ${cfg.badgeClass}`}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
+      {cfg.label}
+    </span>
+  );
+}
 
-  const handleCari = () => {
-    if (!noRef.trim()) return;
-    const found = DAFTAR_PENGAJUAN_BUNGA.find((d) =>
-      d.no.toLowerCase().includes(noRef.toLowerCase()),
+// Kartu ringkas satu pengajuan pada daftar hasil pencarian.
+function KartuPengajuanLacak({
+  data,
+  onClick,
+}: {
+  data: FormulirPenghapusanPiutangOPDRecord;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white px-3.5 py-3 text-left transition hover:border-amber-200 hover:bg-amber-50/40"
+    >
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-semibold text-gray-800">
+          {data.nomorSurat}
+        </p>
+        <p className="truncate text-xs text-gray-400">{data.namaOPD}</p>
+      </div>
+      <StatusBadgeLacak status={data.status} />
+    </button>
+  );
+}
+
+// Detail lengkap satu pengajuan, ditampilkan setelah kartu di klik / hasil
+// pencarian persis 1 nomor surat.
+function DetailPengajuanLacak({
+  data,
+  onKembali,
+}: {
+  data: FormulirPenghapusanPiutangOPDRecord;
+  onKembali: () => void;
+}) {
+  return (
+    <div className="space-y-3.5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-gray-900">
+            {data.nomorSurat}
+          </p>
+          <p className="truncate text-xs text-gray-400">{data.namaOPD}</p>
+        </div>
+        <StatusBadgeLacak status={data.status} />
+      </div>
+
+      <div className="space-y-2 border-t border-gray-200 pt-3">
+        {[
+          ["Jenis Piutang", data.jenisPiutang],
+          ["Jenis Penghapusan", data.jenisPenghapusan],
+          ["Jumlah Debitur", `${data.jumlahDebitur} orang`],
+          ["Total Nilai Piutang", formatRupiahLacak(data.totalNilaiPiutang)],
+          ["Tanggal Surat", formatTanggalLacak(data.tanggalSurat)],
+          ["Penanggung Jawab", `${data.namaPenanggungJawab} (${data.jabatan})`],
+        ].map(([k, v]) => (
+          <div key={k} className="flex items-start justify-between gap-3">
+            <span className="shrink-0 text-xs text-gray-400">{k}</span>
+            <span className="text-right text-[13px] text-gray-700">{v}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Catatan verifikasi BPKAD — tampil beda untuk revisi vs lolos */}
+      {data.status === "revisi" && data.catatanVerifikasi && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-xs leading-relaxed text-orange-700">
+          <p className="mb-1 font-semibold">Perlu Revisi</p>
+          {data.catatanVerifikasi}
+        </div>
+      )}
+      {data.status === "lolos_verifikasi" && data.catatanVerifikasi && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
+          <p className="mb-1 font-semibold">Lolos Verifikasi BPKAD</p>
+          {data.catatanVerifikasi}
+        </div>
+      )}
+      {data.status === "diajukan" && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs leading-relaxed text-blue-700">
+          Berkas sedang menunggu proses verifikasi administratif oleh BPKAD.
+        </div>
+      )}
+
+      <button
+        onClick={onKembali}
+        className="text-xs font-semibold text-amber-600 hover:text-amber-700"
+      >
+        ← Kembali ke daftar pencarian
+      </button>
+    </div>
+  );
+}
+
+function ModalLacak() {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFormulir | "SEMUA">(
+    "SEMUA",
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Filtering: cocok berdasarkan No. Surat, nama OPD, atau ID pengajuan —
+  // sekaligus disaring per status jika chip status dipilih.
+  const hasilFilter = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return MOCK_DATA.filter((d) => {
+      const cocokQuery =
+        q === "" ||
+        d.nomorSurat.toLowerCase().includes(q) ||
+        d.namaOPD.toLowerCase().includes(q) ||
+        d.id.toLowerCase().includes(q);
+      const cocokStatus = statusFilter === "SEMUA" || d.status === statusFilter;
+      return cocokQuery && cocokStatus;
+    }).sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-    setHasil(found ?? "not-found");
-  };
+  }, [query, statusFilter]);
+
+  const selected = selectedId
+    ? (MOCK_DATA.find((d) => d.id === selectedId) ?? null)
+    : null;
+
+  const jumlahPerStatus = useMemo(
+    () => ({
+      SEMUA: MOCK_DATA.length,
+      diajukan: MOCK_DATA.filter((d) => d.status === "diajukan").length,
+      revisi: MOCK_DATA.filter((d) => d.status === "revisi").length,
+      lolos_verifikasi: MOCK_DATA.filter((d) => d.status === "lolos_verifikasi")
+        .length,
+    }),
+    [],
+  );
+
+  const CHIP_STATUS: { key: StatusFormulir | "SEMUA"; label: string }[] = [
+    { key: "SEMUA", label: "Semua" },
+    { key: "diajukan", label: "Diajukan" },
+    { key: "revisi", label: "Revisi" },
+    { key: "lolos_verifikasi", label: "Lolos Verifikasi" },
+  ];
 
   return (
     <div className="space-y-4">
       <p className="text-sm leading-relaxed text-gray-500">
-        Masukkan nomor referensi pengajuan untuk memantau status berkas Anda.
+        Masukkan nomor surat atau nama OPD untuk memantau status berkas
+        pengajuan penghapusan piutang.
       </p>
+
+      {/* Input pencarian */}
       <div className="flex gap-2">
         <input
           type="text"
-          placeholder="Contoh: 001/PP/2025"
-          value={noRef}
-          onChange={(e) => setNoRef(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleCari()}
+          placeholder="Contoh: 001/RSUD/I/2025 atau nama OPD"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedId(null);
+          }}
           className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
         />
-        <button
-          onClick={handleCari}
-          className="rounded-lg bg-amber-500 px-4 text-sm font-semibold text-[#0b1f3a] transition hover:bg-amber-400 active:scale-[0.98]"
-        >
-          Cari
-        </button>
       </div>
-      {hasil === "not-found" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-600">
-          ❌ Nomor referensi tidak ditemukan. Periksa kembali nomor yang Anda
-          masukkan.
-        </div>
-      )}
-      {hasil && hasil !== "not-found" && (
-        <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
-          {[
-            ["No. Referensi", hasil.no],
-            ["OPD", hasil.opd],
-            ["Nilai Piutang", hasil.nilai],
-            ["Jalur", hasil.jalur],
-          ].map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">{k}</span>
-              <span className="text-sm text-gray-700">{v}</span>
-            </div>
-          ))}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">Status</span>
+
+      {/* Filter status */}
+      <div className="flex flex-wrap gap-1.5">
+        {CHIP_STATUS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => {
+              setStatusFilter(c.key);
+              setSelectedId(null);
+            }}
+            className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
+              statusFilter === c.key
+                ? "border-amber-400 bg-amber-500 text-[#0b1f3a]"
+                : "border-gray-200 bg-white text-gray-500 hover:border-amber-200 hover:text-amber-600"
+            }`}
+          >
+            {c.label}{" "}
             <span
-              className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold ${hasil.warna}`}
+              className={
+                statusFilter === c.key ? "text-[#0b1f3a]/70" : "text-gray-300"
+              }
             >
-              {hasil.status}
+              ({jumlahPerStatus[c.key]})
             </span>
-          </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Hasil: detail (jika sudah pilih satu) atau daftar kartu */}
+      {selected ? (
+        <DetailPengajuanLacak
+          data={selected}
+          onKembali={() => setSelectedId(null)}
+        />
+      ) : (
+        <div className="space-y-2">
+          {hasilFilter.length === 0 ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-600">
+              ❌ Tidak ada pengajuan yang cocok. Periksa kembali nomor surat
+              atau nama OPD yang Anda masukkan.
+            </div>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-gray-400">
+                {hasilFilter.length} pengajuan ditemukan
+              </p>
+              <div className="max-h-64 space-y-2 overflow-y-auto pr-0.5">
+                {hasilFilter.map((d) => (
+                  <KartuPengajuanLacak
+                    key={d.id}
+                    data={d}
+                    onClick={() => setSelectedId(d.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-        <p className="mb-2 text-xs font-semibold text-gray-500">
-          Pengajuan Terbaru
-        </p>
-        <div className="space-y-2">
-          {DAFTAR_PENGAJUAN_BUNGA.slice(0, 3).map((d) => (
-            <div
-              key={d.no}
-              className="flex cursor-pointer items-center justify-between text-xs"
-              onClick={() => {
-                setNoRef(d.no);
-                setHasil(d);
-              }}
-            >
-              <span className="text-gray-500">
-                {d.no} — {d.opd}
-              </span>
-              <span
-                className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${d.warna}`}
-              >
-                {d.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
