@@ -312,7 +312,10 @@ function SiPuspitaHeading({
     xs: { h: "text-[17px] lg:text-[19px]", sl: "text-[11px] lg:text-[12px]" },
     sm: { h: "text-[32px] lg:text-[40px]", sl: "text-[18px] lg:text-[22px]" },
     md: { h: "text-[36px] lg:text-[46px]", sl: "text-[20px] lg:text-[24px]" },
-    lg: { h: "text-[40px] lg:text-[52px]", sl: "text-[22px] lg:text-[26px]" },
+    lg: {
+      h: "text-[28px] sm:text-[36px] lg:text-[52px]",
+      sl: "text-[14px] sm:text-[18px] lg:text-[26px]",
+    },
     xl: { h: "text-[48px] lg:text-[60px]", sl: "text-[24px] lg:text-[30px]" },
   }[size];
 
@@ -1025,7 +1028,7 @@ function ModalBunga({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center p-6 sm:items-center sm:p-8"
+      className="fixed inset-0 z-100 flex items-end justify-center p-3 sm:items-center sm:p-8"
       style={{
         backgroundColor: visible ? "rgba(8,20,50,0.82)" : "rgba(8,20,50,0)",
         backdropFilter: visible ? "blur(3px)" : "blur(0px)",
@@ -1040,7 +1043,7 @@ function ModalBunga({
       }}
     >
       <div
-        className={`flex w-full overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95 ${
+        className={`flex w-full overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl lg:mr-95 ${
           displayedItem.id === "informasi" ||
           displayedItem.id === "sop&flowchart" ||
           displayedItem.id === "upload-dokumen" ||
@@ -1062,19 +1065,19 @@ function ModalBunga({
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Header */}
-          <div className="relative flex items-center justify-between overflow-hidden border-b border-gray-100 bg-white px-6 py-4">
+          <div className="relative flex items-center justify-between gap-3 overflow-hidden border-b border-gray-100 bg-white px-4 py-3.5 sm:px-6 sm:py-4">
             {/* Aksen garis emas bawah */}
             <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-linear-to-r from-transparent via-[#e8c84a] to-transparent" />
 
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-orange-100 bg-orange-50 text-xl">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-orange-100 bg-orange-50 text-lg sm:h-10 sm:w-10 sm:text-xl">
                 {displayedItem.icon}
               </div>
-              <div>
-                <h2 className="text-[15px] font-semibold text-gray-900">
+              <div className="min-w-0">
+                <h2 className="truncate text-[13.5px] font-semibold text-gray-900 sm:text-[15px]">
                   {displayedItem.modalTitle}
                 </h2>
-                <p className="text-[11px] text-gray-400">
+                <p className="hidden text-[11px] text-gray-400 sm:block">
                   SI PUSPITA · BPKAD Kab. Kendal
                 </p>
               </div>
@@ -1082,10 +1085,10 @@ function ModalBunga({
 
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 sm:h-8 sm:w-8"
               aria-label="Tutup"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4.5 w-4.5 sm:h-4 sm:w-4" />
             </button>
           </div>
 
@@ -1093,7 +1096,7 @@ function ModalBunga({
           {/* Body */}
           <div
             ref={bodyRef}
-            className="max-h-[72vh] overflow-y-auto px-6 py-5"
+            className="max-h-[75vh] overflow-y-auto px-4 py-4 sm:max-h-[72vh] sm:px-6 sm:py-5"
             style={{
               opacity: contentVisible ? 1 : 0,
               transform: contentVisible ? "translateY(0)" : "translateY(10px)",
@@ -1527,8 +1530,8 @@ export default function SiPuspitaLandingPage() {
           <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.09),transparent)]" />
 
           {/* ── Content wrapper ── */}
-          <div className="relative mx-auto w-full max-w-320 px-6 py-24 sm:px-8 lg:px-10">
-            <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
+          <div className="relative mx-auto w-full max-w-320 px-5 py-14 sm:px-8 sm:py-18 lg:px-10 lg:py-24">
+            <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:gap-12">
               {/* ── Kiri: teks utama ── */}
               <div className="min-w-0 flex-1">
                 {/* Heading — warna SiPuspita TIDAK diubah */}
@@ -1537,7 +1540,7 @@ export default function SiPuspitaLandingPage() {
                 </div>
 
                 <div>
-                  <p className="max-w-2xl text-[16px] leading-relaxed text-slate-600">
+                  <p className="max-w-2xl text-[14px] leading-relaxed text-slate-600 sm:text-[15px] lg:text-[16px]">
                     <span className="font-semibold text-[#0f2d5e]">
                       SI PUSPITA (Sistem Pengajuan Penghapusan Piutang
                       Terintegrasi)
@@ -1545,7 +1548,7 @@ export default function SiPuspitaLandingPage() {
                     adalah sebuah sistem layanan digital sederhana yang
                     dirancang untuk:
                   </p>
-                  <div className="mt-4 grid max-w-2xl grid-cols-1 gap-x-5 gap-y-3.5 sm:grid-cols-2">
+                  <div className="mt-4 grid max-w-2xl grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2 sm:gap-y-3.5">
                     {[
                       <>
                         Memfasilitasi pengajuan penghapusan piutang oleh OPD
@@ -1565,10 +1568,10 @@ export default function SiPuspitaLandingPage() {
                       </>,
                     ].map((t, i) => (
                       <div key={i} className="flex items-start gap-2.5">
-                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0f2d5e] text-[12.5px] font-bold text-white">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0f2d5e] text-[11px] font-bold text-white sm:h-6 sm:w-6 sm:text-[12.5px]">
                           {i + 1}
                         </span>
-                        <p className="text-[15px] leading-snug text-slate-600">
+                        <p className="text-[13.5px] leading-snug text-slate-600 sm:text-[15px]">
                           {t}
                         </p>
                       </div>
@@ -1577,24 +1580,24 @@ export default function SiPuspitaLandingPage() {
                 </div>
 
                 {/* CTA utama */}
-                <div className="mt-8 flex flex-wrap items-center gap-3">
+                <div className="mt-8 flex w-full max-w-2xl flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                   <a
                     href="#formulir"
-                    className="group inline-flex items-center gap-2 rounded-full bg-[#0f2d5e] px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-[#0f2d5e]/20 transition-all hover:bg-[#153a75] active:scale-[0.98]"
+                    className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#0f2d5e] px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-lg shadow-[#0f2d5e]/20 transition-all hover:bg-[#153a75] active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     Ajukan Permohonan
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </a>
                   <a
                     href="#sop"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-6 py-3 text-[14px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     Lihat SOP &amp; Alur
                   </a>
                 </div>
 
                 {/* Tagline chip */}
-                <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-[#0f2d5e]/10 pt-6">
+                <div className="mt-8 flex flex-wrap items-center gap-2.5 border-t border-[#0f2d5e]/10 pt-6 sm:gap-3">
                   {[
                     { label: "Digital", icon: Smartphone },
                     { label: "Terintegrasi", icon: Link2 },
@@ -1602,12 +1605,12 @@ export default function SiPuspitaLandingPage() {
                   ].map(({ label, icon: Icon }) => (
                     <div
                       key={label}
-                      className="group flex items-center gap-2 rounded-full border border-[#0f2d5e]/12 bg-white py-1.5 pr-4 pl-1.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c8a020]/50 hover:shadow-md"
+                      className="group flex items-center gap-1.5 rounded-full border border-[#0f2d5e]/12 bg-white py-1 pr-3.5 pl-1 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c8a020]/50 hover:shadow-md sm:gap-2 sm:py-1.5 sm:pr-4 sm:pl-1.5"
                     >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#1a4e8f] to-[#0f2d5e] text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
-                        <Icon className="h-3.5 w-3.5" />
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#1a4e8f] to-[#0f2d5e] text-white shadow-sm transition-transform duration-200 group-hover:scale-105 sm:h-7 sm:w-7">
+                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                       </span>
-                      <span className="text-[13.5px] font-semibold text-[#0f2d5e]">
+                      <span className="text-[12.5px] font-semibold text-[#0f2d5e] sm:text-[13.5px]">
                         {label}
                       </span>
                     </div>
@@ -1630,14 +1633,14 @@ export default function SiPuspitaLandingPage() {
                 }}
               >
                 {/* Piringan navy — panggung untuk bunga interaktif di atas latar putih */}
-                <div className="relative flex h-80 w-80 items-center justify-center">
+                <div className="relative flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72 md:h-76 md:w-76 lg:h-80 lg:w-80">
                   <div className="absolute inset-0 rounded-full bg-[#0f2d5e] shadow-[0_25px_70px_-20px_rgba(15,45,94,0.5)]" />
-                  <div className="pointer-events-none absolute inset-7.5 rounded-full border border-white/10" />
-                  <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#e8c84a]/60" />
-                  <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#e8c84a]/60" />
-                  <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#e8c84a]/60" />
-                  <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#e8c84a]/60" />
-                  <div className="relative z-10 h-72 w-72">
+                  <div className="pointer-events-none absolute inset-6 rounded-full border border-white/10 sm:inset-7.5" />
+                  <span className="absolute top-0 left-0 h-4 w-4 border-t-[1.5px] border-l-[1.5px] border-[#e8c84a]/60 sm:h-5 sm:w-5" />
+                  <span className="absolute top-0 right-0 h-4 w-4 border-t-[1.5px] border-r-[1.5px] border-[#e8c84a]/60 sm:h-5 sm:w-5" />
+                  <span className="absolute bottom-0 left-0 h-4 w-4 border-b-[1.5px] border-l-[1.5px] border-[#e8c84a]/60 sm:h-5 sm:w-5" />
+                  <span className="absolute right-0 bottom-0 h-4 w-4 border-r-[1.5px] border-b-[1.5px] border-[#e8c84a]/60 sm:h-5 sm:w-5" />
+                  <div className="relative z-10 h-58 w-58 sm:h-65 sm:w-65 md:h-68 md:w-68 lg:h-72 lg:w-72">
                     {!isModalOpen && (
                       <BungaSVG
                         activeId={bungaActiveId}
@@ -1648,7 +1651,7 @@ export default function SiPuspitaLandingPage() {
                     )}
                   </div>
                 </div>
-                <p className="mt-3.5 text-[10.5px] tracking-[0.12em] text-[#0f2d5e]/40 uppercase">
+                <p className="mt-3 text-[9.5px] tracking-[0.12em] text-[#0f2d5e]/40 uppercase sm:mt-3.5 sm:text-[10.5px]">
                   Menu Layanan Interaktif
                 </p>
               </div>
