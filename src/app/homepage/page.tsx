@@ -1394,7 +1394,7 @@ export default function SiPuspitaLandingPage() {
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 onClick={() => setLoginOpen(true)}
-                className="group relative flex items-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-200 hover:cursor-pointer hover:text-[#1a4e8f]"
+                className="group relative flex items-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-200 hover:cursor-pointer hover:text-slate-700"
               >
                 <LogIn className="h-3.5 w-3.5" /> Login
                 <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />

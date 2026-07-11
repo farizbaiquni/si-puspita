@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import AjukanPermohonanWizard from "./contents/opd/ajukan-permohonan/AjukanPermohonan";
 import DaftarPengajuanOPDBaru from "./contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
+import VerifikasiPengajuan from "./contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -11,7 +13,6 @@ import {
   IconList,
   IconChecklist,
   IconEye,
-  IconBank,
   IconSettings,
   IconHelp,
   IconLogout,
@@ -20,7 +21,6 @@ import {
   IconBell,
   IconChevronDown,
   IconUsers,
-  IconFileOff,
 } from "./icons";
 import { MOCK_DATA } from "./contents/dummyData";
 import type {
@@ -34,11 +34,7 @@ type UserRole = "OPD" | "BPKAD";
 
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
-type BPKADMenuKey =
-  | "verifikasi-pengajuan"
-  | "lihat-pengajuan"
-  | "pengajuan-pupn"
-  | "pengajuan-non-pupn";
+type BPKADMenuKey = "verifikasi-pengajuan" | "lihat-pengajuan";
 
 type MenuKey = OPDMenuKey | BPKADMenuKey;
 
@@ -75,16 +71,6 @@ const BPKAD_MENUS: MenuItem[] = [
     icon: <IconEye />,
     label: "Lihat Pengajuan",
   },
-  {
-    key: "pengajuan-pupn",
-    icon: <IconBank />,
-    label: "Pengajuan PUPN",
-  },
-  {
-    key: "pengajuan-non-pupn",
-    icon: <IconFileOff />,
-    label: "Pengajuan Non-PUPN",
-  },
 ];
 
 const PAGE_META: Record<
@@ -108,16 +94,6 @@ const PAGE_META: Record<
   "lihat-pengajuan": {
     title: "Lihat Pengajuan",
     subtitle: "Tampilkan semua pengajuan yang telah diproses.",
-  },
-  "pengajuan-pupn": {
-    title: "Pengajuan PUPN",
-    subtitle: "Kelola pengajuan yang masuk melalui jalur PUPN.",
-    action: { label: "Tambah Pengajuan" },
-  },
-  "pengajuan-non-pupn": {
-    title: "Pengajuan Non-PUPN",
-    subtitle: "Kelola pengajuan yang masuk melalui jalur Non-PUPN.",
-    action: { label: "Tambah Pengajuan" },
   },
 };
 
@@ -397,12 +373,18 @@ const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
 interface MainContentProps {
   activeMenu: MenuKey;
   semuaPengajuan: FormulirPenghapusanPiutangOPDRecord[];
-  onStatusUpdate: (id: string, status: StatusFormulir) => void;
+  onStatusUpdate: (
+    id: string,
+    status: StatusFormulir,
+    catatan?: string,
+  ) => void;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ activeMenu }) => {
-  const dataFormulirPengajuan: FormulirPenghapusanPiutangOPDRecord[] =
-    MOCK_DATA;
+const MainContent: React.FC<MainContentProps> = ({
+  activeMenu,
+  semuaPengajuan,
+  onStatusUpdate,
+}) => {
   const meta = PAGE_META[activeMenu];
 
   return (
@@ -417,15 +399,14 @@ const MainContent: React.FC<MainContentProps> = ({ activeMenu }) => {
       {activeMenu === "ajukan-permohonan" ? (
         <AjukanPermohonanWizard />
       ) : activeMenu === "lihat-daftar-pengajuan" ? (
-        <DaftarPengajuanOPDBaru data={dataFormulirPengajuan} />
+        <DaftarPengajuanOPDBaru data={semuaPengajuan} />
       ) : activeMenu === "verifikasi-pengajuan" ? (
-        // <VerifikasiPengajuan
-        //   semuaPengajuan={semuaPengajuan as any}
-        //   onStatusUpdate={(id, status, catatan) =>
-        //     onStatusUpdate(id, status as StatusFormulir)
-        //   }
-        // />
-        <div></div>
+        <VerifikasiPengajuan
+          semuaPengajuan={semuaPengajuan}
+          onStatusUpdate={(id, status, catatan) =>
+            onStatusUpdate(id, status, catatan)
+          }
+        />
       ) : (
         <EmptyContent label={meta.title} />
       )}
@@ -433,24 +414,65 @@ const MainContent: React.FC<MainContentProps> = ({ activeMenu }) => {
   );
 };
 
+// ── URL <-> Role helpers ───────────────────────────────────────────────────────
+
+const ROLE_QUERY_PARAM = "user-role";
+
+const DEFAULT_MENU_BY_ROLE: Record<UserRole, MenuKey> = {
+  OPD: "ajukan-permohonan",
+  BPKAD: "verifikasi-pengajuan",
+};
+
+/** Parse role dari query param, fallback ke "OPD" bila tidak ada / tidak valid. */
+const parseRoleFromParam = (value: string | null): UserRole => {
+  if (value?.toLowerCase() === "bpkad") return "BPKAD";
+  return "OPD";
+};
+
 // ── Page root ─────────────────────────────────────────────────────────────────
 
-export default function Dashboard() {
-  const [role, setRole] = useState<UserRole>("OPD");
-  const [activeMenu, setActiveMenu] = useState<MenuKey>("ajukan-permohonan");
+const DashboardContent: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Role dijadikan derived state dari URL (?user-role=opd | bpkad), bukan
+  // state internal, supaya URL selalu jadi single source of truth.
+  const role = parseRoleFromParam(searchParams.get(ROLE_QUERY_PARAM));
+
+  const [activeMenu, setActiveMenu] = useState<MenuKey>(
+    DEFAULT_MENU_BY_ROLE[role],
+  );
+
+  // Lacak role sebelumnya supaya bisa reset activeMenu saat role berubah
+  // (mis. lewat URL back/forward, link luar), TANPA pakai useEffect.
+  // Pola ini "adjusting state during render" — direkomendasikan React
+  // untuk kasus reset state akibat perubahan prop/derived value, karena
+  // tidak memicu render tambahan yang sempat ter-commit ke layar.
+  const [prevRole, setPrevRole] = useState(role);
+  if (role !== prevRole) {
+    setPrevRole(role);
+    setActiveMenu(DEFAULT_MENU_BY_ROLE[role]);
+  }
 
   const [semuaPengajuan, setSemuaPengajuan] = useState<
     FormulirPenghapusanPiutangOPDRecord[]
   >(() => [...MOCK_DATA]);
 
   const handleRoleChange = (newRole: UserRole) => {
-    setRole(newRole);
-    setActiveMenu(
-      newRole === "OPD" ? "ajukan-permohonan" : "verifikasi-pengajuan",
-    );
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(ROLE_QUERY_PARAM, newRole.toLowerCase());
+    router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleStatusUpdate = (id: string, status: StatusFormulir) => {
+  const handleStatusUpdate = (
+    id: string,
+    status: StatusFormulir,
+    // catatan hasil verifikasi BPKAD — belum ada field penyimpanannya di
+    // FormulirPenghapusanPiutangOPDRecord, jadi untuk saat ini hanya
+    // diterima di sini (siap dipakai kalau field-nya sudah ditambahkan).
+    catatan?: string,
+  ) => {
     setSemuaPengajuan((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status } : p)),
     );
@@ -468,5 +490,13 @@ export default function Dashboard() {
         />
       </div>
     </div>
+  );
+};
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   );
 }

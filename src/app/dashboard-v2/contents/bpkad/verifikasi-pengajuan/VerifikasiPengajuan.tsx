@@ -1,358 +1,28 @@
 "use client";
 
-/**
- * VerifikasiPengajuan.tsx
- * Halaman Verifikasi Pengajuan untuk user BPKAD.
- * Path: src/app/dashboard/contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan.tsx
- *
- * Menampilkan daftar pengajuan dengan status "DIAJUKAN" yang menunggu
- * verifikasi BPKAD. Setiap baris memiliki tombol "Verifikasi" yang membuka
- * panel detail berisi data pengajuan, dokumen pendukung (preview PDF), serta
- * form keputusan (Diterima / Ditolak) beserta catatan verifikator.
- *
- * Styling menggunakan Tailwind CSS (className), selaras dengan
- * LihatDaftarPengajuan.tsx & AjukanPermohonan.tsx.
- */
-
 import React, { useMemo, useState } from "react";
 import type {
-  DokumenUpload,
-  JalurPengajuan,
+  FormulirPenghapusanPiutangOPDRecord,
+  JenisPenghapusan,
   JenisPiutang,
-  Pengajuan,
-  StatusPengajuan,
-} from "@/types/types";
-
-export const MOCK_PENGAJUAN: Pengajuan[] = [
-  {
-    id: "PGJ-2025-001",
-    tanggalDibuat: "2025-01-08T09:23:00Z",
-    status: "DISETUJUI",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "Budi Santoso",
-      alamatWP: "Jl. Mawar No. 12, Kendal",
-      nik: "3317010101800001",
-      pekerjaan: "Wiraswasta",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 12500000,
-      nomorSKRD: "SKRD/2022/0412",
-      nomorSTRD: "STRD/2023/0087",
-      sebabPiutangMacet: "Usaha bangkrut, aset tidak mencukupi",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-002",
-    tanggalDibuat: "2025-01-15T11:05:00Z",
-    status: "DALAM_REVIEW",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Siti Rahayu",
-      alamatWP: "Jl. Kenanga No. 5, Weleri",
-      nik: "3317015505750002",
-      pekerjaan: "Pedagang",
-      jenisPiutang: "LAINNYA",
-      nominalUtang: 4200000,
-      sebabPiutangMacet: "Meninggal dunia, ahli waris tidak mampu",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-003",
-    tanggalDibuat: "2025-02-03T08:44:00Z",
-    status: "DIAJUKAN",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "PT Karya Maju Sejahtera",
-      alamatWP: "Jl. Industri Raya Km 7, Kaliwungu",
-      nik: "3317000000000003",
-      pekerjaan: "Perusahaan Manufaktur",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 87000000,
-      nomorSKRD: "SKRD/2021/0188",
-      nomorSTRD: "STRD/2022/0044",
-      sebabPiutangMacet:
-        "Perusahaan pailit, putusan PN No. 12/Pdt.Sus-Pailit/2023",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-004",
-    tanggalDibuat: "2025-02-18T14:30:00Z",
-    status: "PERLU_REVISI",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Ahmad Fauzi",
-      alamatWP: "Desa Tunjungsari RT 02/04, Patebon",
-      nik: "3317012908820004",
-      pekerjaan: "Buruh Tani",
-      jenisPiutang: "TP",
-      nominalUtang: 2750000,
-      sebabPiutangMacet: "Tidak diketahui keberadaannya",
-    },
-    dokumen: [],
-    catatanReviewer:
-      "Dokumen Berita Acara Identifikasi belum dilampirkan. Mohon dilengkapi.",
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-005",
-    tanggalDibuat: "2025-03-01T09:10:00Z",
-    status: "DIAJUKAN",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Dewi Kusumawati",
-      alamatWP: "Jl. Cempaka No. 8, Kendal Kota",
-      nik: "3317014404900005",
-      pekerjaan: "Ibu Rumah Tangga",
-      jenisPiutang: "TGR",
-      nominalUtang: 5500000,
-      sebabPiutangMacet: "Tidak mampu membayar",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-006",
-    tanggalDibuat: "2025-03-12T10:55:00Z",
-    status: "DITOLAK",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "CV Sumber Berkah",
-      alamatWP: "Ruko Kaliwungu Baru Blok D No. 3",
-      nik: "3317000000000006",
-      pekerjaan: "Perdagangan Umum",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 145000000,
-      nomorSKRD: "SKRD/2020/0092",
-      nomorSTRD: "STRD/2021/0031",
-      sebabPiutangMacet: "Aset tidak cukup menutupi kewajiban",
-      adaBLUD: true,
-    },
-    dokumen: [],
-    catatanReviewer:
-      "Persyaratan PUPN tidak terpenuhi. Piutang belum berumur 5 tahun sejak STRD terakhir.",
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-007",
-    tanggalDibuat: "2025-03-25T13:20:00Z",
-    status: "DIAJUKAN",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Mujiono",
-      alamatWP: "Desa Gempolsewu Blok A, Rowosari",
-      nik: "3317011205710007",
-      pekerjaan: "Nelayan",
-      jenisPiutang: "LAINNYA",
-      nominalUtang: 3100000,
-      sebabPiutangMacet: "Wafat, ahli waris tidak mampu membayar",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-008",
-    tanggalDibuat: "2025-04-07T08:00:00Z",
-    status: "DALAM_REVIEW",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "PT Sinar Harapan Bersama",
-      alamatWP: "Kawasan Industri Kendal Blok G-12",
-      nik: "3317000000000008",
-      pekerjaan: "Industri Tekstil",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 320000000,
-      nomorSKRD: "SKRD/2019/0041",
-      nomorSTRD: "STRD/2020/0019",
-      sebabPiutangMacet: "Kepailitan, proses likuidasi aset masih berjalan",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-009",
-    tanggalDibuat: "2025-04-20T15:45:00Z",
-    status: "DISETUJUI",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Suharno",
-      alamatWP: "Jl. Pahlawan No. 3, Sukorejo",
-      nik: "3317013003680009",
-      pekerjaan: "Pensiunan PNS",
-      jenisPiutang: "TP",
-      nominalUtang: 1800000,
-      sebabPiutangMacet: "Sudah meninggal, tidak ada ahli waris yang mampu",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-010",
-    tanggalDibuat: "2025-05-05T10:15:00Z",
-    status: "PERLU_REVISI",
-    jalur: "NON_PUPN",
-    dataPenanggung: {
-      namaWP: "Rubiyah",
-      alamatWP: "Desa Kalirejo Kidul, Brangsong",
-      nik: "3317014006720010",
-      pekerjaan: "Petani",
-      jenisPiutang: "LAINNYA",
-      nominalUtang: 950000,
-      sebabPiutangMacet: "Tidak diketahui keberadaannya lebih dari 5 tahun",
-    },
-    dokumen: [],
-    catatanReviewer:
-      "Lampiran surat keterangan dari lurah belum ada. Harap dilengkapi dalam 7 hari kerja.",
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-011",
-    tanggalDibuat: "2025-05-19T09:30:00Z",
-    status: "DIAJUKAN",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "UD Mitra Usaha Jaya",
-      alamatWP: "Pasar Boja Kios 22, Boja",
-      nik: "3317000000000011",
-      pekerjaan: "Perdagangan Sembako",
-      jenisPiutang: "RETRIBUSI",
-      nominalUtang: 58000000,
-      nomorSKRD: "SKRD/2020/0231",
-      nomorSTRD: "STRD/2021/0118",
-      sebabPiutangMacet: "Usaha gulung tikar, tidak ada aset tersisa",
-      adaBLUD: false,
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-  {
-    id: "PGJ-2025-012",
-    tanggalDibuat: "2025-06-02T11:00:00Z",
-    status: "DIAJUKAN",
-    jalur: "PUPN",
-    dataPenanggung: {
-      namaWP: "Hendra Wijaya",
-      alamatWP: "Perumahan Griya Asri Blok C5, Kendal",
-      nik: "3317012107850012",
-      pekerjaan: "Kontraktor",
-      jenisPiutang: "TGR",
-      nominalUtang: 22000000,
-      sebabPiutangMacet: "Pekerjaan terbengkalai, aset tidak ada",
-    },
-    dokumen: [],
-    unitPengaju: "Dinas Pendidikan dan Kebudayaan",
-  },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Placeholder dokumen PDF (mock)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PLACEHOLDER_PDF_BASE64 =
-  "JVBERi0xLjEKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMzAwIDE1MF0vUmVzb3VyY2VzPDwvRm9udDw8L0YxIDQgMCBSPj4+Pi9Db250ZW50cyA1IDAgUj4+ZW5kb2JqCjQgMCBvYmo8PC9UeXBlL0ZvbnQvU3VidHlwZS9UeXBlMS9CYXNlRm9udC9IZWx2ZXRpY2E+PmVuZG9iago1IDAgb2JqPDwvTGVuZ3RoIDc4Pj5zdHJlYW0KQlQgL0YxIDE0IFRmIDIwIDEwMCBUZCAoQ29udG9oIERva3VtZW4gUERGIC0gU0kgUFVTUElUQSkgVGogRVQKZW5kc3RyZWFtCmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+Cg==";
-
-function placeholderDoc(id: string, namaFile: string): DokumenUpload {
-  return {
-    id,
-    namaFile,
-    ukuranBytes: 128_000,
-    base64: PLACEHOLDER_PDF_BASE64,
-    status: "valid",
-  };
-}
-
-/**
- * Sebagian data MOCK_PENGAJUAN belum membawa dokumen (array kosong).
- * Untuk kebutuhan tampilan verifikasi, dokumen contoh dilampirkan
- * berdasarkan jalur pengajuan.
- */
-function withMockDokumen(p: Pengajuan): Pengajuan {
-  if (p.dokumen.length > 0) return p;
-
-  const dokumen: DokumenUpload[] =
-    p.jalur === "PUPN"
-      ? [
-          placeholderDoc(`${p.id}-skrd`, "SKRD.pdf"),
-          placeholderDoc(`${p.id}-strd`, "STRD.pdf"),
-          placeholderDoc(`${p.id}-ba`, "Berita_Acara_Identifikasi.pdf"),
-        ]
-      : [
-          placeholderDoc(`${p.id}-tagih`, "Bukti_Penagihan_Optimal.pdf"),
-          placeholderDoc(
-            `${p.id}-mampu`,
-            "Bukti_Ketidakmampuan_Penanggung.pdf",
-          ),
-        ];
-
-  return { ...p, dokumen };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Label decoder — membaca keterangan yang di-encode saat buildPengajuan
-// Format id: "keterangan||<label>||<originalId>"
-// ─────────────────────────────────────────────────────────────────────────────
-
-function parseDocLabel(dok: DokumenUpload): {
-  keterangan: string;
-  namaFile: string;
-} {
-  if (dok.id.startsWith("keterangan||")) {
-    const parts = dok.id.split("||");
-    return { keterangan: parts[1] ?? "", namaFile: dok.namaFile };
-  }
-  // Dokumen lama / mock — derive label dari namaFile
-  const name = dok.namaFile.replace(/\.pdf$/i, "").replace(/_/g, " ");
-  return { keterangan: name, namaFile: dok.namaFile };
-}
-
-/** Kelompokkan dokumen berdasarkan jenis keterangan */
-function groupDokumen(
-  dokumen: DokumenUpload[],
-): { keterangan: string; dokList: DokumenUpload[] }[] {
-  const map: Map<string, DokumenUpload[]> = new Map();
-  dokumen.forEach((d) => {
-    const { keterangan } = parseDocLabel(d);
-    if (!map.has(keterangan)) map.set(keterangan, []);
-    map.get(keterangan)!.push(d);
-  });
-  return Array.from(map.entries()).map(([keterangan, dokList]) => ({
-    keterangan,
-    dokList,
-  }));
-}
-
-/** Ekstrak daftar checklist unik dari keterangan dokumen untuk ringkasan */
-function extractChecklist(dokumen: DokumenUpload[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  dokumen.forEach((d) => {
-    const { keterangan } = parseDocLabel(d);
-    if (!seen.has(keterangan)) {
-      seen.add(keterangan);
-      result.push(keterangan);
-    }
-  });
-  return result;
-}
+  NominatifPiutangRecord,
+  StatusFormulir,
+  UploadedFileRef,
+} from "@/types/types-v2";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function formatRupiah(nominal: number): string {
-  return "Rp " + nominal.toLocaleString("id-ID");
+function formatRupiah(nominal: string | number): string {
+  const n = typeof nominal === "string" ? Number(nominal) || 0 : nominal;
+  return "Rp " + n.toLocaleString("id-ID");
 }
 
 function formatTanggal(iso: string): string {
+  if (!iso) return "-";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
@@ -366,15 +36,76 @@ function formatUkuran(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function labelJenisPiutang(j: JenisPiutang): string {
-  const map: Record<NonNullable<JenisPiutang>, string> = {
-    RETRIBUSI: "Retribusi",
-    TP: "Tunt. Perbend.",
-    TGR: "Tunt. Ganti Rugi",
-    LAINNYA: "Lainnya",
-    PAJAK: "Pajak",
+function labelJenisPiutang(j: JenisPiutang | ""): string {
+  const map: Record<JenisPiutang, string> = {
+    "Piutang Retribusi Daerah": "Retribusi Daerah",
+    "Piutang Lain-lain PAD yang Sah": "Lain-lain PAD yang Sah",
+    "Piutang Lainnya": "Lainnya",
   };
   return j ? map[j] : "-";
+}
+
+function labelJenisPenghapusan(j: JenisPenghapusan | ""): string {
+  return j || "-";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daftar dokumen — dibangun dari field NominatifPiutangRecord + fileSurat
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface DokumenEntry {
+  key: string;
+  label: string;
+  file: UploadedFileRef;
+}
+
+const NOMINATIF_DOC_LABELS: {
+  key: keyof NominatifPiutangRecord;
+  label: string;
+}[] = [
+  { key: "suratPengantarUsulan", label: "Surat Pengantar Usulan" },
+  { key: "daftarNominatifPiutang", label: "Daftar Nominatif Piutang" },
+  { key: "rekapitulasiSaldoPiutang", label: "Rekapitulasi Saldo Piutang" },
+  {
+    key: "neracaAwalPencatatanPiutang",
+    label: "Neraca Awal Pencatatan Piutang",
+  },
+  {
+    key: "dokumenPendukungSuratTidakMampuBayar",
+    label: "Surat Pernyataan Tidak Mampu Bayar",
+  },
+  { key: "rekapitulasiAngsuran", label: "Rekapitulasi Angsuran" },
+  { key: "riwayatPenagihan1", label: "Riwayat Penagihan Ke-1" },
+  { key: "riwayatPenagihan2", label: "Riwayat Penagihan Ke-2" },
+  { key: "riwayatPenagihan3", label: "Riwayat Penagihan Ke-3" },
+  {
+    key: "filePernyataanOPD",
+    label: "Surat Pernyataan OPD (Tanpa Riwayat Penagihan)",
+  },
+  { key: "dokumenDasarPiutang", label: "Dokumen Dasar Piutang" },
+];
+
+function buildDokumenList(
+  pengajuan: FormulirPenghapusanPiutangOPDRecord,
+): DokumenEntry[] {
+  const list: DokumenEntry[] = [];
+
+  if (pengajuan.fileSurat) {
+    list.push({
+      key: "fileSurat",
+      label: "Surat Pengantar / Usulan (Formulir)",
+      file: pengajuan.fileSurat,
+    });
+  }
+
+  NOMINATIF_DOC_LABELS.forEach(({ key, label }) => {
+    const value = pengajuan.nominatif[key];
+    if (value && typeof value === "object" && "url" in value) {
+      list.push({ key, label, file: value as UploadedFileRef });
+    }
+  });
+
+  return list;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -382,72 +113,51 @@ function labelJenisPiutang(j: JenisPiutang): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<
-  StatusPengajuan,
+  StatusFormulir,
   { label: string; cls: string; dot: string }
 > = {
-  DRAFT: {
-    label: "Draft",
-    cls: "bg-[#f1f3f5] text-[#6b7280] border-[#e5e7eb]",
-    dot: "bg-[#9ca3af]",
-  },
-  DIAJUKAN: {
+  diajukan: {
     label: "Diajukan",
     cls: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
     dot: "bg-[#3b82f6]",
   },
-  DALAM_REVIEW: {
-    label: "Dalam Review",
-    cls: "bg-[#fffbeb] text-[#92400e] border-[#fde68a]",
-    dot: "bg-[#f59e0b]",
-  },
-  DISETUJUI: {
-    label: "Disetujui",
-    cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
-    dot: "bg-[#10b981]",
-  },
-  DITOLAK: {
-    label: "Ditolak",
-    cls: "bg-[#fef2f2] text-[#991b1b] border-[#fecaca]",
-    dot: "bg-[#ef4444]",
-  },
-  PERLU_REVISI: {
+  revisi: {
     label: "Perlu Revisi",
     cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dot: "bg-[#f97316]",
   },
-};
-
-const JALUR_BADGE: Record<
-  NonNullable<JalurPengajuan>,
-  { label: string; cls: string }
-> = {
-  PUPN: { label: "PUPN", cls: "bg-[#eff6ff] text-[#1e40af] border-[#bfdbfe]" },
-  NON_PUPN: {
-    label: "Non-PUPN",
-    cls: "bg-[#f5f3ff] text-[#5b21b6] border-[#ddd6fe]",
+  lolos_verifikasi: {
+    label: "Lolos Verifikasi",
+    cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
+    dot: "bg-[#10b981]",
   },
 };
 
-const StatusBadge: React.FC<{ status: StatusPengajuan }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
   const cfg = STATUS_BADGE[status];
   return (
     <span
-      className={`inline-flex items-center gap-[5px] rounded-full border px-[9px] py-[3px] text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
+      className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
     >
-      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dot}`} />
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
   );
 };
 
-const JalurBadge: React.FC<{ jalur: JalurPengajuan }> = ({ jalur }) => {
-  if (!jalur) return <span className="text-xs text-[#7a8899]">—</span>;
-  const cfg = JALUR_BADGE[jalur];
+const JenisPenghapusanBadge: React.FC<{ jenis: JenisPenghapusan }> = ({
+  jenis,
+}) => {
+  const isBersyarat = jenis === "Penghapusan Bersyarat";
   return (
     <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${cfg.cls}`}
+      className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${
+        isBersyarat
+          ? "border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]"
+          : "border-[#ddd6fe] bg-[#f5f3ff] text-[#5b21b6]"
+      }`}
     >
-      {cfg.label}
+      {isBersyarat ? "Bersyarat" : "Mutlak"}
     </span>
   );
 };
@@ -595,7 +305,7 @@ const ModalPreviewPDF: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center bg-[rgba(10,20,40,0.55)] p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-1100 flex items-center justify-center bg-[rgba(10,20,40,0.55)] p-6 backdrop-blur-[2px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -654,31 +364,28 @@ const ModalPreviewPDF: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DokumenItem: React.FC<{
-  dok: DokumenUpload;
+  dok: DokumenEntry;
   onPreview: () => void;
 }> = ({ dok, onPreview }) => {
-  const { keterangan, namaFile } = parseDocLabel(dok);
   return (
     <div className="flex items-center gap-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2.5">
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
         <IconPdf />
       </div>
       <div className="min-w-0 flex-1">
-        {keterangan && (
-          <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
-            {keterangan}
-          </div>
-        )}
+        <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
+          {dok.label}
+        </div>
         <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
-          {namaFile}
+          {dok.file.namaFile}
         </div>
         <div className="text-[11px] text-[#7a8899]">
-          {formatUkuran(dok.ukuranBytes)}
+          {formatUkuran(dok.file.ukuranBytes)}
         </div>
       </div>
       <button
         onClick={onPreview}
-        className="flex flex-shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
       >
         <IconEye />
         Lihat PDF
@@ -688,30 +395,156 @@ const DokumenItem: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Checklist Persyaratan Substantif — mengacu PMK 137
+// Diisi manual oleh verifikator BPKAD saat meninjau dokumen (bukan data yang
+// tersimpan di formulir OPD), sehingga disimpan sebagai state lokal di
+// panel verifikasi per sesi peninjauan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ChecklistItemDef {
+  id: string;
+  label: string;
+  /** Opsi dokumen pendukung alternatif (cukup salah satu) */
+  subItems?: string[];
+}
+
+const CHECKLIST_STATUS_PIUTANG: ChecklistItemDef[] = [
+  {
+    id: "tidak_ada_jaminan",
+    label: "Tidak ada barang jaminan / barang jaminan tidak bernilai ekonomis",
+  },
+  {
+    id: "status_macet",
+    label: "Piutang telah berstatus macet (SKRD / SK / Surat Perjanjian)",
+  },
+  {
+    id: "usia_pencatatan",
+    label:
+      "Usia pencatatan piutang telah memenuhi ketentuan (neraca awal terjadinya piutang)",
+  },
+  {
+    id: "tidak_ke_pupn",
+    label: "Piutang tidak dapat diserahkan kepada PUPN (sesuai Ps. 4 ayat 2)",
+  },
+  {
+    id: "nilai_sesuai",
+    label:
+      "Nilai piutang telah sesuai ketentuan (Daftar Nominatif Usulan Piutang SKPD)",
+  },
+  {
+    id: "angsuran_minim",
+    label:
+      "Tidak terdapat angsuran / angsuran < 10% dari total kewajiban (Daftar Nominatif Usulan Piutang SKPD)",
+  },
+  {
+    id: "tidak_mampu_bayar",
+    label: "Tidak mempunyai kemampuan untuk menyelesaikan utang",
+    subItems: [
+      "Kartu keluarga miskin",
+      "Putusan pailit",
+      "Surat keterangan dari kelurahan/kepala desa/kepala lingkungan/instansi berwenang/PPKD yang menyatakan Penanggung Utang tidak mampu membayar atau tidak diketahui tempat tinggalnya",
+      "Bukti penerimaan asuransi kesehatan bagi masyarakat miskin",
+      "Bukti penerima manfaat bansos (BPNT, BST, PKH, atau program sejenis)",
+      "Bukti kunjungan penagihan / berita acara petugas PPKD yang menyimpulkan Penanggung Utang tidak mampu membayar atau tidak diketahui tempat tinggalnya",
+    ],
+  },
+];
+
+const CHECKLIST_UPAYA_PENAGIHAN: ChecklistItemDef[] = [
+  { id: "surat_tagihan", label: "Surat tagihan telah diterbitkan (3x)" },
+  {
+    id: "upaya_optimal",
+    label: "Telah dilakukan upaya optimal sesuai ketentuan (jika ada)",
+  },
+  { id: "hasil_gagal", label: "Hasil penagihan tidak berhasil" },
+];
+
+const ALL_CHECKLIST_ITEMS: ChecklistItemDef[] = [
+  ...CHECKLIST_STATUS_PIUTANG,
+  ...CHECKLIST_UPAYA_PENAGIHAN,
+];
+
+const ChecklistItemRow: React.FC<{
+  item: ChecklistItemDef;
+  checked: boolean;
+  onToggle: () => void;
+}> = ({ item, checked, onToggle }) => (
+  <label
+    className={`flex cursor-pointer items-start gap-2.5 rounded-sm border px-3 py-2.5 transition ${
+      checked
+        ? "border-[#a7e8d4] bg-[#e6f7f2]"
+        : "border-[#e2e8f2] bg-white hover:bg-[#f7f8fa]"
+    }`}
+  >
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={onToggle}
+      className="mt-0.5 h-4 w-4 shrink-0 accent-[#0f9b6e]"
+    />
+    <div className="min-w-0">
+      <div
+        className={`text-[13px] leading-snug ${
+          checked ? "font-medium text-[#0f6e56]" : "text-[#1a1a2e]"
+        }`}
+      >
+        {item.label}
+      </div>
+      {item.subItems && (
+        <ul className="mt-1.5 space-y-1 border-l-2 border-[#e2e8f2] pl-3">
+          {item.subItems.map((sub, i) => (
+            <li key={i} className="text-[11.5px] leading-snug text-[#7a8899]">
+              • {sub}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </label>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Detail Verifikasi (panel)
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Keputusan = "DISETUJUI" | "DITOLAK";
+type Keputusan = Extract<StatusFormulir, "lolos_verifikasi" | "revisi">;
 
 const PanelVerifikasi: React.FC<{
-  pengajuan: Pengajuan;
+  pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onBack: () => void;
   onSubmit: (keputusan: Keputusan, catatan: string) => void;
 }> = ({ pengajuan, onBack, onSubmit }) => {
-  const dp = pengajuan.dataPenanggung;
   const [keputusan, setKeputusan] = useState<Keputusan | null>(null);
   const [catatan, setCatatan] = useState("");
-  const [previewDoc, setPreviewDoc] = useState<DokumenUpload | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
   const [error, setError] = useState("");
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+
+  const dokumen = useMemo(() => buildDokumenList(pengajuan), [pengajuan]);
+
+  const toggleChecklist = (id: string) => {
+    setChecklist((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const jumlahTerpenuhi = ALL_CHECKLIST_ITEMS.filter(
+    (item) => checklist[item.id],
+  ).length;
+  const semuaTerpenuhi = jumlahTerpenuhi === ALL_CHECKLIST_ITEMS.length;
 
   const handleSubmit = () => {
     if (!keputusan) {
-      setError("Pilih hasil verifikasi: Diterima atau Ditolak.");
+      setError("Pilih hasil verifikasi: Lolos Verifikasi atau Perlu Revisi.");
       return;
     }
-    if (keputusan === "DITOLAK" && catatan.trim().length < 5) {
+    if (keputusan === "lolos_verifikasi" && !semuaTerpenuhi) {
       setError(
-        "Keterangan wajib diisi (minimal 5 karakter) untuk pengajuan yang ditolak.",
+        "Centang seluruh poin Checklist Persyaratan Substantif sebelum menyatakan pengajuan lolos verifikasi.",
+      );
+      return;
+    }
+    if (keputusan === "revisi" && catatan.trim().length < 5) {
+      setError(
+        "Keterangan wajib diisi (minimal 5 karakter) untuk pengajuan yang perlu direvisi.",
       );
       return;
     }
@@ -723,8 +556,8 @@ const PanelVerifikasi: React.FC<{
     <div>
       {previewDoc && (
         <ModalPreviewPDF
-          namaFile={previewDoc.namaFile}
-          url={`data:application/pdf;base64,${previewDoc.base64}`}
+          namaFile={previewDoc.file.namaFile}
+          url={previewDoc.file.url}
           onClose={() => setPreviewDoc(null)}
         />
       )}
@@ -753,36 +586,32 @@ const PanelVerifikasi: React.FC<{
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <JalurBadge jalur={pengajuan.jalur} />
+                <JenisPenghapusanBadge jenis={pengajuan.jenisPenghapusan} />
                 <StatusBadge status={pengajuan.status} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3">
               {[
-                { label: "Unit Pengaju", value: pengajuan.unitPengaju },
+                { label: "Nama OPD", value: pengajuan.namaOPD },
                 {
-                  label: "Tanggal Diajukan",
-                  value: formatTanggal(pengajuan.tanggalDibuat),
+                  label: "Tanggal Surat",
+                  value: formatTanggal(pengajuan.tanggalSurat),
                 },
+                { label: "Nomor Surat", value: pengajuan.nomorSurat },
                 {
                   label: "Jenis Piutang",
-                  value: labelJenisPiutang(dp.jenisPiutang),
+                  value: labelJenisPiutang(pengajuan.jenisPiutang),
                 },
+                { label: "Jumlah Debitur", value: pengajuan.jumlahDebitur },
                 {
-                  label: "Nominal Utang",
+                  label: "Total Nilai Piutang",
                   value: (
                     <span className="font-bold text-[#1a4e8f]">
-                      {formatRupiah(dp.nominalUtang)}
+                      {formatRupiah(pengajuan.totalNilaiPiutang)}
                     </span>
                   ),
                 },
-                ...(dp.nomorSKRD
-                  ? [{ label: "Nomor SKRD", value: dp.nomorSKRD }]
-                  : []),
-                ...(dp.nomorSTRD
-                  ? [{ label: "Nomor STRD", value: dp.nomorSTRD }]
-                  : []),
               ].map(({ label, value }) => (
                 <div key={label}>
                   <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
@@ -794,24 +623,25 @@ const PanelVerifikasi: React.FC<{
             </div>
           </div>
 
-          {/* Data Penanggung Utang */}
+          {/* Data Penanggung Jawab OPD */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-              Data Penanggung Utang
+              Penanggung Jawab OPD
             </div>
             <div className="grid grid-cols-2 gap-x-5 gap-y-3">
               {[
-                { label: "Nama", value: dp.namaWP },
-                { label: "NIK", value: dp.nik },
-                { label: "Pekerjaan", value: dp.pekerjaan || "-" },
-                { label: "Alamat", value: dp.alamatWP, span: true },
+                { label: "Nama", value: pengajuan.namaPenanggungJawab },
+                { label: "Jabatan", value: pengajuan.jabatan },
                 {
-                  label: "Sebab Piutang Macet",
-                  value: dp.sebabPiutangMacet,
-                  span: true,
+                  label: "Opsi Riwayat Penagihan",
+                  value: pengajuan.nominatif.opsiRiwayatPenagihan || "-",
                 },
-              ].map(({ label, value, span }) => (
-                <div key={label} className={span ? "col-span-2" : undefined}>
+                {
+                  label: "Opsi Dokumen Dasar Piutang",
+                  value: pengajuan.nominatif.opsiDokumenDasarPiutang || "-",
+                },
+              ].map(({ label, value }) => (
+                <div key={label}>
                   <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
                     {label}
                   </div>
@@ -821,58 +651,70 @@ const PanelVerifikasi: React.FC<{
             </div>
           </div>
 
-          {/* Ringkasan Checklist */}
-          {pengajuan.dokumen.length > 0 &&
-            (() => {
-              const checklist = extractChecklist(pengajuan.dokumen);
-              return (
-                <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-                  <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-                    Checklist Dokumen yang Dipilih
-                  </div>
-                  <ul className="space-y-2">
-                    {checklist.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#e6f7f2]">
-                          <svg
-                            width="9"
-                            height="7"
-                            viewBox="0 0 9 7"
-                            fill="none"
-                          >
-                            <path
-                              d="M1 3.5L3.5 6L8 1"
-                              stroke="#0f9b6e"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                        <span className="text-[13px] leading-snug text-[#1a1a2e]">
-                          {item}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })()}
+          {/* Checklist Persyaratan Substantif */}
+          <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                Checklist Persyaratan Substantif
+              </div>
+              <span
+                className={`inline-flex items-center rounded-full border px-2.25 py-0.75 text-[11px] font-semibold whitespace-nowrap ${
+                  semuaTerpenuhi
+                    ? "border-[#a7e8d4] bg-[#e6f7f2] text-[#0f6e56]"
+                    : "border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899]"
+                }`}
+              >
+                {jumlahTerpenuhi} / {ALL_CHECKLIST_ITEMS.length} terpenuhi
+              </span>
+            </div>
+            <p className="mb-4 text-[12px] text-[#7a8899]">
+              Mengacu PMK 137. Centang setiap poin setelah dokumen pendukung
+              terkait ditinjau dan sesuai.
+            </p>
+
+            <div className="mb-2 text-[11px] font-semibold tracking-[0.04em] text-[#1a4e8f] uppercase">
+              Status Piutang
+            </div>
+            <div className="mb-4 space-y-2">
+              {CHECKLIST_STATUS_PIUTANG.map((item) => (
+                <ChecklistItemRow
+                  key={item.id}
+                  item={item}
+                  checked={!!checklist[item.id]}
+                  onToggle={() => toggleChecklist(item.id)}
+                />
+              ))}
+            </div>
+
+            <div className="mb-2 text-[11px] font-semibold tracking-[0.04em] text-[#1a4e8f] uppercase">
+              Upaya Penagihan
+            </div>
+            <div className="space-y-2">
+              {CHECKLIST_UPAYA_PENAGIHAN.map((item) => (
+                <ChecklistItemRow
+                  key={item.id}
+                  item={item}
+                  checked={!!checklist[item.id]}
+                  onToggle={() => toggleChecklist(item.id)}
+                />
+              ))}
+            </div>
+          </div>
 
           {/* Dokumen pendukung */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-              Dokumen Pendukung ({pengajuan.dokumen.length})
+              Dokumen Pendukung ({dokumen.length})
             </div>
-            {pengajuan.dokumen.length === 0 ? (
+            {dokumen.length === 0 ? (
               <div className="rounded-sm border border-dashed border-[#e2e8f2] py-6 text-center text-[13px] text-[#7a8899]">
                 Tidak ada dokumen yang dilampirkan.
               </div>
             ) : (
               <div className="space-y-2">
-                {pengajuan.dokumen.map((dok) => (
+                {dokumen.map((dok) => (
                   <DokumenItem
-                    key={dok.id}
+                    key={dok.key}
                     dok={dok}
                     onPreview={() => setPreviewDoc(dok)}
                   />
@@ -891,32 +733,32 @@ const PanelVerifikasi: React.FC<{
 
             <div className="mb-4 grid grid-cols-2 gap-2.5">
               <button
-                onClick={() => setKeputusan("DISETUJUI")}
+                onClick={() => setKeputusan("lolos_verifikasi")}
                 className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
-                  keputusan === "DISETUJUI"
+                  keputusan === "lolos_verifikasi"
                     ? "border-[#0f9b6e] bg-[#e6f7f2] text-[#0f9b6e]"
                     : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#a7e8d4] hover:bg-[#e6f7f2]"
                 }`}
               >
                 <IconCheck />
-                Diterima
+                Lolos Verifikasi
               </button>
               <button
-                onClick={() => setKeputusan("DITOLAK")}
+                onClick={() => setKeputusan("revisi")}
                 className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
-                  keputusan === "DITOLAK"
+                  keputusan === "revisi"
                     ? "border-[#c0392b] bg-[#fdecea] text-[#c0392b]"
                     : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#fecaca] hover:bg-[#fdecea]"
                 }`}
               >
                 <IconX />
-                Ditolak
+                Perlu Revisi
               </button>
             </div>
 
             <label className="mb-1.5 block text-[12px] font-semibold text-[#1a1a2e]">
               Keterangan / Catatan
-              {keputusan === "DITOLAK" && (
+              {keputusan === "revisi" && (
                 <span className="text-[#c0392b]"> *</span>
               )}
             </label>
@@ -925,8 +767,8 @@ const PanelVerifikasi: React.FC<{
               onChange={(e) => setCatatan(e.target.value)}
               rows={5}
               placeholder={
-                keputusan === "DITOLAK"
-                  ? "Jelaskan alasan penolakan / dokumen yang perlu dilengkapi…"
+                keputusan === "revisi"
+                  ? "Jelaskan alasan revisi / dokumen yang perlu dilengkapi…"
                   : "Catatan tambahan (opsional)…"
               }
               className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec]"
@@ -962,55 +804,74 @@ const PanelVerifikasi: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface VerifikasiPengajuanProps {
-  /** Seluruh pengajuan dari parent (single source of truth) */
-  semuaPengajuan?: Pengajuan[];
+  /** Seluruh pengajuan dari parent (single source of truth), mis. MOCK_DATA */
+  semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
   /** Dipanggil setelah BPKAD memutuskan verifikasi — parent yang update status */
-  onStatusUpdate?: (
-    id: string,
-    status: "DISETUJUI" | "DITOLAK",
-    catatan?: string,
-  ) => void;
+  onStatusUpdate?: (id: string, status: Keputusan, catatan?: string) => void;
 }
 
 export default function VerifikasiPengajuan({
   semuaPengajuan,
   onStatusUpdate,
 }: VerifikasiPengajuanProps = {}) {
-  // Derive antrean langsung dari props — tidak perlu state lokal terpisah.
-  // Parent (page.tsx) adalah single source of truth; saat onStatusUpdate
-  // dipanggil, parent mengubah status di semuaPengajuan, dan useMemo
-  // otomatis menyaring ulang sehingga pengajuan yang sudah diverifikasi
-  // hilang dari antrean tanpa perlu setState di dalam effect.
-  const antrean = useMemo(() => {
-    const sumber = semuaPengajuan ?? MOCK_PENGAJUAN;
-    return sumber.filter((p) => p.status === "DIAJUKAN").map(withMockDokumen);
+  // Urutan prioritas status: diajukan (perlu ditindak) paling atas, lalu
+  // revisi, dan lolos_verifikasi paling bawah. Di dalam grup status yang
+  // sama, urutkan dari updatedAt paling baru ke paling lama.
+  const STATUS_PRIORITY: Record<StatusFormulir, number> = {
+    diajukan: 0,
+    revisi: 1,
+    lolos_verifikasi: 2,
+  };
+
+  // Derive daftar pengajuan langsung dari props — tidak perlu state lokal
+  // terpisah. Parent (page.tsx) adalah single source of truth; saat
+  // onStatusUpdate dipanggil, parent mengubah status di semuaPengajuan, dan
+  // useMemo otomatis menyusun ulang urutan tanpa perlu setState di effect.
+  const daftarPengajuan = useMemo(() => {
+    const sumber = semuaPengajuan ?? [];
+    return [...sumber].sort((a, b) => {
+      const priorityDiff =
+        STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      if (priorityDiff !== 0) return priorityDiff;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
   }, [semuaPengajuan]);
 
+  // Jumlah yang masih benar-benar menunggu tindakan (dipakai di kartu ringkasan)
+  const jumlahMenunggu = useMemo(
+    () => daftarPengajuan.filter((p) => p.status === "diajukan").length,
+    [daftarPengajuan],
+  );
+
   const [riwayat, setRiwayat] = useState<
-    { pengajuan: Pengajuan; keputusan: Keputusan; catatan: string }[]
+    {
+      pengajuan: FormulirPenghapusanPiutangOPDRecord;
+      keputusan: Keputusan;
+      catatan: string;
+    }[]
   >([]);
 
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Pengajuan | null>(null);
+  const [selected, setSelected] =
+    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
 
   const filtered = useMemo(() => {
-    if (!search) return antrean;
+    if (!search) return daftarPengajuan;
     const q = search.toLowerCase();
-    return antrean.filter(
+    return daftarPengajuan.filter(
       (p) =>
         p.id.toLowerCase().includes(q) ||
-        p.dataPenanggung.namaWP.toLowerCase().includes(q) ||
-        p.unitPengaju.toLowerCase().includes(q),
+        p.namaOPD.toLowerCase().includes(q) ||
+        p.namaPenanggungJawab.toLowerCase().includes(q),
     );
-  }, [antrean, search]);
+  }, [daftarPengajuan, search]);
 
   const handleSubmitVerifikasi = (keputusan: Keputusan, catatan: string) => {
     if (!selected) return;
 
-    const hasil: Pengajuan = {
+    const hasil: FormulirPenghapusanPiutangOPDRecord = {
       ...selected,
       status: keputusan,
-      catatanReviewer: catatan || undefined,
     };
 
     // Catat di riwayat sesi ini
@@ -1037,8 +898,8 @@ export default function VerifikasiPengajuan({
     <div className="font-inherit">
       {/* ── Summary ── */}
       <div className="mb-5 flex flex-wrap gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-[18px] py-3.5">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-white">
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-4.5 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-white">
             <svg
               width="16"
               height="16"
@@ -1057,7 +918,7 @@ export default function VerifikasiPengajuan({
           </div>
           <div>
             <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {antrean.length}
+              {jumlahMenunggu}
             </div>
             <div className="mt-0.5 text-xs text-[#7a8899]">
               Menunggu Verifikasi
@@ -1065,30 +926,30 @@ export default function VerifikasiPengajuan({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-[18px] py-3.5">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-sm bg-[#0f9b6e] text-white">
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-4.5 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#0f9b6e] text-white">
             <IconCheck />
           </div>
           <div>
             <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {riwayat.filter((r) => r.keputusan === "DISETUJUI").length}
+              {riwayat.filter((r) => r.keputusan === "lolos_verifikasi").length}
             </div>
             <div className="mt-0.5 text-xs text-[#7a8899]">
-              Diterima (sesi ini)
+              Lolos Verifikasi (sesi ini)
             </div>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-[18px] py-3.5">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-sm bg-[#c0392b] text-white">
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4.5 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#c0392b] text-white">
             <IconX />
           </div>
           <div>
             <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {riwayat.filter((r) => r.keputusan === "DITOLAK").length}
+              {riwayat.filter((r) => r.keputusan === "revisi").length}
             </div>
             <div className="mt-0.5 text-xs text-[#7a8899]">
-              Ditolak (sesi ini)
+              Perlu Revisi (sesi ini)
             </div>
           </div>
         </div>
@@ -1096,13 +957,13 @@ export default function VerifikasiPengajuan({
 
       {/* ── Search bar ── */}
       <div className="mb-3.5 flex items-center gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px]">
-        <div className="flex min-w-[160px] flex-1 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-[7px]">
-          <span className="flex-shrink-0 text-[#7a8899]">
+        <div className="flex min-w-40 flex-1 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75">
+          <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
           <input
             type="text"
-            placeholder="Cari Nomor Registrasi, nama pemohon, atau unit…"
+            placeholder="Cari Nomor Registrasi, nama OPD, atau penanggung jawab…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full border-none bg-transparent text-[13px] text-[#1a1a2e] outline-none"
@@ -1116,8 +977,8 @@ export default function VerifikasiPengajuan({
             </button>
           )}
         </div>
-        <div className="flex-shrink-0 text-xs text-[#7a8899]">
-          {filtered.length} dari {antrean.length} pengajuan
+        <div className="shrink-0 text-xs text-[#7a8899]">
+          {filtered.length} dari {daftarPengajuan.length} pengajuan
         </div>
       </div>
 
@@ -1129,13 +990,13 @@ export default function VerifikasiPengajuan({
               <IconFileText />
             </div>
             <div className="text-sm font-semibold text-[#8a96a3]">
-              {antrean.length === 0
-                ? "Tidak ada pengajuan yang menunggu verifikasi"
+              {daftarPengajuan.length === 0
+                ? "Belum ada pengajuan"
                 : "Tidak ada pengajuan yang cocok"}
             </div>
             <div className="text-xs text-[#b0bac5]">
-              {antrean.length === 0
-                ? "Semua pengajuan dengan status Diajukan telah diverifikasi."
+              {daftarPengajuan.length === 0
+                ? "Belum ada formulir yang masuk dari OPD."
                 : "Coba ubah kata kunci pencarian."}
             </div>
           </div>
@@ -1147,7 +1008,8 @@ export default function VerifikasiPengajuan({
                   "No",
                   "Pengajuan",
                   "Piutang & Nominal",
-                  "Tgl Diajukan",
+                  "Status",
+                  "Tgl Surat",
                   "Aksi",
                 ].map((label, idx) => (
                   <th
@@ -1174,45 +1036,54 @@ export default function VerifikasiPengajuan({
                       {idx + 1}
                     </td>
 
-                    {/* Kolom gabungan: No Reg + Unit + Penanggung */}
+                    {/* Kolom gabungan: No Reg + OPD + Penanggung Jawab */}
                     <td className="p-[12px_14px]">
                       <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
                         {p.id}
                       </div>
                       <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                        {p.dataPenanggung.namaWP}
+                        {p.namaOPD}
                       </div>
                       <div className="mt-px text-[11px] text-[#7a8899]">
-                        {p.unitPengaju}
+                        {p.namaPenanggungJawab}
                       </div>
                     </td>
 
-                    {/* Kolom gabungan: Jenis + Nominal + Jalur */}
+                    {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
                     <td className="p-[12px_14px] whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-bold text-[#1a1a2e]">
-                          {formatRupiah(p.dataPenanggung.nominalUtang)}
+                          {formatRupiah(p.totalNilaiPiutang)}
                         </span>
-                        <JalurBadge jalur={p.jalur} />
+                        <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
                       </div>
                       <div className="mt-0.5 text-xs text-[#5a6474]">
-                        {labelJenisPiutang(p.dataPenanggung.jenisPiutang)}
+                        {labelJenisPiutang(p.jenisPiutang)}
                       </div>
                     </td>
 
-                    {/* Tgl Diajukan */}
-                    <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
-                      {formatTanggal(p.tanggalDibuat)}
+                    {/* Status */}
+                    <td className="p-[12px_14px] whitespace-nowrap">
+                      <StatusBadge status={p.status} />
                     </td>
 
-                    {/* Tombol Verifikasi */}
+                    {/* Tgl Surat */}
+                    <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
+                      {formatTanggal(p.tanggalSurat)}
+                    </td>
+
+                    {/* Tombol Aksi — hanya muncul untuk status "diajukan" */}
                     <td className="p-[12px_14px] whitespace-nowrap">
-                      <button
-                        onClick={() => setSelected(p)}
-                        className="rounded-sm bg-[#1a4e8f] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
-                      >
-                        Verifikasi
-                      </button>
+                      {p.status === "diajukan" ? (
+                        <button
+                          onClick={() => setSelected(p)}
+                          className="rounded-sm bg-[#1a4e8f] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
+                        >
+                          Verifikasi
+                        </button>
+                      ) : (
+                        <span className="text-xs text-[#b0bac5]">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -1244,7 +1115,7 @@ export default function VerifikasiPengajuan({
                       {pengajuan.id}
                     </td>
                     <td className="p-[12px_14px] text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                      {pengajuan.dataPenanggung.namaWP}
+                      {pengajuan.namaOPD}
                     </td>
                     <td className="p-[12px_14px] whitespace-nowrap">
                       <StatusBadge status={keputusan} />
