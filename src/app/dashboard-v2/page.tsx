@@ -291,7 +291,7 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-[#ebebeb] bg-white py-1 shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-[#ebebeb] bg-white py-1 shadow-lg">
           <p className="px-4 py-2 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
             Pilih User
           </p>
@@ -391,7 +391,7 @@ const Header: React.FC<HeaderProps> = ({
           <span>F</span>
         </div>
       </div>
-      <div className="hidden flex-1 sm:block" />
+      <div className="flex-1" />
 
       <RoleDropdown role={role} onChange={onRoleChange} />
 

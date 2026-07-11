@@ -1579,9 +1579,11 @@ export default function SiPuspitaLandingPage() {
           >
             <div className="flex flex-col gap-3 border-t border-gray-100 bg-white/90 px-6 py-5 backdrop-blur-md">
               <hr className="my-1 border-gray-200" />
-              <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]">
-                Ajukan Sekarang
-              </button>
+              <Link href={"/dashboard-v2"} onClick={() => setMobileOpen(false)}>
+                <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]">
+                  Ajukan Sekarang
+                </button>
+              </Link>
               <button
                 onClick={() => {
                   setLoginOpen(true);

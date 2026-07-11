@@ -210,7 +210,7 @@ const DateInput = ({
         value={value ? formatDisplayDate(value) : ""}
         placeholder={placeholder}
         readOnly
-        className={`pointer-events-none h-full w-full rounded-md border px-3 py-0 text-sm ${borderColor} ${bgColor}`}
+        className={`pointer-events-none h-full w-full rounded-md border px-3 py-0 text-sm text-gray-900 scheme-light placeholder:text-gray-500 ${borderColor} ${bgColor}`}
       />
     </div>
   );
@@ -1159,12 +1159,12 @@ export default function AjukanPermohonanWizard({
           onBlur={() => markTouched(field.name)}
           placeholder={field.placeholder}
           disabled={field.disabled}
-          className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
+          className={`w-full rounded-md border px-3 py-2.5 text-sm scheme-light transition outline-none placeholder:text-gray-500 ${
             field.disabled
               ? "cursor-not-allowed bg-gray-100 text-gray-600"
               : isTouched && error
-                ? "border-red-400 bg-red-50"
-                : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
+                ? "border-red-400 bg-red-50 text-gray-900"
+                : "border-gray-300 bg-white text-gray-900 focus:ring-1 focus:ring-[#1a4e8f]/30"
           }`}
         />
         {isTouched && error && <p className="text-sm text-red-600">{error}</p>}
@@ -1216,9 +1216,9 @@ export default function AjukanPermohonanWizard({
                   value="ada"
                   checked={form.opsiDokumenDasarPiutang === "ada"}
                   onChange={() => updateField("opsiDokumenDasarPiutang", "ada")}
-                  className="h-4 w-4 border-gray-300 text-blue-600"
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                 />
-                <span className="text-sm">Ada</span>
+                <span className="text-sm text-gray-800">Ada</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1229,9 +1229,9 @@ export default function AjukanPermohonanWizard({
                   onChange={() =>
                     updateField("opsiDokumenDasarPiutang", "tidak_ada")
                   }
-                  className="h-4 w-4 border-gray-300 text-blue-600"
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                 />
-                <span className="text-sm">Tidak ada</span>
+                <span className="text-sm text-gray-800">Tidak ada</span>
               </label>
             </div>
             {touched.opsiDokumenDasarPiutang &&
@@ -1289,9 +1289,11 @@ export default function AjukanPermohonanWizard({
                   onChange={() =>
                     updateField("opsiRiwayatPenagihan", "riwayat")
                   }
-                  className="h-4 w-4 border-gray-300 text-blue-600"
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                 />
-                <span className="text-sm">Ada bukti riwayat penagihan</span>
+                <span className="text-sm text-gray-800">
+                  Ada bukti riwayat penagihan
+                </span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1302,9 +1304,11 @@ export default function AjukanPermohonanWizard({
                   onChange={() =>
                     updateField("opsiRiwayatPenagihan", "pernyataan")
                   }
-                  className="h-4 w-4 border-gray-300 text-blue-600"
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                 />
-                <span className="text-sm">Ada bukti pernyataan dari OPD</span>
+                <span className="text-sm text-gray-800">
+                  Ada bukti pernyataan dari OPD
+                </span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1315,9 +1319,9 @@ export default function AjukanPermohonanWizard({
                   onChange={() =>
                     updateField("opsiRiwayatPenagihan", "tidak_ada")
                   }
-                  className="h-4 w-4 border-gray-300 text-blue-600"
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                 />
-                <span className="text-sm">Tidak ada bukti</span>
+                <span className="text-sm text-gray-800">Tidak ada bukti</span>
               </label>
             </div>
             {touched.opsiRiwayatPenagihan && errors.opsiRiwayatPenagihan && (
@@ -1546,7 +1550,7 @@ export default function AjukanPermohonanWizard({
                           onChange={(e) =>
                             updatePernyataan(key, e.target.checked)
                           }
-                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                          className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1a4e8f] scheme-light"
                         />
                         <span className="text-sm text-gray-700">
                           {key === "dataBenar" &&
@@ -1593,10 +1597,10 @@ export default function AjukanPermohonanWizard({
                         }}
                         onBlur={() => markTouched("jumlahDebitur")}
                         placeholder="Masukkan jumlah debitur"
-                        className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
+                        className={`w-full rounded-md border px-3 py-2.5 text-sm text-gray-900 scheme-light transition outline-none placeholder:text-gray-500 ${
                           touched.jumlahDebitur && errors.jumlahDebitur
                             ? "border-red-400 bg-red-50"
-                            : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
+                            : "border-gray-300 bg-white focus:ring-1 focus:ring-[#1a4e8f]/30"
                         }`}
                       />
                       {touched.jumlahDebitur && errors.jumlahDebitur && (
@@ -1625,10 +1629,10 @@ export default function AjukanPermohonanWizard({
                         }}
                         onBlur={() => markTouched("totalNilaiPiutang")}
                         placeholder="Masukkan total nilai piutang"
-                        className={`w-full rounded-md border px-3 py-2.5 text-sm transition outline-none ${
+                        className={`w-full rounded-md border px-3 py-2.5 text-sm text-gray-900 scheme-light transition outline-none placeholder:text-gray-500 ${
                           touched.totalNilaiPiutang && errors.totalNilaiPiutang
                             ? "border-red-400 bg-red-50"
-                            : "border-gray-300 focus:ring-1 focus:ring-[#1a4e8f]/30"
+                            : "border-gray-300 bg-white focus:ring-1 focus:ring-[#1a4e8f]/30"
                         }`}
                       />
                       {touched.totalNilaiPiutang &&
@@ -1663,9 +1667,9 @@ export default function AjukanPermohonanWizard({
                                     "Piutang Retribusi Daerah",
                                   )
                                 }
-                                className="h-4 w-4 border-gray-300 text-blue-600"
+                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                               />
-                              <span className="text-sm">
+                              <span className="text-sm text-gray-800">
                                 Piutang Retribusi Daerah
                               </span>
                             </label>
@@ -1684,9 +1688,9 @@ export default function AjukanPermohonanWizard({
                                     "Piutang Lain-lain PAD yang Sah",
                                   )
                                 }
-                                className="h-4 w-4 border-gray-300 text-blue-600"
+                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                               />
-                              <span className="text-sm">
+                              <span className="text-sm text-gray-800">
                                 Piutang Lain-lain PAD yang Sah
                               </span>
                             </label>
@@ -1701,9 +1705,11 @@ export default function AjukanPermohonanWizard({
                                 onChange={() =>
                                   updateField("jenisPiutang", "Piutang Lainnya")
                                 }
-                                className="h-4 w-4 border-gray-300 text-blue-600"
+                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                               />
-                              <span className="text-sm">Piutang Lainnya</span>
+                              <span className="text-sm text-gray-800">
+                                Piutang Lainnya
+                              </span>
                             </label>
                           </div>
                           {touched.jenisPiutang && errors.jenisPiutang && (
@@ -1734,9 +1740,9 @@ export default function AjukanPermohonanWizard({
                                     "Penghapusan Bersyarat",
                                   )
                                 }
-                                className="h-4 w-4 border-gray-300 text-blue-600"
+                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                               />
-                              <span className="text-sm">
+                              <span className="text-sm text-gray-800">
                                 Penghapusan Bersyarat
                               </span>
                             </label>
@@ -1754,9 +1760,9 @@ export default function AjukanPermohonanWizard({
                                     "Penghapusan Mutlak",
                                   )
                                 }
-                                className="h-4 w-4 border-gray-300 text-blue-600"
+                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                               />
-                              <span className="text-sm">
+                              <span className="text-sm text-gray-800">
                                 Penghapusan Mutlak
                               </span>
                             </label>
