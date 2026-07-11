@@ -361,7 +361,7 @@ function ModalSOP() {
 
       {/* CTA — Toggle PDF SOP: beda struktur dari kartu langkah, tapi tenang secara warna */}
       <div>
-        <p className="mb-2 text-[11.5px] font-bold tracking-[0.1em] text-gray-500 uppercase">
+        <p className="mb-2 text-[11.5px] font-bold tracking-widest text-gray-500 uppercase">
           Dokumen Resmi
         </p>
         <button
@@ -436,7 +436,7 @@ function ModalSOP() {
       {/* Pemisah section — memisahkan dokumen dari daftar langkah */}
       <div className="flex items-center gap-3 pt-1">
         <div className="h-px flex-1 bg-gray-200" />
-        <p className="shrink-0 text-[11.5px] font-bold tracking-[0.1em] text-gray-500 uppercase">
+        <p className="shrink-0 text-[11.5px] font-bold tracking-widest text-gray-500 uppercase">
           Tahapan Proses
         </p>
         <div className="h-px flex-1 bg-gray-200" />
@@ -875,48 +875,6 @@ function ModalInformasiUmum() {
   );
 }
 
-function ModalDaftarPengajuan() {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm leading-relaxed text-gray-500">
-        Daftar seluruh pengajuan penghapusan piutang yang sedang berjalan di
-        semua OPD.
-      </p>
-      <div className="space-y-2">
-        {DAFTAR_PENGAJUAN_BUNGA.map((d) => (
-          <div
-            key={d.no}
-            className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">{d.opd}</p>
-                <p className="mt-0.5 text-xs text-gray-400">
-                  {d.no} · Jalur {d.jalur}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${d.warna}`}
-              >
-                {d.status}
-              </span>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-xs text-gray-400">Nilai:</span>
-              <span className="text-xs font-medium text-amber-600">
-                {d.nilai}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="text-center text-xs text-gray-400">
-        Menampilkan 4 dari 4 pengajuan aktif · TA 2025
-      </p>
-    </div>
-  );
-}
-
 // ─── Bunga Menu — Kelopak Config ──────────────────────────────────────────────
 
 const KELOPAK_LIST: KelopakItem[] = [
@@ -961,15 +919,6 @@ const KELOPAK_LIST: KelopakItem[] = [
     modalContent: <ModalInformasiUmum />,
   },
 ];
-
-const KELOPAK_DAFTAR: KelopakItem = {
-  id: "daftar",
-  label: "Daftar",
-  icon: "☑️",
-  tooltip: "Daftar Pengajuan",
-  modalTitle: "Daftar Pengajuan",
-  modalContent: <ModalDaftarPengajuan />,
-};
 
 // ─── Bunga Modal ──────────────────────────────────────────────────────────────
 function ModalBunga({
@@ -1423,7 +1372,7 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ NAVBAR ══════════════════ */}
       <header className="sticky top-0 z-50">
         <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
-          <div className="mx-auto flex h-17 max-w-320 items-center justify-between px-6 sm:px-8 lg:px-10">
+          <div className="mx-auto flex h-17 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-10">
             {/* Logo — ikon bunga + tulisan SI PUSPITA */}
             <div className="flex shrink-0 items-center gap-2.5">
               <Image
@@ -1530,7 +1479,7 @@ export default function SiPuspitaLandingPage() {
           <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.09),transparent)]" />
 
           {/* ── Content wrapper ── */}
-          <div className="relative mx-auto w-full max-w-320 px-5 py-14 sm:px-8 sm:py-18 lg:px-10 lg:py-24">
+          <div className="relative mx-auto w-full max-w-7xl px-5 py-14 sm:px-8 sm:py-18 lg:px-10 lg:py-24">
             <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:gap-12">
               {/* ── Kiri: teks utama ── */}
               <div className="min-w-0 flex-1">
@@ -1581,36 +1530,59 @@ export default function SiPuspitaLandingPage() {
 
                 {/* CTA utama */}
                 <div className="mt-8 flex w-full max-w-2xl flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-                  <a
-                    href="#formulir"
+                  <Link
+                    href="/dashboard-v2"
                     className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#0f2d5e] px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-lg shadow-[#0f2d5e]/20 transition-all hover:bg-[#153a75] active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     Ajukan Permohonan
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </a>
-                  <a
-                    href="#sop"
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
+                  </Link>
+                  <Link
+                    href="/dashboard-v2"
+                    className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
                   >
-                    Lihat SOP &amp; Alur
-                  </a>
+                    Verifikasi oleh PPKD
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </Link>
                 </div>
 
                 {/* Tagline chip */}
                 <div className="mt-8 flex flex-wrap items-center gap-2.5 border-t border-[#0f2d5e]/10 pt-6 sm:gap-3">
                   {[
-                    { label: "Digital", icon: Smartphone },
-                    { label: "Terintegrasi", icon: Link2 },
-                    { label: "Real Time", icon: Zap },
-                  ].map(({ label, icon: Icon }) => (
+                    {
+                      label: "Digital",
+                      icon: Smartphone,
+                      border: "border-blue-200",
+                      iconBg: "from-blue-500 to-blue-700",
+                      text: "text-blue-700",
+                    },
+                    {
+                      label: "Terintegrasi",
+                      icon: Link2,
+                      border: "border-amber-200",
+                      iconBg: "from-amber-500 to-amber-600",
+                      text: "text-amber-700",
+                    },
+                    {
+                      label: "Real Time",
+                      icon: Zap,
+                      border: "border-emerald-200",
+                      iconBg: "from-emerald-500 to-emerald-600",
+                      text: "text-emerald-700",
+                    },
+                  ].map(({ label, icon: Icon, border, iconBg, text }) => (
                     <div
                       key={label}
-                      className="group flex items-center gap-1.5 rounded-full border border-[#0f2d5e]/12 bg-white py-1 pr-3.5 pl-1 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c8a020]/50 hover:shadow-md sm:gap-2 sm:py-1.5 sm:pr-4 sm:pl-1.5"
+                      className={`group flex items-center gap-1.5 rounded-full border bg-white py-1 pr-3.5 pl-1 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:gap-2 sm:py-1.5 sm:pr-4 sm:pl-1.5 ${border}`}
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#1a4e8f] to-[#0f2d5e] text-white shadow-sm transition-transform duration-200 group-hover:scale-105 sm:h-7 sm:w-7">
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-white shadow-sm transition-transform duration-200 group-hover:scale-105 sm:h-7 sm:w-7 ${iconBg}`}
+                      >
                         <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                       </span>
-                      <span className="text-[12.5px] font-semibold text-[#0f2d5e] sm:text-[13.5px]">
+                      <span
+                        className={`text-[12.5px] font-semibold sm:text-[13.5px] ${text}`}
+                      >
                         {label}
                       </span>
                     </div>
@@ -1682,7 +1654,7 @@ export default function SiPuspitaLandingPage() {
         </div>
 
         {/* ── Konten utama — dipadatkan jadi satu grid, tanpa strip terpisah ── */}
-        <div className="relative mx-auto max-w-320 px-6 py-10 sm:px-8 lg:px-10">
+        <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-10">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
             {/* Brand + deskripsi singkat */}
             <div className="max-w-80 shrink-0">
@@ -1805,7 +1777,7 @@ export default function SiPuspitaLandingPage() {
 
         {/* Bottom bar */}
         <div className="relative border-t border-white/8 bg-[#071429]">
-          <div className="mx-auto flex max-w-320 flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row sm:px-8 lg:px-10">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row sm:px-8 lg:px-10">
             <p className="text-[13px] text-slate-500">
               © {new Date().getFullYear()} BPKAD Kabupaten Kendal. Hak cipta
               dilindungi.
