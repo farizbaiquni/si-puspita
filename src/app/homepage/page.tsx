@@ -15,10 +15,14 @@ import {
   FileText,
   ExternalLink,
   Download,
+  Smartphone,
+  Link2,
+  Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import AjukanPermohonanWizard from "@/app/dashboard-v2/contents/opd/ajukan-permohonan/AjukanPermohonan";
 
 // ─── Bunga Menu — Data & Types ────────────────────────────────────────────────
 
@@ -638,79 +642,7 @@ function ModalUploadDokumen() {
 }
 
 function ModalPengajuan() {
-  const [jalur, setJalur] = useState<"pupn" | "non-pupn" | null>(null);
-  const [nilai, setNilai] = useState("");
-
-  const formatRupiah = (val: string) => {
-    const num = val.replace(/\D/g, "");
-    if (!num) return "";
-    return "Rp " + parseInt(num).toLocaleString("id-ID");
-  };
-
-  const handleNilai = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    setNilai(raw);
-    if (raw) {
-      setJalur(parseInt(raw) >= 8000000 ? "pupn" : "non-pupn");
-    } else {
-      setJalur(null);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm leading-relaxed text-gray-500">
-        Isi formulir di bawah untuk memulai pengajuan. Sistem akan otomatis
-        menentukan jalur proses berdasarkan nilai piutang.
-      </p>
-      <div className="space-y-3">
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-gray-600">
-            Nama OPD
-          </label>
-          <input
-            type="text"
-            placeholder="Contoh: Dinas Kesehatan Kab. Kendal"
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-gray-600">
-            Nilai Piutang
-          </label>
-          <input
-            type="text"
-            placeholder="Rp 0"
-            value={nilai ? formatRupiah(nilai) : ""}
-            onChange={handleNilai}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
-          />
-        </div>
-        {jalur && (
-          <div
-            className={`rounded-lg border p-3 text-xs font-medium ${jalur === "pupn" ? "border-blue-200 bg-blue-50 text-blue-700" : "border-green-200 bg-green-50 text-green-700"}`}
-          >
-            {jalur === "pupn"
-              ? "⚡ Jalur PUPN — nilai ≥ Rp8.000.000, diteruskan ke Panitia Urusan Piutang Negara."
-              : "✅ Jalur Non-PUPN — nilai < Rp8.000.000, diproses langsung oleh BPKAD."}
-          </div>
-        )}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-gray-600">
-            Keterangan Singkat
-          </label>
-          <textarea
-            rows={3}
-            placeholder="Jelaskan latar belakang pengajuan penghapusan piutang..."
-            className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
-          />
-        </div>
-      </div>
-      <button className="w-full rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-[#0b1f3a] transition hover:bg-amber-400 active:scale-[0.98]">
-        Ajukan Permohonan →
-      </button>
-    </div>
-  );
+  return <AjukanPermohonanWizard />;
 }
 
 function ModalLacak() {
@@ -1111,7 +1043,8 @@ function ModalBunga({
         className={`flex w-full overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl sm:mr-95 ${
           displayedItem.id === "informasi" ||
           displayedItem.id === "sop&flowchart" ||
-          displayedItem.id === "upload-dokumen"
+          displayedItem.id === "upload-dokumen" ||
+          displayedItem.id === "pengajuan"
             ? "max-w-260"
             : "max-w-160"
         }`}
@@ -1487,7 +1420,7 @@ export default function SiPuspitaLandingPage() {
       {/* ══════════════════ NAVBAR ══════════════════ */}
       <header className="sticky top-0 z-50">
         <nav className="border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
-          <div className="mx-auto flex h-17 items-center justify-between px-26">
+          <div className="mx-auto flex h-17 max-w-320 items-center justify-between px-6 sm:px-8 lg:px-10">
             {/* Logo — ikon bunga + tulisan SI PUSPITA */}
             <div className="flex shrink-0 items-center gap-2.5">
               <Image
@@ -1594,7 +1527,7 @@ export default function SiPuspitaLandingPage() {
           <div className="pointer-events-none absolute top-0 right-0 h-full w-1/2 bg-[radial-gradient(ellipse_600px_300px_at_80%_50%,rgba(200,160,60,0.09),transparent)]" />
 
           {/* ── Content wrapper ── */}
-          <div className="relative mx-auto w-full max-w-275 px-8 py-24">
+          <div className="relative mx-auto w-full max-w-320 px-6 py-24 sm:px-8 lg:px-10">
             <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center">
               {/* ── Kiri: teks utama ── */}
               <div className="min-w-0 flex-1">
@@ -1604,13 +1537,43 @@ export default function SiPuspitaLandingPage() {
                 </div>
 
                 <div>
-                  <p className="max-w-xl text-justify leading-relaxed text-slate-600">
-                    Si Puspita merupakan sistem informasi yang dirancang untuk
-                    mendukung proses pengusulan penghapusan piutang daerah
-                    secara digital. Melalui sistem yang terintegrasi, setiap
-                    tahapan pengajuan dapat dikelola secara lebih mudah, cepat,
-                    transparan, dan akuntabel.
+                  <p className="max-w-2xl text-[16px] leading-relaxed text-slate-600">
+                    <span className="font-semibold text-[#0f2d5e]">
+                      SI PUSPITA (Sistem Pengajuan Penghapusan Piutang
+                      Terintegrasi)
+                    </span>{" "}
+                    adalah sebuah sistem layanan digital sederhana yang
+                    dirancang untuk:
                   </p>
+                  <div className="mt-4 grid max-w-2xl grid-cols-1 gap-x-5 gap-y-3.5 sm:grid-cols-2">
+                    {[
+                      <>
+                        Memfasilitasi pengajuan penghapusan piutang oleh OPD
+                        secara <em>online</em>
+                      </>,
+                      <>
+                        Mengintegrasikan SOP, <em>flowchart</em>, dan alur
+                        persetujuan antar-stakeholder
+                      </>,
+                      <>
+                        Menyediakan akses pelacakan status pengajuan secara{" "}
+                        <em>real-time</em>
+                      </>,
+                      <>
+                        Menyederhanakan dokumentasi dan validasi proses
+                        penghapusan piutang
+                      </>,
+                    ].map((t, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0f2d5e] text-[12.5px] font-bold text-white">
+                          {i + 1}
+                        </span>
+                        <p className="text-[15px] leading-snug text-slate-600">
+                          {t}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* CTA utama */}
@@ -1630,34 +1593,25 @@ export default function SiPuspitaLandingPage() {
                   </a>
                 </div>
 
-                {/* Strip statistik */}
-                <div className="mt-9 flex gap-6 border-t border-[#0f2d5e]/10 pt-6">
-                  <div>
-                    <p className="text-xl leading-none font-bold text-[#0f2d5e]">
-                      2.4K+
-                    </p>
-                    <p className="mt-1 text-[11px] tracking-wider text-slate-400 uppercase">
-                      Permohonan Diproses
-                    </p>
-                  </div>
-                  <div className="w-px self-stretch bg-[#0f2d5e]/10" />
-                  <div>
-                    <p className="text-xl leading-none font-bold text-[#0f2d5e]">
-                      98%
-                    </p>
-                    <p className="mt-1 text-[11px] tracking-wider text-slate-400 uppercase">
-                      Tingkat Penyelesaian
-                    </p>
-                  </div>
-                  <div className="w-px self-stretch bg-[#0f2d5e]/10" />
-                  <div>
-                    <p className="text-xl leading-none font-bold text-[#0f2d5e]">
-                      &lt; 3 Hari
-                    </p>
-                    <p className="mt-1 text-[11px] tracking-wider text-slate-400 uppercase">
-                      Rata-rata Proses
-                    </p>
-                  </div>
+                {/* Tagline chip */}
+                <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-[#0f2d5e]/10 pt-6">
+                  {[
+                    { label: "Digital", icon: Smartphone },
+                    { label: "Terintegrasi", icon: Link2 },
+                    { label: "Real Time", icon: Zap },
+                  ].map(({ label, icon: Icon }) => (
+                    <div
+                      key={label}
+                      className="group flex items-center gap-2 rounded-full border border-[#0f2d5e]/12 bg-white py-1.5 pr-4 pl-1.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#c8a020]/50 hover:shadow-md"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#1a4e8f] to-[#0f2d5e] text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="text-[13.5px] font-semibold text-[#0f2d5e]">
+                        {label}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1724,41 +1678,11 @@ export default function SiPuspitaLandingPage() {
           <div className="absolute bottom-0 left-1/4 h-80 w-80 rounded-full bg-[#c8a020]/6 blur-3xl" />
         </div>
 
-        {/* ── Strip bantuan cepat ── */}
-        <div className="relative border-b border-white/8">
-          <div className="mx-auto flex max-w-300 flex-col gap-5 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[17px] font-bold text-white">
-                Butuh bantuan seputar pengajuan?
-              </p>
-              <p className="mt-1 text-[13px] text-slate-400">
-                Tim BPKAD siap membantu OPD pada jam layanan yang tersedia.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <a
-                href="tel:0294381124"
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:border-white/30 hover:bg-white/5"
-              >
-                <Phone className="h-3.5 w-3.5" />
-                (0294) 381124
-              </a>
-              <a
-                href="mailto:bpkad@kendalkab.go.id"
-                className="inline-flex items-center gap-2 rounded-full bg-[#e8c84a] px-5 py-2.5 text-[13px] font-semibold text-[#0a1b38] transition-colors hover:bg-[#f3d668]"
-              >
-                <Mail className="h-3.5 w-3.5" />
-                Email Kami
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Konten utama ── */}
-        <div className="relative mx-auto max-w-300 px-6 py-16">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.9fr_0.9fr_1fr]">
-            {/* Col 1 — Brand + alamat */}
-            <div>
+        {/* ── Konten utama — dipadatkan jadi satu grid, tanpa strip terpisah ── */}
+        <div className="relative mx-auto max-w-320 px-6 py-10 sm:px-8 lg:px-10">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+            {/* Brand + deskripsi singkat */}
+            <div className="max-w-80 shrink-0">
               <Image
                 src="/Logo_Si-Puspita_v2.png"
                 alt="Logo SI PUSPITA"
@@ -1766,120 +1690,111 @@ export default function SiPuspitaLandingPage() {
                 height={640}
                 quality={100}
                 priority
-                className="mb-5 w-36 rounded-lg bg-white p-1.5"
+                className="mb-3.5 w-28 rounded-lg bg-white p-1.5"
               />
-              <p className="mb-6 max-w-75 text-[13px] leading-relaxed text-slate-400">
-                Sistem Pengajuan Penghapusan Piutang Terintegrasi — platform
-                digital layanan BPKAD Kabupaten Kendal untuk proses yang lebih
-                cepat, transparan, dan akuntabel.
+              <p className="text-[14px] leading-relaxed text-slate-400">
+                Sistem Pengajuan Penghapusan Piutang Terintegrasi — layanan
+                digital BPKAD Kabupaten Kendal.
               </p>
-              <div className="flex flex-col gap-3.5 text-[13px]">
-                <div className="flex items-start gap-3 text-slate-400">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5">
-                    <MapPin className="h-3.5 w-3.5 text-[#e8c84a]" />
-                  </span>
-                  <span className="pt-1">
-                    Jl. Soekarno Hatta No.1, Kendal, Jawa Tengah 51311
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-slate-400">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5">
-                    <Phone className="h-3.5 w-3.5 text-[#e8c84a]" />
-                  </span>
-                  <span>(0294) 381124</span>
-                </div>
-              </div>
             </div>
 
-            {/* Col 2 — Layanan */}
-            <div>
-              <h4 className="mb-5 text-[12px] font-bold tracking-[0.15em] text-white uppercase">
-                Layanan
-              </h4>
-              <ul className="flex flex-col gap-3">
-                {[
-                  { label: "Ajukan Permohonan", href: "#formulir" },
-                  { label: "Lacak Status Berkas", href: "#tracking" },
-                  { label: "Unduh Formulir", href: "#" },
-                  { label: "SOP & Flowchart", href: "#sop" },
-                  { label: "FAQ", href: "#kontak" },
-                ].map(({ label, href }) => (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      className="group relative inline-flex items-center gap-1.5 text-[13px] text-slate-400 transition-colors duration-200 hover:text-white"
-                    >
-                      <span className="h-1 w-1 shrink-0 rounded-full bg-[#e8c84a]/50 transition-colors group-hover:bg-[#e8c84a]" />
-                      {label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Col 3 — Informasi */}
-            <div>
-              <h4 className="mb-5 text-[12px] font-bold tracking-[0.15em] text-white uppercase">
-                Informasi
-              </h4>
-              <ul className="flex flex-col gap-3">
-                {[
-                  { label: "Tentang SI PUSPITA", href: "#" },
-                  { label: "Dasar Hukum", href: "#" },
-                  { label: "Kebijakan Privasi", href: "#" },
-                  { label: "Ketentuan Layanan", href: "#" },
-                  { label: "Aksesibilitas", href: "#" },
-                ].map(({ label, href }) => (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      className="group relative inline-flex items-center gap-1.5 text-[13px] text-slate-400 transition-colors duration-200 hover:text-white"
-                    >
-                      <span className="h-1 w-1 shrink-0 rounded-full bg-[#e8c84a]/50 transition-colors group-hover:bg-[#e8c84a]" />
-                      {label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Col 4 — Jam Layanan + Email */}
-            <div>
-              <h4 className="mb-5 flex items-center gap-2 text-[12px] font-bold tracking-[0.15em] text-white uppercase">
-                <Clock className="h-3.5 w-3.5 text-[#e8c84a]" />
-                Jam Layanan
-              </h4>
-              <div className="mb-6 flex flex-col gap-2.5 rounded-xl border border-white/8 bg-white/3 p-4">
-                {[
-                  { hari: "Senin — Kamis", jam: "08.00 — 15.30 WIB" },
-                  { hari: "Jumat", jam: "08.00 — 11.00 WIB" },
-                  { hari: "Sabtu — Minggu", jam: "Tutup" },
-                ].map(({ hari, jam }, i) => (
-                  <div
-                    key={hari}
-                    className={`flex items-center justify-between text-[12.5px] ${i > 0 ? "border-t border-white/8 pt-2.5" : ""}`}
-                  >
-                    <span className="text-slate-400">{hari}</span>
-                    <span
-                      className={`font-semibold ${jam === "Tutup" ? "text-red-400" : "text-white"}`}
-                    >
-                      {jam}
+            {/* Grid info: Kontak · Jam Layanan · Hubungi Kami */}
+            <div className="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-3 lg:w-full lg:max-w-160">
+              {/* Kontak */}
+              <div>
+                <h4 className="mb-3 text-[12px] font-bold tracking-[0.15em] text-[#e8c84a] uppercase">
+                  Kontak
+                </h4>
+                <div className="flex flex-col gap-2.5 text-[14px] text-slate-400">
+                  <div className="flex items-start gap-2.5">
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#e8c84a]/70" />
+                    <span className="leading-snug">
+                      Jl. Notomudigdo, Karanggeneng, Pegulon, Kec. Kendal, Jawa
+                      Tengah 51313
                     </span>
                   </div>
-                ))}
+                  <a
+                    href="tel:0294381301"
+                    className="flex items-center gap-2.5 transition-colors hover:text-white"
+                  >
+                    <Phone className="h-3.5 w-3.5 shrink-0 text-[#e8c84a]/70" />
+                    (0294) 381301-381801
+                  </a>
+                  <a
+                    href="mailto:bpkad.kendal@gmail.com"
+                    className="flex items-center gap-2.5 transition-colors hover:text-white"
+                  >
+                    <Mail className="h-3.5 w-3.5 shrink-0 text-[#e8c84a]/70" />
+                    bpkad.kendal@gmail.com
+                  </a>
+                  <a
+                    href="https://bpkad.kendalkab.go.id"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 transition-colors hover:text-white"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#e8c84a]/70" />
+                    bpkad.kendalkab.go.id
+                  </a>
+                </div>
               </div>
 
-              {/* Email card */}
-              <div className="rounded-xl border border-[#e8c84a]/20 bg-[#e8c84a]/6 p-4">
-                <div className="mb-1 text-[10px] font-semibold tracking-widest text-[#e8c84a] uppercase">
-                  Email Resmi
+              {/* Jam Layanan — ringkas tanpa card besar */}
+              <div>
+                <h4 className="mb-3 flex items-center gap-1.5 text-[12px] font-bold tracking-[0.15em] text-[#e8c84a] uppercase">
+                  <Clock className="h-3.5 w-3.5" />
+                  Jam Layanan
+                  <span className="font-normal tracking-normal text-slate-500 normal-case">
+                    (WIB)
+                  </span>
+                </h4>
+                <div className="flex flex-col gap-2 text-[13.5px]">
+                  {[
+                    { hari: "Senin–Kamis", jam: "08.00–15.30" },
+                    { hari: "Jumat", jam: "08.00–10.30" },
+                    { hari: "Sabtu–Minggu", jam: "Tutup" },
+                  ].map(({ hari, jam }) => (
+                    <div
+                      key={hari}
+                      className="flex items-baseline justify-between gap-3"
+                    >
+                      <span className="shrink-0 whitespace-nowrap text-slate-400">
+                        {hari}
+                      </span>
+                      <span
+                        className={`shrink-0 font-semibold whitespace-nowrap ${jam === "Tutup" ? "text-red-400" : "text-white"}`}
+                      >
+                        {jam}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <a
-                  href="mailto:bpkad@kendalkab.go.id"
-                  className="text-[13px] font-medium text-white transition-colors duration-200 hover:text-[#e8c84a]"
-                >
-                  bpkad@kendalkab.go.id
-                </a>
+              </div>
+
+              {/* CTA Hubungi Kami — padat, gabungan dari strip lama */}
+              <div>
+                <h4 className="mb-3 text-[12px] font-bold tracking-[0.15em] text-[#e8c84a] uppercase">
+                  Butuh Bantuan?
+                </h4>
+                <p className="mb-3 text-[14px] leading-snug text-slate-400">
+                  Tim BPKAD siap membantu OPD pada jam layanan.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <a
+                    href="tel:0294381301"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:border-white/30 hover:bg-white/5"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    Telepon Kami
+                  </a>
+                  <a
+                    href="mailto:bpkad.kendal@gmail.com"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#e8c84a] px-4 py-2 text-[13.5px] font-semibold text-[#0a1b38] transition-colors hover:bg-[#f3d668]"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Email Kami
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -1887,12 +1802,12 @@ export default function SiPuspitaLandingPage() {
 
         {/* Bottom bar */}
         <div className="relative border-t border-white/8 bg-[#071429]">
-          <div className="mx-auto flex max-w-300 flex-col items-center justify-between gap-3 px-6 py-5 sm:flex-row">
-            <p className="text-[12px] text-slate-500">
+          <div className="mx-auto flex max-w-320 flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row sm:px-8 lg:px-10">
+            <p className="text-[13px] text-slate-500">
               © {new Date().getFullYear()} BPKAD Kabupaten Kendal. Hak cipta
               dilindungi.
             </p>
-            <div className="flex items-center gap-2 text-[12px] text-slate-500">
+            <div className="flex items-center gap-2 text-[13px] text-slate-500">
               <span className="hidden sm:inline">Dikembangkan oleh</span>
               <span className="font-medium text-[#e8c84a]/90">
                 Sub Bidang Akuntansi dan Pelaporan
