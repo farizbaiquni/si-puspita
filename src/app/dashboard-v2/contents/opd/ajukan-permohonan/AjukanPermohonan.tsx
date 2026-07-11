@@ -1,6 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef, ChangeEvent } from "react";
+import type {
+  FormulirPenghapusanPiutangOPDRecord,
+  JenisPenghapusan,
+  JenisPiutang,
+  NominatifPiutangRecord,
+  OpsiDokumenDasarPiutang,
+  OpsiRiwayatPenagihan,
+  UploadedFileRef,
+} from "@/types/types-v2";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -71,6 +80,85 @@ const formatRupiah = (value: string): string => {
 
 const parseRupiah = (value: string): string => {
   return value.replace(/[^0-9]/g, "");
+};
+
+/**
+ * Konversi File mentah -> UploadedFileRef.
+ * Catatan: di sini belum ada proses upload sungguhan ke storage (S3 /
+ * Supabase Storage / dll). URL dibuat via createObjectURL agar dokumen
+ * tetap bisa dibuka/di-preview oleh BPKAD di panel verifikasi selama sesi
+ * browser ini berjalan. Saat backend upload sudah tersedia, cukup ganti
+ * bagian `url` di bawah dengan URL hasil upload sesungguhnya.
+ */
+const toUploadedFileRef = (file: File): UploadedFileRef => ({
+  id: `FILE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  url: URL.createObjectURL(file),
+  namaFile: file.name,
+  ukuranBytes: file.size,
+  uploadedAt: new Date().toISOString(),
+});
+
+const toUploadedFileRefOrNull = (file: File | null): UploadedFileRef | null =>
+  file ? toUploadedFileRef(file) : null;
+
+/**
+ * Bangun FormulirPenghapusanPiutangOPDRecord dari state form wizard.
+ * id/opdId/createdBy di sini masih placeholder (belum ada backend/auth
+ * sungguhan) — gampang diganti begitu ada API submit yang sesungguhnya.
+ */
+const buildPengajuanRecord = (
+  form: FormData,
+): FormulirPenghapusanPiutangOPDRecord => {
+  const now = new Date().toISOString();
+  const id = `REG-${Date.now()}`;
+
+  const nominatif: NominatifPiutangRecord = {
+    id: `NOM-${Date.now()}`,
+    formulirId: id,
+    suratPengantarUsulan: toUploadedFileRefOrNull(form.suratPengantarUsulan),
+    daftarNominatifPiutang: toUploadedFileRefOrNull(
+      form.daftarNominatifPiutang,
+    ),
+    rekapitulasiSaldoPiutang: toUploadedFileRefOrNull(
+      form.rekapitulasiSaldoPiutang,
+    ),
+    neracaAwalPencatatanPiutang: toUploadedFileRefOrNull(
+      form.neracaAwalPencatatanPiutang,
+    ),
+    dokumenPendukungSuratTidakMampuBayar: toUploadedFileRefOrNull(
+      form.dokumenPendukungSuratTidakMampuBayar,
+    ),
+    rekapitulasiAngsuran: toUploadedFileRefOrNull(form.rekapitulasiAngsuran),
+    opsiRiwayatPenagihan: form.opsiRiwayatPenagihan as OpsiRiwayatPenagihan,
+    riwayatPenagihan1: toUploadedFileRefOrNull(form.riwayatPenagihan1),
+    riwayatPenagihan2: toUploadedFileRefOrNull(form.riwayatPenagihan2),
+    riwayatPenagihan3: toUploadedFileRefOrNull(form.riwayatPenagihan3),
+    filePernyataanOPD: toUploadedFileRefOrNull(form.filePernyataanOPD),
+    opsiDokumenDasarPiutang:
+      form.opsiDokumenDasarPiutang as OpsiDokumenDasarPiutang,
+    dokumenDasarPiutang: toUploadedFileRefOrNull(form.dokumenDasarPiutang),
+  };
+
+  return {
+    id,
+    opdId: "OPD-DISDAGKOP-UKM",
+    createdBy: "opd-disdagkop-ukm",
+    namaOPD: form.namaOPD,
+    status: "diajukan",
+    createdAt: now,
+    updatedAt: now,
+    namaPenanggungJawab: form.namaPenanggungJawab,
+    jabatan: form.jabatan,
+    nomorSurat: form.nomorSurat,
+    tanggalSurat: form.tanggalSurat,
+    fileSurat: toUploadedFileRefOrNull(form.fileSurat),
+    jumlahDebitur: form.jumlahDebitur,
+    totalNilaiPiutang: form.totalNilaiPiutang,
+    jenisPiutang: form.jenisPiutang as JenisPiutang,
+    jenisPenghapusan: form.jenisPenghapusan as JenisPenghapusan,
+    nominatif,
+    pernyataan: form.pernyataan,
+  };
 };
 
 /* ------------------------------------------------------------------ */
@@ -599,7 +687,12 @@ const FileUploadCard = ({
 /* ------------------------------------------------------------------ */
 /*  Komponen Utama                                                     */
 /* ------------------------------------------------------------------ */
-export default function AjukanPermohonanWizard() {
+export default function AjukanPermohonanWizard({
+  onSubmitPengajuan,
+}: {
+  /** Dipanggil setelah submit berhasil — parent yang menambahkan ke daftar/state */
+  onSubmitPengajuan?: (record: FormulirPenghapusanPiutangOPDRecord) => void;
+} = {}) {
   const {
     form,
     errors,
@@ -965,7 +1058,9 @@ export default function AjukanPermohonanWizard() {
     setIsSubmitting(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Data terkirim:", form);
+      const record = buildPengajuanRecord(form);
+      console.log("Data terkirim:", record);
+      onSubmitPengajuan?.(record);
       setSubmitted(true);
       setShowConfirm(false);
     } catch (err) {

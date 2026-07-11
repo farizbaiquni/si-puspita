@@ -373,6 +373,7 @@ const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
 interface MainContentProps {
   activeMenu: MenuKey;
   semuaPengajuan: FormulirPenghapusanPiutangOPDRecord[];
+  onTambahPengajuan: (record: FormulirPenghapusanPiutangOPDRecord) => void;
   onStatusUpdate: (
     id: string,
     status: StatusFormulir,
@@ -384,6 +385,7 @@ interface MainContentProps {
 const MainContent: React.FC<MainContentProps> = ({
   activeMenu,
   semuaPengajuan,
+  onTambahPengajuan,
   onStatusUpdate,
 }) => {
   const meta = PAGE_META[activeMenu];
@@ -398,7 +400,7 @@ const MainContent: React.FC<MainContentProps> = ({
         </div>
       </div>
       {activeMenu === "ajukan-permohonan" ? (
-        <AjukanPermohonanWizard />
+        <AjukanPermohonanWizard onSubmitPengajuan={onTambahPengajuan} />
       ) : activeMenu === "lihat-daftar-pengajuan" ? (
         <DaftarPengajuanOPDBaru data={semuaPengajuan} />
       ) : activeMenu === "verifikasi-pengajuan" ? (
@@ -467,6 +469,12 @@ const DashboardContent: React.FC = () => {
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const handleTambahPengajuan = (
+    record: FormulirPenghapusanPiutangOPDRecord,
+  ) => {
+    setSemuaPengajuan((prev) => [record, ...prev]);
+  };
+
   const handleStatusUpdate = (
     id: string,
     status: StatusFormulir,
@@ -502,6 +510,7 @@ const DashboardContent: React.FC = () => {
         <MainContent
           activeMenu={activeMenu}
           semuaPengajuan={semuaPengajuan}
+          onTambahPengajuan={handleTambahPengajuan}
           onStatusUpdate={handleStatusUpdate}
         />
       </div>
