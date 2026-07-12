@@ -1528,15 +1528,14 @@ export default function SiPuspitaLandingPage() {
             {/* Logo — ikon bunga + tulisan SI PUSPITA */}
             <div className="flex shrink-0 items-center gap-2.5">
               <Image
-                src="/Logo_Si-Puspita_icon.png"
+                src="/Logo_Si-Puspita_v2-bg_removed.png"
                 alt="Logo SI PUSPITA"
-                width={824}
-                height={824}
+                width={2400}
+                height={644}
                 quality={100}
                 priority
-                className="h-11 w-11 shrink-0 rounded-full bg-white object-contain"
+                className="h-11 w-auto shrink-0 object-contain sm:h-12"
               />
-              <SiPuspitaHeading showSlogan={false} size="xs" className="" />
             </div>
 
             {/* Desktop links */}
