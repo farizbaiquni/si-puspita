@@ -83,16 +83,17 @@ const MAKNA_LOGO_BUNGA = [
 
 const FORMULIR_LIST = [
   {
-    id: "penetapan-mutlak",
-    file: "penetapan_penghapusan_secara_mutlak_piutang_daerah_yang_tidak_dapat_diserahkan_pengurusannya_kepada_pupn.pdf",
-    judul: "Penetapan Penghapusan Secara Mutlak",
-    sub: "Piutang daerah yang tidak dapat diserahkan pengurusannya kepada PUPN",
+    id: "permohonan-bersyarat",
+    file: "surat_permohonan_usulan_penghapusan_bersyarat_piutang_daerah.pdf",
+    judul: "Surat Permohonan Usulan Penghapusan Bersyarat",
+    sub: "Permohonan usulan penghapusan bersyarat piutang daerah",
   },
+
   {
-    id: "penetapan-bersyarat",
-    file: "penetapan_penghapusan_secara_bersyarat_piutang_daerah_yang_tidak_dapat_diserahkan_pengurusannya_kepada_pupn.pdf",
-    judul: "Penetapan Penghapusan Secara Bersyarat",
-    sub: "Piutang daerah yang tidak dapat diserahkan pengurusannya kepada PUPN",
+    id: "daftar-usulan-pengurusan",
+    file: "daftar_usulan_pengurusan_piutang_daerah_dalam_rangka_penghapusan_piutang.pdf",
+    judul: "Daftar Usulan Pengurusan Piutang",
+    sub: "Dalam rangka penghapusan piutang daerah",
   },
   {
     id: "daftar-nominatif",
@@ -107,16 +108,16 @@ const FORMULIR_LIST = [
     sub: "Pernyataan bahwa penagihan piutang telah dilakukan optimal",
   },
   {
-    id: "daftar-usulan-pengurusan",
-    file: "daftar_usulan_pengurusan_piutang_daerah_dalam_rangka_penghapusan_piutang.pdf",
-    judul: "Daftar Usulan Pengurusan Piutang",
-    sub: "Dalam rangka penghapusan piutang daerah",
+    id: "penetapan-bersyarat",
+    file: "penetapan_penghapusan_secara_bersyarat_piutang_daerah_yang_tidak_dapat_diserahkan_pengurusannya_kepada_pupn.pdf",
+    judul: "Penetapan Penghapusan Secara Bersyarat",
+    sub: "Piutang daerah yang tidak dapat diserahkan pengurusannya kepada PUPN",
   },
   {
-    id: "permohonan-bersyarat",
-    file: "surat_permohonan_usulan_penghapusan_bersyarat_piutang_daerah.pdf",
-    judul: "Surat Permohonan Usulan Penghapusan Bersyarat",
-    sub: "Permohonan usulan penghapusan bersyarat piutang daerah",
+    id: "penetapan-mutlak",
+    file: "penetapan_penghapusan_secara_mutlak_piutang_daerah_yang_tidak_dapat_diserahkan_pengurusannya_kepada_pupn.pdf",
+    judul: "Penetapan Penghapusan Secara Mutlak",
+    sub: "Piutang daerah yang tidak dapat diserahkan pengurusannya kepada PUPN",
   },
 ];
 
