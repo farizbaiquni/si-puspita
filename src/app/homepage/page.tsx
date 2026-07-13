@@ -53,8 +53,8 @@ const DASAR_HUKUM_BUNGA = [
   "Peraturan Menteri Dalam Negeri Nomor 77 Tahun 2020 tentang Pedoman Teknis Pengelolaan Keuangan Daerah",
   "Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah (HKPD)",
   "PMK Nomor 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada Panitia Urusan Piutang Negara",
-  "Peraturan Pemerintah Nomor 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
   "Peraturan Pemerintah Nomor 35 Tahun 2017 tentang Perubahan Kedua atas Peraturan Pemerintah Nomor 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
+  "2.	Peraturan Menteri Dalam Negeri No. 52 Tahun 2011 tentang Standar Operasional Prosedur di Lingkungan Pemerintah Kabupaten/Kota",
   "Peraturan Bupati Kendal No. 49 Tahun 2025 tentang Perubahan Atas Peraturan Bupati Nomor 66 Tahun 2021 tentang Kebijakan Akuntansi Pemerintah Daerah Kabupaten Kendal",
 ];
 
@@ -906,7 +906,7 @@ function ModalInformasiUmum() {
           <span className="font-semibold text-gray-900">
             SI PUSPITA (Sistem Pengajuan Penghapusan Piutang Terintegrasi)
           </span>{" "}
-          adalah sebuah sistem layanan digital sederhana yang dirancang untuk:
+          adalah sebuah sistem layanan digital yang dirancang untuk:
         </p>
         <div className="mt-3.5 space-y-2.5">
           {[
@@ -1647,8 +1647,7 @@ export default function SiPuspitaLandingPage() {
                       SI PUSPITA (Sistem Pengajuan Penghapusan Piutang
                       Terintegrasi)
                     </span>{" "}
-                    adalah sebuah sistem layanan digital sederhana yang
-                    dirancang untuk:
+                    adalah sebuah sistem layanan digital yang dirancang untuk:
                   </p>
                   <div className="mt-4 grid max-w-2xl grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2 sm:gap-y-3.5">
                     {[
