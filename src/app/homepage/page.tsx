@@ -54,7 +54,7 @@ const DASAR_HUKUM_BUNGA = [
   "Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah (HKPD)",
   "PMK Nomor 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada Panitia Urusan Piutang Negara",
   "Peraturan Pemerintah Nomor 35 Tahun 2017 tentang Perubahan Kedua atas Peraturan Pemerintah Nomor 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
-  "2.	Peraturan Menteri Dalam Negeri No. 52 Tahun 2011 tentang Standar Operasional Prosedur di Lingkungan Pemerintah Kabupaten/Kota",
+  "Peraturan Menteri Dalam Negeri No. 52 Tahun 2011 tentang Standar Operasional Prosedur di Lingkungan Pemerintah Kabupaten/Kota",
   "Peraturan Bupati Kendal No. 49 Tahun 2025 tentang Perubahan Atas Peraturan Bupati Nomor 66 Tahun 2021 tentang Kebijakan Akuntansi Pemerintah Daerah Kabupaten Kendal",
 ];
 
@@ -1078,10 +1078,16 @@ function ModalBunga({
   item,
   onClose,
   isClosing,
+  sideSlot,
 }: {
   item: KelopakItem;
   onClose: () => void;
   isClosing: boolean;
+  /** Konten bunga interaktif yang tampil di samping modal (hanya layar besar).
+   *  Dirender sebagai flex-sibling dari kotak modal supaya tata letaknya
+   *  otomatis mengikuti flexbox (tidak pernah bertumpuk / beririsan),
+   *  bukan lagi dihitung manual pakai posisi fixed + offset piksel. */
+  sideSlot?: (visible: boolean) => React.ReactNode;
 }) {
   const [visible, setVisible] = useState(false);
   const [displayedItem, setDisplayedItem] = useState(item);
@@ -1130,7 +1136,7 @@ function ModalBunga({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center p-3 sm:items-center sm:p-8"
+      className="fixed inset-0 z-100 flex items-end justify-center gap-8 p-3 sm:items-center sm:p-8 lg:gap-10 xl:gap-14"
       style={{
         backgroundColor: visible ? "rgba(8,20,50,0.82)" : "rgba(8,20,50,0)",
         backdropFilter: visible ? "blur(3px)" : "blur(0px)",
@@ -1145,7 +1151,7 @@ function ModalBunga({
       }}
     >
       <div
-        className={`flex w-full overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl lg:mr-95 ${
+        className={`flex w-full min-w-0 overflow-hidden rounded-sm border border-white/10 bg-white shadow-2xl ${
           displayedItem.id === "informasi" ||
           displayedItem.id === "sop&flowchart" ||
           displayedItem.id === "upload-dokumen" ||
@@ -1210,6 +1216,15 @@ function ModalBunga({
           </div>
         </div>
       </div>
+
+      {/* Bunga interaktif — flex-sibling dari kotak modal, bukan posisi fixed
+          manual, sehingga tidak akan pernah bertumpuk/beririsan dengan modal
+          di lebar layar berapa pun. Hanya tampil bila ada ruang yang cukup. */}
+      {sideSlot && (
+        <div className="pointer-events-none hidden shrink-0 lg:block">
+          {sideSlot(visible)}
+        </div>
+      )}
     </div>
   );
 }
@@ -1946,37 +1961,27 @@ export default function SiPuspitaLandingPage() {
       </footer>
       {/* ══════════════════ MODAL BUNGA ══════════════════ */}
       {(modalItem || isModalClosing) && (
-        <>
-          <ModalBunga
-            item={modalItem ?? lastModalItem!}
-            onClose={handleCloseModal}
-            isClosing={isModalClosing}
-          />
-          {/* BungaSVG — fixed sejajar modal, tidak terpengaruh scroll */}
-          {/* Modal pakai sm:mr-[340px] → digeser 340px ke kiri dari center.
-              Bunga kita taruh di kanan modal: right = 50% - 340px - 288px/2 */}
-          <div
-            className="pointer-events-none fixed top-1/2 z-105 hidden sm:block"
-            style={{
-              left: "calc(50% + 240px)",
-              opacity: isModalOpen && !isModalClosing ? 1 : 0,
-              transform:
-                isModalOpen && !isModalClosing
-                  ? "translateY(-50%) scale(1)"
-                  : "translateY(-50%) scale(0.85)",
-              transition:
-                "opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)",
-            }}
-            aria-hidden="true"
-          >
-            <div className="pointer-events-auto flex shrink-0 flex-col items-center">
-              <div className="relative flex h-80 w-80 items-center justify-center">
-                <div className="pointer-events-none absolute inset-7.5 rounded-full border border-slate-200/25" />
+        <ModalBunga
+          item={modalItem ?? lastModalItem!}
+          onClose={handleCloseModal}
+          isClosing={isModalClosing}
+          sideSlot={(visible) => (
+            <div
+              className="flex shrink-0 flex-col items-center"
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? "scale(1)" : "scale(0.85)",
+                transition:
+                  "opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)",
+              }}
+            >
+              <div className="pointer-events-auto relative flex h-64 w-64 items-center justify-center xl:h-72 xl:w-72">
+                <div className="pointer-events-none absolute inset-6 rounded-full border border-slate-200/25 xl:inset-7.5" />
                 <span className="absolute top-0 left-0 h-5 w-5 border-t-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                 <span className="absolute top-0 right-0 h-5 w-5 border-t-[1.5px] border-r-[1.5px] border-[#c8a020]/50" />
                 <span className="absolute bottom-0 left-0 h-5 w-5 border-b-[1.5px] border-l-[1.5px] border-[#c8a020]/50" />
                 <span className="absolute right-0 bottom-0 h-5 w-5 border-r-[1.5px] border-b-[1.5px] border-[#c8a020]/50" />
-                <div className="relative z-10 h-72 w-72">
+                <div className="relative z-10 h-56 w-56 xl:h-64 xl:w-64">
                   <BungaSVG
                     activeId={bungaActiveId}
                     centerActive={bungaCenterActive}
@@ -1989,8 +1994,8 @@ export default function SiPuspitaLandingPage() {
                 Menu Layanan Interaktif
               </p>
             </div>
-          </div>
-        </>
+          )}
+        />
       )}
 
       {/* ══════════════════ MODAL LOGIN ══════════════════ */}
