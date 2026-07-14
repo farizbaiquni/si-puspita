@@ -54,7 +54,7 @@ const DASAR_HUKUM_BUNGA = [
   "Undang-Undang Nomor 1 Tahun 2022 tentang Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah (HKPD)",
   "PMK Nomor 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada Panitia Urusan Piutang Negara",
   "Peraturan Pemerintah Nomor 35 Tahun 2017 tentang Perubahan Kedua atas Peraturan Pemerintah Nomor 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
-  "Peraturan Menteri Dalam Negeri No. 52 Tahun 2011 tentang Standar Operasional Prosedur di Lingkungan Pemerintah Kabupaten/Kota",
+  "Peraturan Bupati (Perbup) Kendal Nomor 42 Tahun 2009 adalah regulasi yang mengatur tentang Pedoman Penyusunan dan Penetapan Prosedur Tetap/Standard Operating Procedures (SOP) di Lingkungan Pemerintah Kabupaten Kendal",
   "Peraturan Bupati Kendal No. 49 Tahun 2025 tentang Perubahan Atas Peraturan Bupati Nomor 66 Tahun 2021 tentang Kebijakan Akuntansi Pemerintah Daerah Kabupaten Kendal",
 ];
 
