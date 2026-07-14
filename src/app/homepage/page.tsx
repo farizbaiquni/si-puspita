@@ -416,11 +416,11 @@ function ModalSOP() {
           <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2.5">
             <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-gray-700">
               <FileText className="h-4 w-4" />
-              SOP-Penghapusan-Piutang-Daerah.pdf
+              SOP-Penghapusan-Piutang-Daerah-TTD.pdf
             </p>
             <div className="flex items-center gap-1.5">
               <a
-                href="/dokumen/SOP-Penghapusan-Piutang-Daerah.pdf"
+                href="/dokumen/SOP-Penghapusan-Piutang-Daerah-TTD.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full px-2.5 py-1 text-[11.5px] font-semibold text-gray-700 transition-colors hover:bg-gray-200"
@@ -438,7 +438,7 @@ function ModalSOP() {
             </div>
           </div>
           <iframe
-            src="/dokumen/SOP-Penghapusan-Piutang-Daerah.pdf"
+            src="/dokumen/SOP-Penghapusan-Piutang-Daerah-TTD.pdf"
             title="SOP Penghapusan Piutang Daerah"
             className="h-[65vh] w-full"
           />

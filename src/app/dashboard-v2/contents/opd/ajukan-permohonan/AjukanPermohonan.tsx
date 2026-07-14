@@ -807,6 +807,10 @@ export default function AjukanPermohonanWizard({
   const [showConfirm, setShowConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [docPreview, setDocPreview] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
   const [previewSurat, setPreviewSurat] = useState<string | null>(null);
   const [previewPendukung, setPreviewPendukung] = useState<
     Record<string, string | null>
@@ -1452,7 +1456,10 @@ export default function AjukanPermohonanWizard({
                 type="button"
                 onClick={() => {
                   if (viewUrl)
-                    window.open(viewUrl, "_blank", "noopener,noreferrer");
+                    setDocPreview({
+                      url: viewUrl,
+                      title: "Daftar Nominatif Usulan Piutang SKPD",
+                    });
                 }}
                 disabled={!viewUrl}
                 className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1849,12 +1856,28 @@ export default function AjukanPermohonanWizard({
         )}
 
         {/* 3. Usia pencatatan piutang telah memenuhi ketentuan */}
-        {renderField(
-          fieldConfig(
-            "persyaratanUsiaPencatatan",
-            "3. Usia pencatatan piutang telah memenuhi ketentuan (upload neraca awal terjadinya piutang)",
-          ),
-        )}
+        <div className="space-y-2">
+          {renderField(
+            fieldConfig(
+              "persyaratanUsiaPencatatan",
+              "3. Usia pencatatan piutang telah memenuhi ketentuan (upload neraca awal terjadinya piutang)",
+            ),
+          )}
+          <div className="rounded-md border border-orange-100 bg-orange-50/60 px-3 py-2">
+            <p className="text-xs font-medium text-orange-800">
+              Usia pencatatan piutang telah memenuhi ketentuan:
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-orange-700">
+              <li>
+                Di atas 5 th untuk piutang nominal ≤ Rp 8 Jt per penanggung
+              </li>
+              <li>
+                Di atas 7 th untuk nominal Rp 8 jt sd. 50 jt per penanggung
+              </li>
+              <li>Di atas 10 th untuk nominal ≥ Rp 50 jt sd. per penanggung</li>
+            </ul>
+          </div>
+        </div>
 
         {/* 4. Piutang tidak dapat diserahkan kepada PUPN */}
         <div>
@@ -2030,32 +2053,22 @@ export default function AjukanPermohonanWizard({
                 ),
               )
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <p className="text-sm font-medium text-gray-700">
                   8. Surat tagihan telah diterbitkan (upload surat tagihan 1, 2,
                   dan 3) <span className="text-red-500">*</span>
                 </p>
-                {renderField(
-                  fieldConfig(
-                    "riwayatPenagihan1",
-                    "Surat Tagihan / Penagihan ke-1",
-                    false,
-                  ),
-                )}
-                {renderField(
-                  fieldConfig(
-                    "riwayatPenagihan2",
-                    "Surat Tagihan / Penagihan ke-2",
-                    false,
-                  ),
-                )}
-                {renderField(
-                  fieldConfig(
-                    "riwayatPenagihan3",
-                    "Surat Tagihan / Penagihan ke-3",
-                    false,
-                  ),
-                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {renderField(
+                    fieldConfig("riwayatPenagihan1", "Penagihan ke-1", false),
+                  )}
+                  {renderField(
+                    fieldConfig("riwayatPenagihan2", "Penagihan ke-2", false),
+                  )}
+                  {renderField(
+                    fieldConfig("riwayatPenagihan3", "Penagihan ke-3", false),
+                  )}
+                </div>
               </div>
             )}
 
@@ -2200,6 +2213,47 @@ export default function AjukanPermohonanWizard({
                 >
                   {isSubmitting ? "Mengirim..." : "Ya, Kirim"}
                 </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {docPreview &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-200 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Preview ${docPreview.title}`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDocPreview(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setDocPreview(null);
+            }}
+          >
+            <div className="flex h-[90vh] w-full max-w-5xl flex-col rounded-md bg-white shadow-2xl">
+              <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+                <span className="truncate text-sm font-medium text-gray-700">
+                  {docPreview.title}
+                </span>
+                <button
+                  onClick={() => setDocPreview(null)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Tutup preview"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <iframe
+                  src={docPreview.url}
+                  className="h-full w-full"
+                  style={{ border: "none" }}
+                  title={docPreview.title}
+                />
               </div>
             </div>
           </div>,
