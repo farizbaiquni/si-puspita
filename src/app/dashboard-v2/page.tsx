@@ -22,7 +22,7 @@ import {
   IconChevronDown,
   IconUsers,
 } from "./icons";
-import { MOCK_DATA } from "./contents/dummyData";
+import { usePengajuanStore } from "@/store/pengajuan-store";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
@@ -450,7 +450,6 @@ interface MainContentProps {
     id: string,
     status: StatusFormulir,
     catatan?: string,
-    checklistSubstantif?: Record<string, boolean>,
   ) => void;
 }
 
@@ -479,8 +478,8 @@ const MainContent: React.FC<MainContentProps> = ({
         <VerifikasiPengajuan
           semuaPengajuan={semuaPengajuan}
           verifikatorId="BPKAD"
-          onStatusUpdate={(id, status, catatan, checklistSubstantif) =>
-            onStatusUpdate(id, status, catatan, checklistSubstantif)
+          onStatusUpdate={(id, status, catatan) =>
+            onStatusUpdate(id, status, catatan)
           }
         />
       ) : (
@@ -538,9 +537,14 @@ const DashboardContent: React.FC = () => {
     setMobileMenuOpen(false);
   }
 
-  const [semuaPengajuan, setSemuaPengajuan] = useState<
-    FormulirPenghapusanPiutangOPDRecord[]
-  >(() => [...MOCK_DATA]);
+  // Sumber data tunggal (shared lewat PengajuanProvider di root layout) —
+  // pengganti useState lokal + MOCK_DATA. Sekarang otomatis sinkron
+  // dengan ModalLacak di homepage dan tab/route lain.
+  const {
+    data: semuaPengajuan,
+    tambahPengajuan,
+    updatePengajuan,
+  } = usePengajuanStore();
 
   const handleRoleChange = (newRole: UserRole) => {
     setMobileMenuOpen(false);
@@ -552,35 +556,22 @@ const DashboardContent: React.FC = () => {
   const handleTambahPengajuan = (
     record: FormulirPenghapusanPiutangOPDRecord,
   ) => {
-    setSemuaPengajuan((prev) => [record, ...prev]);
+    tambahPengajuan(record);
   };
 
   const handleStatusUpdate = (
     id: string,
     status: StatusFormulir,
     catatan?: string,
-    checklistSubstantif?: Record<string, boolean>,
   ) => {
-    setSemuaPengajuan((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              status,
-              // Jejak audit verifikasi — hanya diisi saat keputusan berasal
-              // dari panel verifikasi (checklistSubstantif ada isinya).
-              ...(checklistSubstantif
-                ? {
-                    checklistSubstantif,
-                    verifikatorId: "BPKAD",
-                    tanggalVerifikasi: new Date().toISOString(),
-                    catatanVerifikasi: catatan,
-                  }
-                : {}),
-            }
-          : p,
-      ),
-    );
+    updatePengajuan(id, {
+      status,
+      // Jejak audit verifikasi — handler ini hanya dipanggil dari panel
+      // verifikasi BPKAD, jadi selalu diisi.
+      verifikatorId: "BPKAD",
+      tanggalVerifikasi: new Date().toISOString(),
+      catatanVerifikasi: catatan,
+    });
   };
 
   return (

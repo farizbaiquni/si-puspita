@@ -5,16 +5,13 @@ import type {
   FormulirPenghapusanPiutangOPDRecord,
   JenisPenghapusan,
   JenisPiutang,
-  NominatifPiutangRecord,
   StatusFormulir,
   UploadedFileRef,
 } from "@/types/types-v2";
 import {
-  ALL_CHECKLIST_ITEMS,
-  CHECKLIST_STATUS_PIUTANG,
-  CHECKLIST_UPAYA_PENAGIHAN,
-  type ChecklistItemDef,
-} from "@/lib/checklistPersyaratan";
+  OPSI_DOKUMEN_DASAR_PIUTANG_LABEL,
+  OPSI_RIWAYAT_PENAGIHAN_LABEL,
+} from "@/types/types-v2";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -52,7 +49,7 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Daftar dokumen — dibangun dari field NominatifPiutangRecord + fileSurat
+// Daftar dokumen — dibangun dari field dokumen flat FormulirPenghapusanPiutangOPDRecord + fileSurat
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface DokumenEntry {
@@ -62,7 +59,7 @@ interface DokumenEntry {
 }
 
 const NOMINATIF_DOC_LABELS: {
-  key: keyof NominatifPiutangRecord;
+  key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
 }[] = [
   { key: "suratPengantarUsulan", label: "Surat Pengantar Usulan" },
@@ -101,7 +98,7 @@ function buildDokumenList(
   }
 
   NOMINATIF_DOC_LABELS.forEach(({ key, label }) => {
-    const value = pengajuan.nominatif[key];
+    const value = pengajuan[key];
     if (value && typeof value === "object" && "url" in value) {
       list.push({ key, label, file: value as UploadedFileRef });
     }
@@ -128,8 +125,8 @@ const STATUS_BADGE: Record<
     cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dot: "bg-[#f97316]",
   },
-  lolos_verifikasi: {
-    label: "Lolos Verifikasi",
+  teregistrasi: {
+    label: "Teregistrasi",
     cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
     dot: "bg-[#10b981]",
   },
@@ -397,96 +394,26 @@ const DokumenItem: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Checklist Persyaratan Substantif — mengacu PMK 137
-// Diisi manual oleh verifikator BPKAD saat meninjau dokumen (bukan data yang
-// tersimpan di formulir OPD), sehingga disimpan sebagai state lokal di
-// panel verifikasi per sesi peninjauan.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Definisi item checklist (id, label, subItems) diimpor dari
-// "@/lib/checklistPersyaratan" — satu sumber kebenaran yang dipakai juga
-// oleh LihatDaftarPengajuan.tsx untuk menampilkan poin revisi ke OPD.
-
-const ChecklistItemRow: React.FC<{
-  item: ChecklistItemDef;
-  checked: boolean;
-  onToggle: () => void;
-}> = ({ item, checked, onToggle }) => (
-  <label
-    className={`flex cursor-pointer items-start gap-2.5 rounded-sm border px-3 py-2.5 transition ${
-      checked
-        ? "border-[#a7e8d4] bg-[#e6f7f2]"
-        : "border-[#e2e8f2] bg-white hover:bg-[#f7f8fa]"
-    }`}
-  >
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onToggle}
-      className="mt-0.5 h-4 w-4 shrink-0 accent-[#0f9b6e]"
-    />
-    <div className="min-w-0">
-      <div
-        className={`text-[13px] leading-snug ${
-          checked ? "font-medium text-[#0f6e56]" : "text-[#1a1a2e]"
-        }`}
-      >
-        {item.label}
-      </div>
-      {item.subItems && (
-        <ul className="mt-1.5 space-y-1 border-l-2 border-[#e2e8f2] pl-3">
-          {item.subItems.map((sub, i) => (
-            <li key={i} className="text-[11.5px] leading-snug text-[#7a8899]">
-              • {sub}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  </label>
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Detail Verifikasi (panel)
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Keputusan = Extract<StatusFormulir, "lolos_verifikasi" | "revisi">;
+type Keputusan = Extract<StatusFormulir, "teregistrasi" | "revisi">;
 
 const PanelVerifikasi: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onBack: () => void;
-  onSubmit: (
-    keputusan: Keputusan,
-    catatan: string,
-    checklistSubstantif: Record<string, boolean>,
-  ) => void;
+  onSubmit: (keputusan: Keputusan, catatan: string) => void;
 }> = ({ pengajuan, onBack, onSubmit }) => {
   const [keputusan, setKeputusan] = useState<Keputusan | null>(null);
   const [catatan, setCatatan] = useState("");
   const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
   const [error, setError] = useState("");
-  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
 
   const dokumen = useMemo(() => buildDokumenList(pengajuan), [pengajuan]);
-
-  const toggleChecklist = (id: string) => {
-    setChecklist((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const jumlahTerpenuhi = ALL_CHECKLIST_ITEMS.filter(
-    (item) => checklist[item.id],
-  ).length;
-  const semuaTerpenuhi = jumlahTerpenuhi === ALL_CHECKLIST_ITEMS.length;
 
   const handleSubmit = () => {
     if (!keputusan) {
       setError("Pilih hasil verifikasi: Lolos Verifikasi atau Perlu Revisi.");
-      return;
-    }
-    if (keputusan === "lolos_verifikasi" && !semuaTerpenuhi) {
-      setError(
-        "Centang seluruh poin Checklist Persyaratan Substantif sebelum menyatakan pengajuan lolos verifikasi.",
-      );
       return;
     }
     if (keputusan === "revisi" && catatan.trim().length < 5) {
@@ -496,7 +423,7 @@ const PanelVerifikasi: React.FC<{
       return;
     }
     setError("");
-    onSubmit(keputusan, catatan.trim(), checklist);
+    onSubmit(keputusan, catatan.trim());
   };
 
   return (
@@ -581,11 +508,19 @@ const PanelVerifikasi: React.FC<{
                 { label: "Jabatan", value: pengajuan.jabatan },
                 {
                   label: "Opsi Riwayat Penagihan",
-                  value: pengajuan.nominatif.opsiRiwayatPenagihan || "-",
+                  value: pengajuan.opsiRiwayatPenagihan
+                    ? OPSI_RIWAYAT_PENAGIHAN_LABEL[
+                        pengajuan.opsiRiwayatPenagihan
+                      ]
+                    : "-",
                 },
                 {
                   label: "Opsi Dokumen Dasar Piutang",
-                  value: pengajuan.nominatif.opsiDokumenDasarPiutang || "-",
+                  value: pengajuan.opsiDokumenDasarPiutang
+                    ? OPSI_DOKUMEN_DASAR_PIUTANG_LABEL[
+                        pengajuan.opsiDokumenDasarPiutang
+                      ]
+                    : "-",
                 },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -594,56 +529,6 @@ const PanelVerifikasi: React.FC<{
                   </div>
                   <div className="text-[13px] text-[#1a1a2e]">{value}</div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Checklist Persyaratan Substantif */}
-          <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-              <div className="text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-                Checklist Persyaratan Substantif
-              </div>
-              <span
-                className={`inline-flex items-center rounded-full border px-2.25 py-0.75 text-[11px] font-semibold whitespace-nowrap ${
-                  semuaTerpenuhi
-                    ? "border-[#a7e8d4] bg-[#e6f7f2] text-[#0f6e56]"
-                    : "border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899]"
-                }`}
-              >
-                {jumlahTerpenuhi} / {ALL_CHECKLIST_ITEMS.length} terpenuhi
-              </span>
-            </div>
-            <p className="mb-4 text-[12px] text-[#7a8899]">
-              Mengacu PMK 137. Centang setiap poin setelah dokumen pendukung
-              terkait ditinjau dan sesuai.
-            </p>
-
-            <div className="mb-2 text-[11px] font-semibold tracking-[0.04em] text-[#1a4e8f] uppercase">
-              Status Piutang
-            </div>
-            <div className="mb-4 space-y-2">
-              {CHECKLIST_STATUS_PIUTANG.map((item) => (
-                <ChecklistItemRow
-                  key={item.id}
-                  item={item}
-                  checked={!!checklist[item.id]}
-                  onToggle={() => toggleChecklist(item.id)}
-                />
-              ))}
-            </div>
-
-            <div className="mb-2 text-[11px] font-semibold tracking-[0.04em] text-[#1a4e8f] uppercase">
-              Upaya Penagihan
-            </div>
-            <div className="space-y-2">
-              {CHECKLIST_UPAYA_PENAGIHAN.map((item) => (
-                <ChecklistItemRow
-                  key={item.id}
-                  item={item}
-                  checked={!!checklist[item.id]}
-                  onToggle={() => toggleChecklist(item.id)}
-                />
               ))}
             </div>
           </div>
@@ -680,15 +565,15 @@ const PanelVerifikasi: React.FC<{
 
             <div className="mb-4 grid grid-cols-2 gap-2.5">
               <button
-                onClick={() => setKeputusan("lolos_verifikasi")}
+                onClick={() => setKeputusan("teregistrasi")}
                 className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
-                  keputusan === "lolos_verifikasi"
+                  keputusan === "teregistrasi"
                     ? "border-[#0f9b6e] bg-[#e6f7f2] text-[#0f9b6e]"
                     : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#a7e8d4] hover:bg-[#e6f7f2]"
                 }`}
               >
                 <IconCheck />
-                Lolos Verifikasi
+                Lolos Verifikasi (Buat Nomor Registrasi)
               </button>
               <button
                 onClick={() => setKeputusan("revisi")}
@@ -828,18 +713,13 @@ interface VerifikasiPengajuanProps {
   /** Seluruh pengajuan dari parent (single source of truth), mis. MOCK_DATA */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
   /** Dipanggil setelah BPKAD memutuskan verifikasi — parent yang update status */
-  onStatusUpdate?: (
-    id: string,
-    status: Keputusan,
-    catatan?: string,
-    checklistSubstantif?: Record<string, boolean>,
-  ) => void;
+  onStatusUpdate?: (id: string, status: Keputusan, catatan?: string) => void;
   /** ID / nama akun verifikator BPKAD yang sedang login (untuk jejak audit) */
   verifikatorId?: string;
 }
 
 // Urutan prioritas status: diajukan (perlu ditindak) paling atas, lalu
-// revisi, dan lolos_verifikasi paling bawah. Di dalam grup status yang
+// revisi, dan teregistrasi paling bawah. Di dalam grup status yang
 // sama, urutkan dari updatedAt paling baru ke paling lama.
 // Didefinisikan di module scope (bukan di dalam komponen) supaya jadi
 // referensi yang stabil antar-render — tidak perlu masuk dependency array
@@ -847,7 +727,7 @@ interface VerifikasiPengajuanProps {
 const STATUS_PRIORITY: Record<StatusFormulir, number> = {
   diajukan: 0,
   revisi: 1,
-  lolos_verifikasi: 2,
+  teregistrasi: 2,
 };
 
 export default function VerifikasiPengajuan({
@@ -898,11 +778,7 @@ export default function VerifikasiPengajuan({
     );
   }, [daftarPengajuan, search]);
 
-  const handleSubmitVerifikasi = (
-    keputusan: Keputusan,
-    catatan: string,
-    checklistSubstantif: Record<string, boolean>,
-  ) => {
+  const handleSubmitVerifikasi = (keputusan: Keputusan, catatan: string) => {
     if (!selected) return;
 
     const tanggalVerifikasi = new Date().toISOString();
@@ -910,22 +786,15 @@ export default function VerifikasiPengajuan({
     const hasil: FormulirPenghapusanPiutangOPDRecord = {
       ...selected,
       status: keputusan,
-      checklistSubstantif,
       verifikatorId,
       tanggalVerifikasi,
     };
 
     // Catat di riwayat sesi ini
     setRiwayat((prev) => [{ pengajuan: hasil, keputusan, catatan }, ...prev]);
-    // Beritahu parent — parent update status (+ jejak audit checklist) di
-    // shared state; antrean otomatis reaktif karena di-derive via useMemo
-    // dari props.
-    onStatusUpdate?.(
-      selected.id,
-      keputusan,
-      catatan || undefined,
-      checklistSubstantif,
-    );
+    // Beritahu parent — parent update status di shared state; antrean
+    // otomatis reaktif karena di-derive via useMemo dari props.
+    onStatusUpdate?.(selected.id, keputusan, catatan || undefined);
     setSelected(null);
   };
 
@@ -979,7 +848,7 @@ export default function VerifikasiPengajuan({
           </div>
           <div>
             <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {riwayat.filter((r) => r.keputusan === "lolos_verifikasi").length}
+              {riwayat.filter((r) => r.keputusan === "teregistrasi").length}
             </div>
             <div className="mt-0.5 text-xs text-[#7a8899]">
               Lolos Verifikasi (sesi ini)

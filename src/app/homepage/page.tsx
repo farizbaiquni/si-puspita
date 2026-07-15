@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import AjukanPermohonanWizard from "@/app/dashboard-v2/contents/opd/ajukan-permohonan/AjukanPermohonan";
-import { MOCK_DATA } from "../dashboard-v2/contents/dummyData";
+import { usePengajuanStore } from "@/store/pengajuan-store";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
@@ -657,7 +657,11 @@ function ModalUploadDokumen() {
 }
 
 function ModalPengajuan() {
-  return <AjukanPermohonanWizard />;
+  // tambahPengajuan menulis ke store bersama (localStorage + context),
+  // jadi begitu OPD submit di sini, data langsung tersedia di ModalLacak
+  // homepage maupun di dashboard-v2 tanpa reload.
+  const { tambahPengajuan } = usePengajuanStore();
+  return <AjukanPermohonanWizard onSubmitPengajuan={tambahPengajuan} />;
 }
 
 // Badge status kecil untuk kartu hasil pencarian & daftar pengajuan terbaru.
@@ -765,6 +769,10 @@ function DetailPengajuanLacak({
 }
 
 function ModalLacak() {
+  // Sumber data tunggal (shared lewat PengajuanProvider di root layout) —
+  // ikut ter-update otomatis kalau ada OPD submit pengajuan baru atau
+  // BPKAD memverifikasi pengajuan di dashboard-v2.
+  const { data: pengajuanData } = usePengajuanStore();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFormulir | "SEMUA">(
     "SEMUA",
@@ -775,32 +783,36 @@ function ModalLacak() {
   // sekaligus disaring per status jika chip status dipilih.
   const hasilFilter = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return MOCK_DATA.filter((d) => {
-      const cocokQuery =
-        q === "" ||
-        d.nomorSurat.toLowerCase().includes(q) ||
-        d.namaOPD.toLowerCase().includes(q) ||
-        d.id.toLowerCase().includes(q);
-      const cocokStatus = statusFilter === "SEMUA" || d.status === statusFilter;
-      return cocokQuery && cocokStatus;
-    }).sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
-  }, [query, statusFilter]);
+    return pengajuanData
+      .filter((d) => {
+        const cocokQuery =
+          q === "" ||
+          d.nomorSurat.toLowerCase().includes(q) ||
+          d.namaOPD.toLowerCase().includes(q) ||
+          d.id.toLowerCase().includes(q);
+        const cocokStatus =
+          statusFilter === "SEMUA" || d.status === statusFilter;
+        return cocokQuery && cocokStatus;
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+  }, [pengajuanData, query, statusFilter]);
 
   const selected = selectedId
-    ? (MOCK_DATA.find((d) => d.id === selectedId) ?? null)
+    ? (pengajuanData.find((d) => d.id === selectedId) ?? null)
     : null;
 
   const jumlahPerStatus = useMemo(
     () => ({
-      SEMUA: MOCK_DATA.length,
-      diajukan: MOCK_DATA.filter((d) => d.status === "diajukan").length,
-      revisi: MOCK_DATA.filter((d) => d.status === "revisi").length,
-      teregistrasi: MOCK_DATA.filter((d) => d.status === "teregistrasi").length,
+      SEMUA: pengajuanData.length,
+      diajukan: pengajuanData.filter((d) => d.status === "diajukan").length,
+      revisi: pengajuanData.filter((d) => d.status === "revisi").length,
+      teregistrasi: pengajuanData.filter((d) => d.status === "teregistrasi")
+        .length,
     }),
-    [],
+    [pengajuanData],
   );
 
   const CHIP_STATUS: { key: StatusFormulir | "SEMUA"; label: string }[] = [
@@ -1709,7 +1721,7 @@ export default function SiPuspitaLandingPage() {
                     href="/dashboard-v2?user-role=bpkad"
                     className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
                   >
-                    Verifikasi oleh PPKD
+                    Verifikasi Admin
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </Link>
                 </div>
