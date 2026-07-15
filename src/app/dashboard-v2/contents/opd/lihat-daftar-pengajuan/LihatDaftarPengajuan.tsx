@@ -73,7 +73,7 @@ const STATUS_CONFIG: Record<
     badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dotClass: "bg-[#f97316]",
   },
-  lolos_verifikasi: {
+  teregistrasi: {
     label: "Lolos Verifikasi",
     badgeClass: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
     dotClass: "bg-[#10b981]",
@@ -351,7 +351,7 @@ const ModalDetail: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   onClose: () => void;
 }> = ({ record, onClose }) => {
-  const nom = record.nominatif;
+  const nom = record;
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(
     null,
   );
@@ -431,25 +431,31 @@ const ModalDetail: React.FC<{
     {
       label: "Riwayat penagihan (1)",
       file:
-        nom.opsiRiwayatPenagihan === "riwayat" ? nom.riwayatPenagihan1 : null,
+        nom.opsiRiwayatPenagihan === "riwayat_tagihan"
+          ? nom.riwayatPenagihan1
+          : null,
     },
     // Riwayat penagihan (2)
     {
       label: "Riwayat penagihan (2)",
       file:
-        nom.opsiRiwayatPenagihan === "riwayat" ? nom.riwayatPenagihan2 : null,
+        nom.opsiRiwayatPenagihan === "riwayat_tagihan"
+          ? nom.riwayatPenagihan2
+          : null,
     },
     // Riwayat penagihan (3)
     {
       label: "Riwayat penagihan (3)",
       file:
-        nom.opsiRiwayatPenagihan === "riwayat" ? nom.riwayatPenagihan3 : null,
+        nom.opsiRiwayatPenagihan === "riwayat_tagihan"
+          ? nom.riwayatPenagihan3
+          : null,
     },
     // Surat Pernyataan OPD – muncul selalu, file hanya ada jika opsi "pernyataan"
     {
       label: "Surat Pernyataan OPD",
       file:
-        nom.opsiRiwayatPenagihan === "pernyataan"
+        nom.opsiRiwayatPenagihan === "penyataan_opd"
           ? nom.filePernyataanOPD
           : null,
     },
@@ -761,7 +767,7 @@ export default function DaftarPengajuanOPDBaru({
     const total = data.length;
     const diajukan = data.filter((r) => r.status === "diajukan").length;
     const revisi = data.filter((r) => r.status === "revisi").length;
-    const lolos = data.filter((r) => r.status === "lolos_verifikasi").length;
+    const lolos = data.filter((r) => r.status === "teregistrasi").length;
     return { total, diajukan, revisi, lolos };
   }, [data]);
 
