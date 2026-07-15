@@ -66,6 +66,8 @@ interface FormData {
   buktiTidakMampuSuratKeteranganKelurahan: File | null;
   buktiTidakMampuBantuanSosial: File | null;
   buktiTidakMampuKunjunganPenagihan: File | null;
+  opsiKerjaSamaPihakKetiga: string;
+  buktiKerjaSamaPihakKetiga: File | null;
   opsiUpayaOptimal: string;
   buktiUpayaOptimal: File | null;
   // Langkah 4 – Pernyataan
@@ -138,6 +140,7 @@ const buildPengajuanRecord = (
     status: "diajukan",
     createdAt: now,
     updatedAt: now,
+    nomorRegistrasi: null,
     namaPenanggungJawab: form.namaPenanggungJawab,
     jabatan: form.jabatan,
     nomorSurat: form.nomorSurat,
@@ -364,6 +367,8 @@ const initialForm: FormData = {
   buktiTidakMampuSuratKeteranganKelurahan: null,
   buktiTidakMampuBantuanSosial: null,
   buktiTidakMampuKunjunganPenagihan: null,
+  opsiKerjaSamaPihakKetiga: "",
+  buktiKerjaSamaPihakKetiga: null,
   opsiUpayaOptimal: "",
   buktiUpayaOptimal: null,
   pernyataan: {
@@ -788,9 +793,30 @@ const FileUploadCard = ({
 /* ------------------------------------------------------------------ */
 export default function AjukanPermohonanWizard({
   onSubmitPengajuan,
+  allowFreeNavigation = false,
+  defaultNamaOPD = "",
 }: {
   /** Dipanggil setelah submit berhasil — parent yang menambahkan ke daftar/state */
   onSubmitPengajuan?: (record: FormulirPenghapusanPiutangOPDRecord) => void;
+  /**
+   * Default `false` (mode dashboard/OPD sudah login): tiap langkah wajib
+   * lolos validasi dulu sebelum bisa "Berikutnya", dan submit langsung
+   * mengirim data.
+   *
+   * `true` (dipakai di ModalPengajuan/landing page publik): user boleh
+   * pindah langkah bebas tanpa harus mengisi semua field — tapi di
+   * langkah terakhir, tombol "Kirim" tidak benar-benar mengirim apa pun.
+   * Sistem login belum diimplementasikan, jadi yang muncul hanya notifikasi
+   * bahwa pengajuan sesungguhnya harus dilakukan setelah login.
+   */
+  allowFreeNavigation?: boolean;
+  /**
+   * Nilai awal field "Nama OPD". Default kosong (dipakai di ModalPengajuan
+   * publik — belum tentu jelas OPD mana yang mengisi sebelum login). Di
+   * dashboard (setelah login), parent bisa mengisi ini dengan nama OPD dari
+   * sesi user yang sedang login.
+   */
+  defaultNamaOPD?: string;
 } = {}) {
   const {
     form,
@@ -802,10 +828,11 @@ export default function AjukanPermohonanWizard({
     validateField,
     resetForm,
     updatePernyataan,
-  } = useFormWizard({ namaOPD: "Dinas Perdagangan Koperasi dan UKM" });
+  } = useFormWizard({ namaOPD: defaultNamaOPD });
 
   const [currentStep, setCurrentStep] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showLoginNotice, setShowLoginNotice] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [docPreview, setDocPreview] = useState<{
@@ -819,6 +846,11 @@ export default function AjukanPermohonanWizard({
   const [confirmedDocs, setConfirmedDocs] = useState<Record<string, boolean>>(
     {},
   );
+  // Tampilan saja di Langkah 2 (setelah "Rekapitulasi saldo piutang") — tidak
+  // terhubung ke `form.opsiRiwayatPenagihan` (yang dipakai Langkah 3), jadi
+  // pilihan di sini murni informatif dan tidak memengaruhi validasi/step lain.
+  const [previewOpsiRiwayatPenagihan, setPreviewOpsiRiwayatPenagihan] =
+    useState<string>("");
   const toggleConfirmedDoc = (fieldName: string) => {
     setConfirmedDocs((prev) => ({ ...prev, [fieldName]: !prev[fieldName] }));
   };
@@ -1105,41 +1137,94 @@ export default function AjukanPermohonanWizard({
       });
     }
 
-    // 8. Surat tagihan / pernyataan OPD sesuai pilihan riwayat penagihan di langkah 2
-    if (form.opsiRiwayatPenagihan === "penyataan_opd") {
-      markTouched("filePernyataanOPD");
-      if (!form.filePernyataanOPD) {
-        setErrors((prev) => ({
-          ...prev,
-          filePernyataanOPD: "Dokumen wajib diunggah",
-        }));
-        valid = false;
-      } else {
-        setErrors((prev) => {
-          const next = { ...prev };
-          delete next.filePernyataanOPD;
-          return next;
-        });
-      }
+    // 8. Kerja sama penagihan dengan pihak ketiga (khusus nominal > Rp 1 Milyar)
+    markTouched("opsiKerjaSamaPihakKetiga");
+    if (!form.opsiKerjaSamaPihakKetiga) {
+      setErrors((prev) => ({
+        ...prev,
+        opsiKerjaSamaPihakKetiga: "Pilih salah satu opsi",
+      }));
+      valid = false;
     } else {
-      (
-        ["riwayatPenagihan1", "riwayatPenagihan2", "riwayatPenagihan3"] as const
-      ).forEach((key) => {
-        markTouched(key);
-        if (!form[key]) {
-          setErrors((prev) => ({ ...prev, [key]: "Dokumen wajib diunggah" }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.opsiKerjaSamaPihakKetiga;
+        return next;
+      });
+      if (form.opsiKerjaSamaPihakKetiga === "ya") {
+        markTouched("buktiKerjaSamaPihakKetiga");
+        if (!form.buktiKerjaSamaPihakKetiga) {
+          setErrors((prev) => ({
+            ...prev,
+            buktiKerjaSamaPihakKetiga: "Dokumen wajib diunggah",
+          }));
           valid = false;
         } else {
           setErrors((prev) => {
             const next = { ...prev };
-            delete next[key];
+            delete next.buktiKerjaSamaPihakKetiga;
             return next;
           });
         }
-      });
+      }
     }
 
-    // 9. Upaya optimal
+    // 9. Bukti riwayat penagihan — opsi dipilih langsung di langkah 3 (tidak lagi bergantung pada langkah 2)
+    markTouched("opsiRiwayatPenagihan");
+    if (!form.opsiRiwayatPenagihan) {
+      setErrors((prev) => ({
+        ...prev,
+        opsiRiwayatPenagihan: "Pilih salah satu opsi",
+      }));
+      valid = false;
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.opsiRiwayatPenagihan;
+        return next;
+      });
+      if (form.opsiRiwayatPenagihan === "penyataan_opd") {
+        markTouched("filePernyataanOPD");
+        if (!form.filePernyataanOPD) {
+          setErrors((prev) => ({
+            ...prev,
+            filePernyataanOPD: "Dokumen wajib diunggah",
+          }));
+          valid = false;
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.filePernyataanOPD;
+            return next;
+          });
+        }
+      } else {
+        (
+          [
+            "riwayatPenagihan1",
+            "riwayatPenagihan2",
+            "riwayatPenagihan3",
+          ] as const
+        ).forEach((key) => {
+          markTouched(key);
+          if (!form[key]) {
+            setErrors((prev) => ({
+              ...prev,
+              [key]: "Dokumen wajib diunggah",
+            }));
+            valid = false;
+          } else {
+            setErrors((prev) => {
+              const next = { ...prev };
+              delete next[key];
+              return next;
+            });
+          }
+        });
+      }
+    }
+
+    // 10. Upaya optimal
     markTouched("opsiUpayaOptimal");
     if (!form.opsiUpayaOptimal) {
       setErrors((prev) => ({
@@ -1169,6 +1254,22 @@ export default function AjukanPermohonanWizard({
           });
         }
       }
+    }
+
+    // 11. Hasil penagihan tidak berhasil
+    markTouched("persyaratanHasilPenagihanTidakBerhasil");
+    if (!confirmedDocs["persyaratanHasilPenagihanTidakBerhasil"]) {
+      setErrors((prev) => ({
+        ...prev,
+        persyaratanHasilPenagihanTidakBerhasil: "Wajib dicentang",
+      }));
+      valid = false;
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.persyaratanHasilPenagihanTidakBerhasil;
+        return next;
+      });
     }
 
     return valid;
@@ -1288,9 +1389,16 @@ export default function AjukanPermohonanWizard({
   };
 
   const goNext = () => {
-    if (!validateCurrentStep()) return;
-    if (currentStep < totalSteps - 1) setCurrentStep((prev) => prev + 1);
-    else setShowConfirm(true);
+    if (!allowFreeNavigation && !validateCurrentStep()) return;
+    if (currentStep < totalSteps - 1) {
+      setCurrentStep((prev) => prev + 1);
+    } else if (allowFreeNavigation) {
+      // Mode preview publik (ModalPengajuan) — login belum diimplementasikan,
+      // jadi di sini hanya menampilkan notifikasi, tidak benar-benar mengirim.
+      setShowLoginNotice(true);
+    } else {
+      setShowConfirm(true);
+    }
   };
   const goPrev = () => {
     if (currentStep > 0) setCurrentStep((prev) => prev - 1);
@@ -1666,32 +1774,34 @@ export default function AjukanPermohonanWizard({
           "nilaiRekapitulasiSaldoPiutang",
         )}
 
-        {/* 5. Riwayat penagihan (wajib 3 kali) */}
+        {/* Riwayat Penagihan / Pernyataan OPD — tampilan saja, dipilih ulang
+            secara resmi (dan menentukan upload) di Langkah 3. */}
         <div>
           <p
-            id="legendRiwayatPenagihan"
+            id="legendRiwayatPenagihanPreview"
             className="mb-2 text-sm font-semibold text-gray-700"
           >
-            5. Riwayat Penagihan (wajib 3 kali)
+            Riwayat Penagihan / Pernyataan OPD
           </p>
           <div
             role="group"
-            aria-labelledby="legendRiwayatPenagihan"
+            aria-labelledby="legendRiwayatPenagihanPreview"
             className="rounded-md border border-gray-200 p-3 sm:p-4"
           >
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Apakah terdapat bukti riwayat penagihan?
+                Apakah terdapat bukti riwayat penagihan? (opsi ini akan
+                ditanyakan kembali secara resmi di Langkah 3)
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="radio"
-                    name="opsiRiwayatPenagihan"
+                    name="previewOpsiRiwayatPenagihan"
                     value="riwayat_tagihan"
-                    checked={form.opsiRiwayatPenagihan === "riwayat_tagihan"}
+                    checked={previewOpsiRiwayatPenagihan === "riwayat_tagihan"}
                     onChange={() =>
-                      updateField("opsiRiwayatPenagihan", "riwayat_tagihan")
+                      setPreviewOpsiRiwayatPenagihan("riwayat_tagihan")
                     }
                     className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                   />
@@ -1703,11 +1813,11 @@ export default function AjukanPermohonanWizard({
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="radio"
-                    name="opsiRiwayatPenagihan"
+                    name="previewOpsiRiwayatPenagihan"
                     value="penyataan_opd"
-                    checked={form.opsiRiwayatPenagihan === "penyataan_opd"}
+                    checked={previewOpsiRiwayatPenagihan === "penyataan_opd"}
                     onChange={() =>
-                      updateField("opsiRiwayatPenagihan", "penyataan_opd")
+                      setPreviewOpsiRiwayatPenagihan("penyataan_opd")
                     }
                     className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                   />
@@ -1717,19 +1827,14 @@ export default function AjukanPermohonanWizard({
                   </span>
                 </label>
               </div>
-              {touched.opsiRiwayatPenagihan && errors.opsiRiwayatPenagihan && (
-                <p className="text-sm text-red-600">
-                  {errors.opsiRiwayatPenagihan}
-                </p>
-              )}
             </div>
           </div>
         </div>
 
-        {/* 6. Neraca awal pencatatan piutang */}
+        {/* 5. Neraca awal pencatatan piutang */}
         {renderCheckboxQuestion(
           "neracaAwalPencatatanPiutang",
-          "6. Neraca awal pencatatan piutang",
+          "5. Neraca awal pencatatan piutang",
           undefined,
           [
             "Di atas 5 th untuk piutang nominal ≤ Rp 8 Jt per penanggung",
@@ -1738,17 +1843,17 @@ export default function AjukanPermohonanWizard({
           ],
         )}
 
-        {/* 7. Rekapitulasi angsuran (Rp) */}
+        {/* 6. Rekapitulasi angsuran (Rp) */}
         {renderCheckboxQuestion(
           "rekapitulasiAngsuran",
-          "7. Rekapitulasi angsuran (Rp)",
+          "6. Rekapitulasi angsuran (Rp)",
           "nilaiRekapitulasiAngsuran",
         )}
 
-        {/* 8. Dokumen pendukung lainnya (Surat tidak mampu bayar) */}
+        {/* 7. Dokumen pendukung lainnya (Surat tidak mampu bayar) */}
         {renderCheckboxQuestion(
           "dokumenPendukungSuratTidakMampuBayar",
-          "8. Dokumen pendukung lainnya (Surat tidak mampu bayar)",
+          "7. Dokumen pendukung lainnya (Surat tidak mampu bayar)",
           undefined,
           [
             "Kartu keluarga miskin",
@@ -2040,48 +2145,176 @@ export default function AjukanPermohonanWizard({
           </div>
         </div>
 
-        {/* Grup: Upaya Penagihan (item 8 & 9) */}
+        {/* 8. Telah dilakukan kerja sama penagihan dengan melibatkan pihak ketiga */}
+        <div>
+          <p
+            id="legendKerjaSamaPihakKetiga"
+            className="mb-2 text-sm font-semibold text-gray-700"
+          >
+            8. Telah dilakukan kerja sama penagihan dengan melibatkan pihak
+            ketiga (khusus untuk nominal di atas Rp 1 Milyar){" "}
+            <span className="text-red-500">*</span>
+          </p>
+          <div
+            role="radiogroup"
+            aria-labelledby="legendKerjaSamaPihakKetiga"
+            className="rounded-md border border-gray-200 p-3 sm:p-4"
+          >
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiKerjaSamaPihakKetiga"
+                  value="ya"
+                  checked={form.opsiKerjaSamaPihakKetiga === "ya"}
+                  onChange={() => {
+                    updateField("opsiKerjaSamaPihakKetiga", "ya");
+                    markTouched("opsiKerjaSamaPihakKetiga");
+                  }}
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
+                />
+                <span className="text-sm text-gray-800">Ya</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="opsiKerjaSamaPihakKetiga"
+                  value="tidak"
+                  checked={form.opsiKerjaSamaPihakKetiga === "tidak"}
+                  onChange={() => {
+                    updateField("opsiKerjaSamaPihakKetiga", "tidak");
+                    markTouched("opsiKerjaSamaPihakKetiga");
+                    updateField("buktiKerjaSamaPihakKetiga", null);
+                  }}
+                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
+                />
+                <span className="text-sm text-gray-800">Tidak</span>
+              </label>
+            </div>
+            {touched.opsiKerjaSamaPihakKetiga &&
+              errors.opsiKerjaSamaPihakKetiga && (
+                <p className="mt-2 text-sm text-red-600">
+                  {errors.opsiKerjaSamaPihakKetiga}
+                </p>
+              )}
+            {form.opsiKerjaSamaPihakKetiga === "ya" && (
+              <div className="mt-3">
+                {renderField(
+                  fieldConfig(
+                    "buktiKerjaSamaPihakKetiga",
+                    "Upload bukti kerja sama penagihan dengan pihak ketiga",
+                    false,
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Grup: Upaya Penagihan (item 9 & 10) */}
         <div>
           <p className="mb-2 text-sm font-semibold text-gray-700">
             Upaya Penagihan
           </p>
           <div className="space-y-6 rounded-md border border-gray-200 p-3 sm:p-4">
-            {/* 8. Surat tagihan telah diterbitkan */}
-            {form.opsiRiwayatPenagihan === "penyataan_opd" ? (
-              renderField(
-                fieldConfig(
-                  "filePernyataanOPD",
-                  "8. Surat tagihan telah diterbitkan (upload Pernyataan OPD)",
-                  false,
-                ),
-              )
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-700">
-                  8. Surat tagihan telah diterbitkan (upload surat tagihan 1, 2,
-                  dan 3) <span className="text-red-500">*</span>
+            {/* 9. Bukti riwayat penagihan — dipilih langsung di sini, tidak lagi mengikuti jawaban langkah 2 */}
+            <div>
+              <p
+                id="legendRiwayatPenagihanStep3"
+                className="mb-2 text-sm font-semibold text-gray-700"
+              >
+                9. Surat tagihan telah diterbitkan{" "}
+                <span className="text-red-500">*</span>
+              </p>
+              <div
+                role="radiogroup"
+                aria-labelledby="legendRiwayatPenagihanStep3"
+                className="rounded-md border border-gray-200 p-3 sm:p-4"
+              >
+                <p className="mb-2 text-sm text-gray-600">
+                  Pilih bukti riwayat penagihan yang tersedia:
                 </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {renderField(
-                    fieldConfig("riwayatPenagihan1", "Penagihan ke-1", false),
-                  )}
-                  {renderField(
-                    fieldConfig("riwayatPenagihan2", "Penagihan ke-2", false),
-                  )}
-                  {renderField(
-                    fieldConfig("riwayatPenagihan3", "Penagihan ke-3", false),
-                  )}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="opsiRiwayatPenagihan"
+                      value="riwayat_tagihan"
+                      checked={form.opsiRiwayatPenagihan === "riwayat_tagihan"}
+                      onChange={() => {
+                        updateField("opsiRiwayatPenagihan", "riwayat_tagihan");
+                        markTouched("opsiRiwayatPenagihan");
+                        updateField("filePernyataanOPD", null);
+                      }}
+                      className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
+                    />
+                    <span className="text-sm text-gray-800">
+                      Ada bukti{" "}
+                      {OPSI_RIWAYAT_PENAGIHAN_LABEL.riwayat_tagihan.toLowerCase()}
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="opsiRiwayatPenagihan"
+                      value="penyataan_opd"
+                      checked={form.opsiRiwayatPenagihan === "penyataan_opd"}
+                      onChange={() => {
+                        updateField("opsiRiwayatPenagihan", "penyataan_opd");
+                        markTouched("opsiRiwayatPenagihan");
+                        updateField("riwayatPenagihan1", null);
+                        updateField("riwayatPenagihan2", null);
+                        updateField("riwayatPenagihan3", null);
+                      }}
+                      className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
+                    />
+                    <span className="text-sm text-gray-800">
+                      Ada bukti{" "}
+                      {OPSI_RIWAYAT_PENAGIHAN_LABEL.penyataan_opd.toLowerCase()}
+                    </span>
+                  </label>
                 </div>
-              </div>
-            )}
+                {touched.opsiRiwayatPenagihan &&
+                  errors.opsiRiwayatPenagihan && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {errors.opsiRiwayatPenagihan}
+                    </p>
+                  )}
 
-            {/* 9. Telah dilakukan upaya optimal sesuai ketentuan */}
+                {form.opsiRiwayatPenagihan === "penyataan_opd" && (
+                  <div className="mt-3">
+                    {renderField(
+                      fieldConfig(
+                        "filePernyataanOPD",
+                        "Upload Pernyataan OPD",
+                        false,
+                      ),
+                    )}
+                  </div>
+                )}
+                {form.opsiRiwayatPenagihan === "riwayat_tagihan" && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {renderField(
+                      fieldConfig("riwayatPenagihan1", "Penagihan ke-1", false),
+                    )}
+                    {renderField(
+                      fieldConfig("riwayatPenagihan2", "Penagihan ke-2", false),
+                    )}
+                    {renderField(
+                      fieldConfig("riwayatPenagihan3", "Penagihan ke-3", false),
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 10. Telah dilakukan upaya optimal sesuai ketentuan */}
             <div>
               <p
                 id="legendUpayaOptimal"
                 className="mb-2 text-sm font-semibold text-gray-700"
               >
-                9. Telah dilakukan upaya optimal sesuai ketentuan{" "}
+                10. Telah dilakukan upaya optimal sesuai ketentuan{" "}
                 <span className="text-red-500">*</span>
               </p>
               <div
@@ -2140,6 +2373,12 @@ export default function AjukanPermohonanWizard({
             </div>
           </div>
         </div>
+
+        {/* 11. Hasil penagihan tidak berhasil */}
+        {renderCheckboxQuestion(
+          "persyaratanHasilPenagihanTidakBerhasil",
+          "11. Hasil penagihan tidak berhasil",
+        )}
       </div>
     );
   };
@@ -2159,6 +2398,7 @@ export default function AjukanPermohonanWizard({
               setSubmitted(false);
               resetForm();
               setCurrentStep(0);
+              setPreviewOpsiRiwayatPenagihan("");
             }}
             className="rounded-md bg-[#1a4e8f] px-4 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e]"
           >
@@ -2177,6 +2417,42 @@ export default function AjukanPermohonanWizard({
 
   return (
     <>
+      {showLoginNotice &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-200 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Login Diperlukan"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowLoginNotice(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setShowLoginNotice(false);
+            }}
+          >
+            <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-5 shadow-lg">
+              <h3 className="mb-2 font-semibold text-gray-800">
+                Login Diperlukan
+              </h3>
+              <p className="mb-4 text-sm text-gray-600">
+                Untuk mengirimkan pengajuan ini, silakan login terlebih dahulu
+                sebagai OPD. Data yang sudah Anda isi di sini belum tersimpan.
+              </p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowLoginNotice(false)}
+                  className="w-full rounded-md bg-[#1a4e8f] px-3 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-1.5"
+                >
+                  Mengerti
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
       {showConfirm &&
         typeof document !== "undefined" &&
         createPortal(
@@ -2513,9 +2789,9 @@ export default function AjukanPermohonanWizard({
                   <button
                     type="button"
                     onClick={goNext}
-                    disabled={!allChecked}
+                    disabled={!allowFreeNavigation && !allChecked}
                     className={`w-full rounded-md px-4 py-2.5 text-sm font-medium transition sm:w-auto sm:py-2 ${
-                      allChecked
+                      allowFreeNavigation || allChecked
                         ? "bg-[#1a4e8f] text-white hover:bg-[#0e3b6e]"
                         : "cursor-not-allowed bg-gray-300 text-gray-500"
                     }`}

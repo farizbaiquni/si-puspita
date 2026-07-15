@@ -113,6 +113,7 @@ export interface FormulirPenghapusanPiutangOPDRecord {
   status: StatusFormulir;
   createdAt: string;
   updatedAt: string;
+  nomorRegistrasi: string | null;
 
   namaPenanggungJawab: string;
   jabatan: string;
@@ -153,7 +154,7 @@ export interface FormulirPenghapusanPiutangOPDRecord {
 // metadata server (id, status, dll) belum ada — akan digenerate backend.
 export type FormulirPenghapusanPiutangOPDSubmitPayload = Omit<
   FormulirPenghapusanPiutangOPDRecord,
-  "id" | "createdBy" | "status" | "createdAt" | "updatedAt"
+  "id" | "createdBy" | "status" | "createdAt" | "updatedAt" | "nomorRegistrasi"
 > & {
   opdId: string;
 };

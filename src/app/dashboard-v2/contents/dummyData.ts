@@ -134,6 +134,43 @@ const filePernyataanOPD: UploadedFileRef = {
   uploadedAt: "2025-01-07T08:50:00Z",
 };
 
+// ────────────────────────── NOMOR REGISTRASI ───────────────────────────────
+// Format: reg-{no urut antrian}/{kode instansi}/{singkatan instansi}/{bulan romawi}/{tahun}
+// Kode & singkatan instansi mengikuti daftar resmi BPKAD.
+const BULAN_ROMAWI = [
+  "I",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+  "XI",
+  "XII",
+];
+
+const KODE_INSTANSI: Record<string, { kode: number; singkatan: string }> = {
+  RSUD: { kode: 22, singkatan: "RSUD" },
+  "Dinas Perhubungan": { kode: 24, singkatan: "DISHUB" },
+  "Dinas Komunikasi dan Informatika": { kode: 46, singkatan: "DISKOMINFO" },
+  "Dinas Perdagangan Koperasi dan UKM": { kode: 51, singkatan: "DAGKOP" },
+  "Sekretariat Dewan": { kode: 59, singkatan: "SETWAN" },
+};
+
+function buildNomorRegistrasi(
+  noUrut: number,
+  namaOPD: string,
+  tanggalVerifikasi: string,
+): string {
+  const instansi = KODE_INSTANSI[namaOPD];
+  const bulanIndex = new Date(tanggalVerifikasi).getMonth(); // 0-based
+  const tahun = new Date(tanggalVerifikasi).getFullYear();
+  return `reg-${noUrut}/${instansi.kode}/${instansi.singkatan}/${BULAN_ROMAWI[bulanIndex]}/${tahun}`;
+}
+
 // ─────────────────────────────── DATA MOCK ──────────────────────────────────
 export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
   // 1. Semua riwayat penagihan lengkap (3 file)
@@ -145,6 +182,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "teregistrasi",
     createdAt: "2025-01-08T09:23:00Z",
     updatedAt: "2025-01-10T11:00:00Z",
+    nomorRegistrasi: buildNomorRegistrasi(1, "RSUD", "2025-01-10T11:00:00Z"),
     // Jejak audit verifikasi BPKAD — seluruh poin checklist terpenuhi,
     // sehingga pengajuan dinyatakan lolos.
     checklistSubstantif: {
@@ -201,6 +239,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "revisi",
     createdAt: "2025-02-15T11:05:00Z",
     updatedAt: "2025-02-16T09:00:00Z",
+    nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — poin yang false sengaja dicocokkan
     // dengan dokumen yang memang null di bawah (daftar nominatif, neraca
     // awal, rekap angsuran belum dilampirkan; riwayat penagihan baru
@@ -259,6 +298,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "diajukan",
     createdAt: "2025-03-03T08:44:00Z",
     updatedAt: "2025-03-04T10:00:00Z",
+    nomorRegistrasi: null,
     namaPenanggungJawab: "Rina Anggraini, S.Kom, M.M.",
     jabatan: "Kepala Dinas Komunikasi dan Informatika",
     nomorSurat: "035/DISKOMINFO/III/2025",
@@ -297,6 +337,11 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "teregistrasi",
     createdAt: "2025-04-20T15:45:00Z",
     updatedAt: "2025-04-22T09:30:00Z",
+    nomorRegistrasi: buildNomorRegistrasi(
+      2,
+      "Dinas Perdagangan Koperasi dan UKM",
+      "2025-04-22T09:30:00Z",
+    ),
     // Jejak audit verifikasi BPKAD — seluruh poin checklist terpenuhi
     // (Surat Pernyataan OPD dipakai sebagai pengganti riwayat penagihan).
     checklistSubstantif: {
@@ -353,6 +398,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     status: "revisi",
     createdAt: "2025-05-10T10:15:00Z",
     updatedAt: "2025-05-11T13:20:00Z",
+    nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — hampir seluruh dokumen pendukung
     // dan bukti penagihan belum dilampirkan, sehingga sebagian besar
     // poin checklist belum bisa dinyatakan terpenuhi.

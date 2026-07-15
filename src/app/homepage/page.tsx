@@ -661,7 +661,12 @@ function ModalPengajuan() {
   // jadi begitu OPD submit di sini, data langsung tersedia di ModalLacak
   // homepage maupun di dashboard-v2 tanpa reload.
   const { tambahPengajuan } = usePengajuanStore();
-  return <AjukanPermohonanWizard onSubmitPengajuan={tambahPengajuan} />;
+  return (
+    <AjukanPermohonanWizard
+      onSubmitPengajuan={tambahPengajuan}
+      allowFreeNavigation
+    />
+  );
 }
 
 // Badge status kecil untuk kartu hasil pencarian & daftar pengajuan terbaru.
@@ -696,6 +701,11 @@ function KartuPengajuanLacak({
           {data.nomorSurat}
         </p>
         <p className="truncate text-xs text-gray-400">{data.namaOPD}</p>
+        {data.status === "teregistrasi" && data.nomorRegistrasi && (
+          <p className="truncate text-[11px] font-semibold text-emerald-600">
+            {data.nomorRegistrasi}
+          </p>
+        )}
       </div>
       <StatusBadgeLacak status={data.status} />
     </button>
@@ -722,6 +732,18 @@ function DetailPengajuanLacak({
         </div>
         <StatusBadgeLacak status={data.status} />
       </div>
+
+      {/* Nomor registrasi resmi — hanya tampil untuk berkas yang sudah Teregistrasi */}
+      {data.status === "teregistrasi" && data.nomorRegistrasi && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3.5 py-3">
+          <p className="text-[11px] font-semibold tracking-wide text-emerald-700 uppercase">
+            Nomor Registrasi
+          </p>
+          <p className="mt-0.5 text-sm font-bold text-emerald-800">
+            {data.nomorRegistrasi}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2 border-t border-gray-200 pt-3">
         {[
@@ -779,8 +801,17 @@ function ModalLacak() {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Urutan pengelompokan status: Teregistrasi paling atas, lalu Diajukan, lalu Revisi.
+  const STATUS_GROUP_ORDER: Record<StatusFormulir, number> = {
+    teregistrasi: 0,
+    diajukan: 1,
+    revisi: 2,
+  };
+
   // Filtering: cocok berdasarkan No. Surat, nama OPD, atau ID pengajuan —
-  // sekaligus disaring per status jika chip status dipilih.
+  // sekaligus disaring per status jika chip status dipilih. Hasil
+  // dikelompokkan per status (Teregistrasi → Diajukan → Revisi), dan di
+  // dalam tiap kelompok diurutkan dari yang paling baru diperbarui.
   const hasilFilter = useMemo(() => {
     const q = query.trim().toLowerCase();
     return pengajuanData
@@ -794,11 +825,31 @@ function ModalLacak() {
           statusFilter === "SEMUA" || d.status === statusFilter;
         return cocokQuery && cocokStatus;
       })
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
+      .sort((a, b) => {
+        const grup =
+          STATUS_GROUP_ORDER[a.status] - STATUS_GROUP_ORDER[b.status];
+        if (grup !== 0) return grup;
+        return (
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
   }, [pengajuanData, query, statusFilter]);
+
+  // Kelompokkan hasil per status untuk ditampilkan dengan judul pemisah,
+  // hanya kelompok yang punya isi yang dirender.
+  const hasilPerGrup = useMemo(() => {
+    const urutan: { status: StatusFormulir; label: string }[] = [
+      { status: "teregistrasi", label: "Teregistrasi" },
+      { status: "diajukan", label: "Diajukan" },
+      { status: "revisi", label: "Revisi" },
+    ];
+    return urutan
+      .map((g) => ({
+        ...g,
+        items: hasilFilter.filter((d) => d.status === g.status),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [hasilFilter]);
 
   const selected = selectedId
     ? (pengajuanData.find((d) => d.id === selectedId) ?? null)
@@ -889,13 +940,30 @@ function ModalLacak() {
               <p className="text-xs font-semibold text-gray-400">
                 {hasilFilter.length} pengajuan ditemukan
               </p>
-              <div className="max-h-64 space-y-2 overflow-y-auto pr-0.5">
-                {hasilFilter.map((d) => (
-                  <KartuPengajuanLacak
-                    key={d.id}
-                    data={d}
-                    onClick={() => setSelectedId(d.id)}
-                  />
+              <div className="max-h-64 space-y-4 overflow-y-auto pr-0.5">
+                {hasilPerGrup.map((grup) => (
+                  <div key={grup.status} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_CONFIG_LACAK[grup.status].dotClass}`}
+                      />
+                      <p className="text-[11px] font-bold tracking-wide text-gray-500 uppercase">
+                        {grup.label}{" "}
+                        <span className="text-gray-300">
+                          ({grup.items.length})
+                        </span>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {grup.items.map((d) => (
+                        <KartuPengajuanLacak
+                          key={d.id}
+                          data={d}
+                          onClick={() => setSelectedId(d.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </>
