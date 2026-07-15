@@ -49,6 +49,74 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Nomor Registrasi — generator
+// Format: reg-{no urut antrian}/{kode instansi}/{singkatan instansi}/{bulan romawi}/{tahun}
+// ─────────────────────────────────────────────────────────────────────────────
+
+const KODE_INSTANSI: { match: string; kode: string; singkatan: string }[] = [
+  { match: "RSUD", kode: "22", singkatan: "RSUD" },
+  { match: "Dinas Perhubungan", kode: "24", singkatan: "DISHUB" },
+  {
+    match: "Dinas Komunikasi dan Informatika",
+    kode: "46",
+    singkatan: "DISKOMINFO",
+  },
+  {
+    match: "Dinas Perdagangan Koperasi dan UKM",
+    kode: "51",
+    singkatan: "DISPERINDAGKOP",
+  },
+  { match: "Setwan", kode: "59", singkatan: "SETWAN" },
+];
+
+function getKodeInstansi(namaOPD: string): { kode: string; singkatan: string } {
+  const found = KODE_INSTANSI.find((k) =>
+    namaOPD.toLowerCase().includes(k.match.toLowerCase()),
+  );
+  if (found) return { kode: found.kode, singkatan: found.singkatan };
+  // Fallback untuk OPD yang belum terdaftar di mapping — tetap hasilkan
+  // nomor registrasi yang valid alih-alih gagal.
+  return {
+    kode: "00",
+    singkatan:
+      namaOPD
+        .replace(/[^a-zA-Z\s]/g, "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 10) || "OPD",
+  };
+}
+
+const BULAN_ROMAWI = [
+  "I",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+  "XI",
+  "XII",
+];
+
+function generateNomorRegistrasi(
+  namaOPD: string,
+  noUrutAntrian: number,
+  tanggal: Date = new Date(),
+): string {
+  const { kode, singkatan } = getKodeInstansi(namaOPD);
+  const bulanRomawi = BULAN_ROMAWI[tanggal.getMonth()];
+  const tahun = tanggal.getFullYear();
+  return `reg-${noUrutAntrian}/${kode}/${singkatan}/${bulanRomawi}/${tahun}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Daftar dokumen — dibangun dari field dokumen flat FormulirPenghapusanPiutangOPDRecord + fileSurat
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -453,11 +521,21 @@ const PanelVerifikasi: React.FC<{
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
-                  Nomor Registrasi
+                  Nomor Surat
                 </div>
                 <div className="text-lg font-bold text-[#1a1a2e]">
-                  {pengajuan.id}
+                  {pengajuan.nomorSurat || "-"}
                 </div>
+                {pengajuan.nomorRegistrasi && (
+                  <div className="mt-1.5">
+                    <div className="mb-0.5 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
+                      Nomor Registrasi
+                    </div>
+                    <div className="font-mono text-sm font-bold text-[#0f9b6e]">
+                      {pengajuan.nomorRegistrasi}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <JenisPenghapusanBadge jenis={pengajuan.jenisPenghapusan} />
@@ -472,7 +550,6 @@ const PanelVerifikasi: React.FC<{
                   label: "Tanggal Surat",
                   value: formatTanggal(pengajuan.tanggalSurat),
                 },
-                { label: "Nomor Surat", value: pengajuan.nomorSurat },
                 {
                   label: "Jenis Piutang",
                   value: labelJenisPiutang(pengajuan.jenisPiutang),
@@ -713,7 +790,12 @@ interface VerifikasiPengajuanProps {
   /** Seluruh pengajuan dari parent (single source of truth), mis. MOCK_DATA */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
   /** Dipanggil setelah BPKAD memutuskan verifikasi — parent yang update status */
-  onStatusUpdate?: (id: string, status: Keputusan, catatan?: string) => void;
+  onStatusUpdate?: (
+    id: string,
+    status: Keputusan,
+    catatan?: string,
+    nomorRegistrasi?: string,
+  ) => void;
   /** ID / nama akun verifikator BPKAD yang sedang login (untuk jejak audit) */
   verifikatorId?: string;
 }
@@ -783,18 +865,41 @@ export default function VerifikasiPengajuan({
 
     const tanggalVerifikasi = new Date().toISOString();
 
+    // Jika lolos verifikasi ("teregistrasi"), generate Nomor Registrasi.
+    // No urut antrian dihitung dari jumlah pengajuan yang sudah
+    // berstatus "teregistrasi" (di seluruh data, bukan hanya sesi ini) + 1.
+    let nomorRegistrasi = selected.nomorRegistrasi;
+    if (keputusan === "teregistrasi") {
+      const jumlahSudahTeregistrasi = daftarPengajuan.filter(
+        (p) => p.status === "teregistrasi",
+      ).length;
+      const noUrutAntrian = jumlahSudahTeregistrasi + 1;
+      nomorRegistrasi = generateNomorRegistrasi(
+        selected.namaOPD,
+        noUrutAntrian,
+        new Date(tanggalVerifikasi),
+      );
+    }
+
     const hasil: FormulirPenghapusanPiutangOPDRecord = {
       ...selected,
       status: keputusan,
       verifikatorId,
       tanggalVerifikasi,
+      nomorRegistrasi,
     };
 
     // Catat di riwayat sesi ini
     setRiwayat((prev) => [{ pengajuan: hasil, keputusan, catatan }, ...prev]);
-    // Beritahu parent — parent update status di shared state; antrean
-    // otomatis reaktif karena di-derive via useMemo dari props.
-    onStatusUpdate?.(selected.id, keputusan, catatan || undefined);
+    // Beritahu parent — parent update status (dan nomorRegistrasi bila ada)
+    // di shared state; antrean otomatis reaktif karena di-derive via
+    // useMemo dari props.
+    onStatusUpdate?.(
+      selected.id,
+      keputusan,
+      catatan || undefined,
+      nomorRegistrasi || undefined,
+    );
     setSelected(null);
   };
 

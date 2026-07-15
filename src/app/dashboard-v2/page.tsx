@@ -32,6 +32,13 @@ import type {
 
 type UserRole = "OPD" | "BPKAD";
 
+// Label tampilan di UI — value internal role tetap "BPKAD" (dipakai di
+// URL param, logika menu, dll), tapi yang dilihat user cukup "Admin".
+const ROLE_LABEL: Record<UserRole, string> = {
+  OPD: "OPD",
+  BPKAD: "Admin",
+};
+
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
 type BPKADMenuKey = "verifikasi-pengajuan" | "lihat-pengajuan";
@@ -79,7 +86,7 @@ const PAGE_META: Record<
 > = {
   "ajukan-permohonan": {
     title: "Ajukan Permohonan Penghapusan Piutang",
-    subtitle: "Buat dan kirimkan permohonan baru kepada BPKAD.",
+    subtitle: "Buat dan kirimkan permohonan baru kepada Admin.",
     action: { label: "Buat Permohonan" },
   },
   "lihat-daftar-pengajuan": {
@@ -285,7 +292,7 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${roleColors[role]}`}
         >
-          {role}
+          {ROLE_LABEL[role]}
         </span>
         <IconChevronDown />
       </button>
@@ -313,7 +320,7 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
                   role === r ? "bg-[#1a4e8f]" : "bg-[#d1d8e0]"
                 }`}
               />
-              {r}
+              {ROLE_LABEL[r]}
               {role === r && (
                 <span className="ml-auto text-[10px] text-[#1a4e8f]">✓</span>
               )}
@@ -353,9 +360,9 @@ const Header: React.FC<HeaderProps> = ({
       avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
     },
     BPKAD: {
-      name: "BPKAD",
-      subtitle: "Badan Pengelolaan Keuangan dan Aset Daerah",
-      initials: "BK",
+      name: "Admin",
+      subtitle: "Tim Admin",
+      initials: "AD",
       avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
     },
   };
@@ -450,6 +457,7 @@ interface MainContentProps {
     id: string,
     status: StatusFormulir,
     catatan?: string,
+    nomorRegistrasi?: string,
   ) => void;
 }
 
@@ -477,9 +485,9 @@ const MainContent: React.FC<MainContentProps> = ({
       ) : activeMenu === "verifikasi-pengajuan" ? (
         <VerifikasiPengajuan
           semuaPengajuan={semuaPengajuan}
-          verifikatorId="BPKAD"
-          onStatusUpdate={(id, status, catatan) =>
-            onStatusUpdate(id, status, catatan)
+          verifikatorId="Admin"
+          onStatusUpdate={(id, status, catatan, nomorRegistrasi) =>
+            onStatusUpdate(id, status, catatan, nomorRegistrasi)
           }
         />
       ) : (
@@ -563,14 +571,19 @@ const DashboardContent: React.FC = () => {
     id: string,
     status: StatusFormulir,
     catatan?: string,
+    nomorRegistrasi?: string,
   ) => {
     updatePengajuan(id, {
       status,
       // Jejak audit verifikasi — handler ini hanya dipanggil dari panel
-      // verifikasi BPKAD, jadi selalu diisi.
-      verifikatorId: "BPKAD",
+      // verifikasi Admin, jadi selalu diisi.
+      verifikatorId: "Admin",
       tanggalVerifikasi: new Date().toISOString(),
       catatanVerifikasi: catatan,
+      // Hanya terisi saat keputusan "Lolos Verifikasi" (teregistrasi) —
+      // digenerate di VerifikasiPengajuan dan diteruskan sampai sini
+      // supaya tersimpan di store dan muncul di ModalLacak homepage.
+      ...(nomorRegistrasi ? { nomorRegistrasi } : {}),
     });
   };
 
