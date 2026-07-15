@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import AjukanPermohonanWizard from "./contents/opd/ajukan-permohonan/AjukanPermohonan";
 import DaftarPengajuanOPDBaru from "./contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
 import VerifikasiPengajuan from "./contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
+import LihatDaftarPengajuanAdmin from "./contents/bpkad/lihat-daftar-pengajuan-admin/lihat-daftar-pengajuan-admin";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -484,7 +485,7 @@ const MainContent: React.FC<MainContentProps> = ({
       ) : activeMenu === "lihat-daftar-pengajuan" ? (
         <DaftarPengajuanOPDBaru data={semuaPengajuan} />
       ) : activeMenu === "lihat-daftar-pengajuan-admin" ? (
-        <LihatDaftarPengajuan />
+        <LihatDaftarPengajuanAdmin semuaPengajuan={semuaPengajuan} />
       ) : activeMenu === "verifikasi-pengajuan" ? (
         <VerifikasiPengajuan
           semuaPengajuan={semuaPengajuan}
