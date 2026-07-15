@@ -316,7 +316,7 @@ const STATUS_CONFIG: Record<StatusPengajuan, StatusConfig> = {
     dotClass: "bg-[#ef4444]",
   },
   PERLU_REVISI: {
-    label: "Perlu Revisi",
+    label: "Revisi",
     badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dotClass: "bg-[#f97316]",
   },

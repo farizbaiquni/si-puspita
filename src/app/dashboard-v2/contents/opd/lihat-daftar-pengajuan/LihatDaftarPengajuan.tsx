@@ -5,10 +5,6 @@ import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
 } from "@/types/types-v2";
-import {
-  CHECKLIST_STATUS_PIUTANG,
-  CHECKLIST_UPAYA_PENAGIHAN,
-} from "@/lib/checklistPersyaratan";
 import { MOCK_DATA } from "../../dummyData";
 import {
   IconSearch,
@@ -74,11 +70,15 @@ const STATUS_CONFIG: Record<
     dotClass: "bg-[#f97316]",
   },
   teregistrasi: {
-    label: "Lolos Verifikasi",
+    label: "Teregistrasi",
     badgeClass: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
     dotClass: "bg-[#10b981]",
   },
 };
+
+// Urutan grup status pada daftar: teregistrasi (teregistrasi verifikasi) paling
+// atas, lalu revisi, lalu yang masih diajukan / menunggu verifikasi.
+const STATUS_ORDER: StatusFormulir[] = ["teregistrasi", "revisi", "diajukan"];
 
 // ──────────────────────── SORT INDICATOR ────────────────────────────────────
 const SortIndicator: React.FC<{
@@ -94,7 +94,28 @@ const SortIndicator: React.FC<{
   );
 };
 
-// ──────────────────────────── STAT CARD ─────────────────────────────────────
+// ──────────────────── STATUS GROUP HEADER ───────────────────────────────────
+const StatusGroupHeader: React.FC<{
+  status: StatusFormulir;
+  count: number;
+}> = ({ status, count }) => {
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-md border px-3 py-2 ${cfg.badgeClass}`}
+    >
+      <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dotClass}`} />
+      <span className="text-[11.5px] font-bold tracking-wide uppercase">
+        {cfg.label}
+      </span>
+      <span className="rounded-full bg-white/70 px-1.75 py-0.25 text-[10.5px] font-bold">
+        {count}
+      </span>
+    </div>
+  );
+};
+
+// ──────────────────── STAT CARD ─────────────────────────────────────
 const StatCard: React.FC<{
   label: string;
   value: number | string;
@@ -173,29 +194,16 @@ const PdfPreviewModal: React.FC<{
   );
 };
 
-// ──────────────── HASIL VERIFIKASI (beda tampilan revisi vs lolos) ──────────
+// ──────────────── HASIL VERIFIKASI (beda tampilan revisi vs teregistrasi) ──────────
 const HasilVerifikasiSection: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
 }> = ({ record }) => {
-  const { status, checklistSubstantif, catatanVerifikasi, tanggalVerifikasi } =
-    record;
+  const { status, catatanVerifikasi, tanggalVerifikasi } = record;
 
   // Belum diverifikasi — tidak ada apa pun untuk ditampilkan di sini.
   if (status === "diajukan") return null;
 
   const isRevisi = status === "revisi";
-
-  // Poin checklist yang BELUM terpenuhi, dikelompokkan sama seperti di panel
-  // verifikasi BPKAD (Status Piutang & Upaya Penagihan) agar OPD mudah
-  // mencocokkan dokumen mana yang perlu dilengkapi/diperbaiki.
-  const belumStatusPiutang = CHECKLIST_STATUS_PIUTANG.filter(
-    (item) => !checklistSubstantif?.[item.id],
-  );
-  const belumUpayaPenagihan = CHECKLIST_UPAYA_PENAGIHAN.filter(
-    (item) => !checklistSubstantif?.[item.id],
-  );
-  const totalBelumTerpenuhi =
-    belumStatusPiutang.length + belumUpayaPenagihan.length;
 
   return (
     <div className="mb-6">
@@ -208,134 +216,95 @@ const HasilVerifikasiSection: React.FC<{
       </h3>
 
       {isRevisi ? (
-        <div className="rounded-md border border-[#fecaca] bg-[#fef2f2] p-4">
-          <div className="mb-1 flex items-center gap-2 text-sm font-bold text-[#991b1b]">
-            <svg
-              className="h-4 w-4 shrink-0"
-              fill="none"
-              viewBox="0 0 16 16"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path
-                d="M8 1.5L14.5 13H1.5L8 1.5z"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M8 6.5v3.5M8 11.5v.5" strokeLinecap="round" />
-            </svg>
-            Pengajuan perlu direvisi
+        <div className="overflow-hidden rounded-lg border border-[#fecaca] bg-gradient-to-br from-[#fef2f2] to-white shadow-sm">
+          <div className="flex items-start gap-3 border-b border-[#fecaca]/70 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#c0392b]">
+              <svg
+                className="h-4.5 w-4.5"
+                fill="none"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <path
+                  d="M8 1.5L14.5 13H1.5L8 1.5z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path d="M8 6.5v3.5M8 11.5v.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-[#991b1b]">
+                Pengajuan perlu direvisi
+              </div>
+              {tanggalVerifikasi && (
+                <p className="mt-0.5 text-[11px] text-[#b45454]">
+                  Ditinjau pada {formatTanggalWaktu(tanggalVerifikasi)}
+                </p>
+              )}
+            </div>
           </div>
-          {tanggalVerifikasi && (
-            <p className="mb-3 text-[11px] text-[#b45454]">
-              Ditinjau pada {formatTanggalWaktu(tanggalVerifikasi)}
-            </p>
-          )}
 
           {/* Keterangan / alasan revisi dari BPKAD */}
-          <div className="mb-3 rounded border border-[#fecaca] bg-white p-3">
-            <div className="mb-1 text-[11px] font-semibold tracking-wide text-[#7a1f1f] uppercase">
+          <div className="p-4">
+            <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-[#7a1f1f] uppercase">
               Keterangan dari BPKAD
             </div>
-            <p className="text-[13px] leading-snug whitespace-pre-line text-[#3f1d1d]">
+            <p className="text-[13px] leading-relaxed whitespace-pre-line text-[#3f1d1d]">
               {catatanVerifikasi || "Tidak ada keterangan tambahan."}
             </p>
+            <p className="mt-3 flex items-start gap-1.5 text-[12px] text-[#b45454]">
+              <svg
+                className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                fill="none"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <path d="M8 5v4M8 11.5v.01" strokeLinecap="round" />
+                <circle cx="8" cy="8" r="6.5" />
+              </svg>
+              Lengkapi atau perbaiki dokumen sesuai keterangan di atas, kemudian
+              ajukan kembali.
+            </p>
           </div>
-
-          {/* Poin checklist yang belum terpenuhi, per grup */}
-          {totalBelumTerpenuhi > 0 && (
-            <div className="space-y-3">
-              {belumStatusPiutang.length > 0 && (
-                <div>
-                  <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-[#7a1f1f] uppercase">
-                    Status Piutang — belum terpenuhi (
-                    {belumStatusPiutang.length})
-                  </div>
-                  <ul className="space-y-1.5">
-                    {belumStatusPiutang.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-start gap-2 rounded border border-[#fecaca] bg-white px-3 py-2 text-[12.5px] text-[#3f1d1d]"
-                      >
-                        <svg
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#c0392b]"
-                          fill="none"
-                          viewBox="0 0 14 14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M4 4l6 6M10 4l-6 6" strokeLinecap="round" />
-                        </svg>
-                        <span>{item.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {belumUpayaPenagihan.length > 0 && (
-                <div>
-                  <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-[#7a1f1f] uppercase">
-                    Upaya Penagihan — belum terpenuhi (
-                    {belumUpayaPenagihan.length})
-                  </div>
-                  <ul className="space-y-1.5">
-                    {belumUpayaPenagihan.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-start gap-2 rounded border border-[#fecaca] bg-white px-3 py-2 text-[12.5px] text-[#3f1d1d]"
-                      >
-                        <svg
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#c0392b]"
-                          fill="none"
-                          viewBox="0 0 14 14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M4 4l6 6M10 4l-6 6" strokeLinecap="round" />
-                        </svg>
-                        <span>{item.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       ) : (
-        <div className="rounded-md border border-[#a7f3d0] bg-[#ecfdf5] p-4">
-          <div className="mb-1 flex items-center gap-2 text-sm font-bold text-[#065f46]">
-            <svg
-              className="h-4 w-4 shrink-0"
-              fill="none"
-              viewBox="0 0 16 16"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path
-                d="M3 8l3.5 3.5L13 4.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Pengajuan lolos verifikasi
+        <div className="overflow-hidden rounded-lg border border-[#a7f3d0] bg-gradient-to-br from-[#ecfdf5] to-white shadow-sm">
+          <div className="flex items-start gap-3 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d1fae5] text-[#0f6e56]">
+              <svg
+                className="h-4.5 w-4.5"
+                fill="none"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
+                <path
+                  d="M3 8l3.5 3.5L13 4.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-[#065f46]">
+                Pengajuan Teregistrasi
+              </div>
+              {tanggalVerifikasi && (
+                <p className="mt-0.5 text-[11px] text-[#3a8f74]">
+                  Diverifikasi pada {formatTanggalWaktu(tanggalVerifikasi)}
+                </p>
+              )}
+            </div>
           </div>
-          {tanggalVerifikasi && (
-            <p className="mb-2 text-[11px] text-[#3a8f74]">
-              Diverifikasi pada {formatTanggalWaktu(tanggalVerifikasi)}
-            </p>
-          )}
-          <p className="text-[13px] leading-snug text-[#0f4c3c]">
-            Seluruh poin Checklist Persyaratan Substantif (Status Piutang &
-            Upaya Penagihan) telah dinyatakan terpenuhi oleh BPKAD.
-          </p>
           {catatanVerifikasi && (
-            <div className="mt-3 rounded border border-[#a7f3d0] bg-white p-3">
+            <div className="border-t border-[#a7f3d0]/70 p-4">
               <div className="mb-1 text-[11px] font-semibold tracking-wide text-[#0f6e56] uppercase">
                 Catatan tambahan dari BPKAD
               </div>
-              <p className="text-[13px] leading-snug whitespace-pre-line text-[#0f4c3c]">
+              <p className="text-[13px] leading-relaxed whitespace-pre-line text-[#0f4c3c]">
                 {catatanVerifikasi}
               </p>
             </div>
@@ -505,7 +474,7 @@ const ModalDetail: React.FC<{
 
           {/* Body dengan scroll */}
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {/* Hasil Verifikasi BPKAD — tampil beda untuk revisi vs lolos */}
+            {/* Hasil Verifikasi BPKAD — tampil beda untuk revisi vs teregistrasi */}
             <HasilVerifikasiSection record={record} />
 
             {/* Tabel 1: Identitas Usulan */}
@@ -767,8 +736,8 @@ export default function DaftarPengajuanOPDBaru({
     const total = data.length;
     const diajukan = data.filter((r) => r.status === "diajukan").length;
     const revisi = data.filter((r) => r.status === "revisi").length;
-    const lolos = data.filter((r) => r.status === "teregistrasi").length;
-    return { total, diajukan, revisi, lolos };
+    const teregistrasi = data.filter((r) => r.status === "teregistrasi").length;
+    return { total, diajukan, revisi, teregistrasi };
   }, [data]);
 
   // ── Filtered + sorted ──
@@ -803,6 +772,14 @@ export default function DaftarPengajuanOPDBaru({
 
     return result;
   }, [data, filter, sortKey, sortDir]);
+
+  // ── Dikelompokkan per status, urutan tetap: teregistrasi → revisi → diajukan ──
+  const grouped = useMemo(() => {
+    return STATUS_ORDER.map((status) => ({
+      status,
+      items: filtered.filter((r) => r.status === status),
+    })).filter((g) => g.items.length > 0);
+  }, [filtered]);
 
   // ── Toggle sort key ──
   const toggleSortKey = (key: "tanggal" | "total") => {
@@ -896,8 +873,8 @@ export default function DaftarPengajuanOPDBaru({
           }
         />
         <StatCard
-          label="Lolos Verifikasi"
-          value={stats.lolos}
+          label="Teregistrasi"
+          value={stats.teregistrasi}
           accentClass="bg-[#10b981]"
           cardClass="bg-[#ecfdf5] border-[#a7f3d0]"
           icon={
@@ -1000,15 +977,29 @@ export default function DaftarPengajuanOPDBaru({
       ) : (
         <>
           {/* Tampilan kartu — layar sempit (HP/tablet kecil) */}
-          <div className="space-y-3 md:hidden">
-            {filtered.map((record, idx) => (
-              <RecordCardMobile
-                key={record.id}
-                record={record}
-                nomor={idx + 1}
-                onLihatDetail={() => setSelectedRecord(record)}
-              />
-            ))}
+          <div className="space-y-4 md:hidden">
+            {(() => {
+              let counter = 0;
+              return grouped.map((group) => (
+                <div key={group.status} className="space-y-3">
+                  <StatusGroupHeader
+                    status={group.status}
+                    count={group.items.length}
+                  />
+                  {group.items.map((record) => {
+                    counter += 1;
+                    return (
+                      <RecordCardMobile
+                        key={record.id}
+                        record={record}
+                        nomor={counter}
+                        onLihatDetail={() => setSelectedRecord(record)}
+                      />
+                    );
+                  })}
+                </div>
+              ));
+            })()}
           </div>
 
           {/* Tampilan tabel — tablet ke atas, dengan scroll horizontal sebagai jaring pengaman */}
@@ -1056,53 +1047,86 @@ export default function DaftarPengajuanOPDBaru({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((record, idx) => (
-                  <tr
-                    key={record.id}
-                    className={`transition-colors duration-150 hover:bg-[#fafbfc] ${idx === filtered.length - 1 ? "" : "border-b border-[#e2e8f2]"}`}
-                  >
-                    <td className="p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
-                      {idx + 1}
-                    </td>
-                    <td className="p-[12px_14px]">
-                      <div className="text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                        {record.namaPenanggungJawab}
-                      </div>
-                      <div className="mt-px text-[11px] text-[#7a8899]">
-                        {record.jabatan}
-                      </div>
-                    </td>
-                    <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
-                      {formatTanggal(record.tanggalSurat)}
-                    </td>
-                    <td className="p-[12px_14px] font-bold whitespace-nowrap text-[#1a4e8f]">
-                      {formatRupiah(record.totalNilaiPiutang)}
-                    </td>
-                    <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
-                      {record.jumlahDebitur} orang
-                    </td>
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <StatusBadge status={record.status} />
-                      {record.status === "revisi" && (
-                        <button
-                          onClick={() => setSelectedRecord(record)}
-                          className="mt-1 block cursor-pointer text-[11px] font-semibold text-[#c0392b] hover:underline"
-                        >
-                          Lihat catatan revisi →
-                        </button>
-                      )}
-                    </td>
-                    <td className="p-[12px_14px] whitespace-nowrap">
-                      <button
-                        onClick={() => setSelectedRecord(record)}
-                        title="Lihat Detail"
-                        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-                      >
-                        <IconEye />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {(() => {
+                  let counter = 0;
+                  return grouped.map((group) => {
+                    const cfg = STATUS_CONFIG[group.status];
+                    return (
+                      <React.Fragment key={group.status}>
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className={`border-b p-[7px_14px] ${cfg.badgeClass}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`h-1.75 w-1.75 shrink-0 rounded-full ${cfg.dotClass}`}
+                              />
+                              <span className="text-[11px] font-bold tracking-[0.06em] uppercase">
+                                {cfg.label}
+                              </span>
+                              <span className="rounded-full bg-white/70 px-1.75 py-0.25 text-[10px] font-bold">
+                                {group.items.length}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {group.items.map((record, idxInGroup) => {
+                          counter += 1;
+                          const isLastRow =
+                            idxInGroup === group.items.length - 1;
+                          return (
+                            <tr
+                              key={record.id}
+                              className={`transition-colors duration-150 hover:bg-[#fafbfc] ${isLastRow ? "" : "border-b border-[#e2e8f2]"}`}
+                            >
+                              <td className="p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
+                                {counter}
+                              </td>
+                              <td className="p-[12px_14px]">
+                                <div className="text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
+                                  {record.namaPenanggungJawab}
+                                </div>
+                                <div className="mt-px text-[11px] text-[#7a8899]">
+                                  {record.jabatan}
+                                </div>
+                              </td>
+                              <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
+                                {formatTanggal(record.tanggalSurat)}
+                              </td>
+                              <td className="p-[12px_14px] font-bold whitespace-nowrap text-[#1a4e8f]">
+                                {formatRupiah(record.totalNilaiPiutang)}
+                              </td>
+                              <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
+                                {record.jumlahDebitur} orang
+                              </td>
+                              <td className="p-[12px_14px] whitespace-nowrap">
+                                <StatusBadge status={record.status} />
+                                {record.status === "revisi" && (
+                                  <button
+                                    onClick={() => setSelectedRecord(record)}
+                                    className="mt-1 block cursor-pointer text-[11px] font-semibold text-[#c0392b] hover:underline"
+                                  >
+                                    Lihat catatan revisi →
+                                  </button>
+                                )}
+                              </td>
+                              <td className="p-[12px_14px] whitespace-nowrap">
+                                <button
+                                  onClick={() => setSelectedRecord(record)}
+                                  title="Lihat Detail"
+                                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                                >
+                                  <IconEye />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
