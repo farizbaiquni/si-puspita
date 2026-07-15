@@ -27,6 +27,7 @@ import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
 } from "@/types/types-v2";
+import LihatDaftarPengajuan from "../dashboard/contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
-type BPKADMenuKey = "verifikasi-pengajuan" | "lihat-pengajuan";
+type BPKADMenuKey = "verifikasi-pengajuan" | "lihat-daftar-pengajuan-admin";
 
 type MenuKey = OPDMenuKey | BPKADMenuKey;
 
@@ -74,7 +75,7 @@ const BPKAD_MENUS: MenuItem[] = [
     label: "Verifikasi Pengajuan",
   },
   {
-    key: "lihat-pengajuan",
+    key: "lihat-daftar-pengajuan-admin",
     icon: <IconEye />,
     label: "Lihat Pengajuan",
   },
@@ -98,7 +99,7 @@ const PAGE_META: Record<
     subtitle: "Tinjau dan verifikasi pengajuan yang masuk dari OPD.",
     action: { label: "Verifikasi" },
   },
-  "lihat-pengajuan": {
+  "lihat-daftar-pengajuan-admin": {
     title: "Lihat Pengajuan",
     subtitle: "Tampilkan semua pengajuan yang telah diproses.",
   },
@@ -482,6 +483,8 @@ const MainContent: React.FC<MainContentProps> = ({
         <AjukanPermohonanWizard onSubmitPengajuan={onTambahPengajuan} />
       ) : activeMenu === "lihat-daftar-pengajuan" ? (
         <DaftarPengajuanOPDBaru data={semuaPengajuan} />
+      ) : activeMenu === "lihat-daftar-pengajuan-admin" ? (
+        <LihatDaftarPengajuan />
       ) : activeMenu === "verifikasi-pengajuan" ? (
         <VerifikasiPengajuan
           semuaPengajuan={semuaPengajuan}

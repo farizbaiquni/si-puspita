@@ -1419,9 +1419,7 @@ function BungaSVG({
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.opacity = isActive ? "1" : "0.8")
                 }
-              >
-                <title>{item.tooltip}</title>
-              </ellipse>
+              ></ellipse>
 
               {/* Garis putih kecil di ujung kelopak aktif sebagai aksen */}
               {isActive && (

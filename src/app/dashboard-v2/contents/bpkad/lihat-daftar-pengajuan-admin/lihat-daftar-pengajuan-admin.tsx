@@ -12,6 +12,7 @@ import {
   OPSI_DOKUMEN_DASAR_PIUTANG_LABEL,
   OPSI_RIWAYAT_PENAGIHAN_LABEL,
 } from "@/types/types-v2";
+import { usePengajuanStore } from "@/store/pengajuan-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -33,6 +34,21 @@ function formatTanggal(iso: string): string {
   });
 }
 
+function formatTanggalWaktu(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return (
+    d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }) +
+    " · " +
+    d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
 function formatUkuran(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -46,74 +62,6 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
     "Piutang Lainnya": "Lainnya",
   };
   return j ? map[j] : "-";
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Nomor Registrasi — generator
-// Format: reg-{no urut antrian}/{kode instansi}/{singkatan instansi}/{bulan romawi}/{tahun}
-// ─────────────────────────────────────────────────────────────────────────────
-
-const KODE_INSTANSI: { match: string; kode: string; singkatan: string }[] = [
-  { match: "RSUD", kode: "22", singkatan: "RSUD" },
-  { match: "Dinas Perhubungan", kode: "24", singkatan: "DISHUB" },
-  {
-    match: "Dinas Komunikasi dan Informatika",
-    kode: "46",
-    singkatan: "DISKOMINFO",
-  },
-  {
-    match: "Dinas Perdagangan Koperasi dan UKM",
-    kode: "51",
-    singkatan: "DISPERINDAGKOP",
-  },
-  { match: "Setwan", kode: "59", singkatan: "SETWAN" },
-];
-
-function getKodeInstansi(namaOPD: string): { kode: string; singkatan: string } {
-  const found = KODE_INSTANSI.find((k) =>
-    namaOPD.toLowerCase().includes(k.match.toLowerCase()),
-  );
-  if (found) return { kode: found.kode, singkatan: found.singkatan };
-  // Fallback untuk OPD yang belum terdaftar di mapping — tetap hasilkan
-  // nomor registrasi yang valid alih-alih gagal.
-  return {
-    kode: "00",
-    singkatan:
-      namaOPD
-        .replace(/[^a-zA-Z\s]/g, "")
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 10) || "OPD",
-  };
-}
-
-const BULAN_ROMAWI = [
-  "I",
-  "II",
-  "III",
-  "IV",
-  "V",
-  "VI",
-  "VII",
-  "VIII",
-  "IX",
-  "X",
-  "XI",
-  "XII",
-];
-
-function generateNomorRegistrasi(
-  namaOPD: string,
-  noUrutAntrian: number,
-  tanggal: Date = new Date(),
-): string {
-  const { kode, singkatan } = getKodeInstansi(namaOPD);
-  const bulanRomawi = BULAN_ROMAWI[tanggal.getMonth()];
-  const tahun = tanggal.getFullYear();
-  return `reg-${noUrutAntrian}/${kode}/${singkatan}/${bulanRomawi}/${tahun}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -209,6 +157,29 @@ const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
+  );
+};
+
+// Header pemisah antar grup status pada daftar (dipakai di kartu mobile
+// maupun tabel desktop). Warnanya mengikuti skema StatusBadge supaya
+// konsisten secara visual.
+const StatusGroupHeader: React.FC<{
+  status: StatusFormulir;
+  count: number;
+}> = ({ status, count }) => {
+  const cfg = STATUS_BADGE[status];
+  return (
+    <div
+      className={`flex items-center gap-2 border-t border-b border-[#e2e8f2] bg-[#f7f8fa] px-[14px] py-2 first:border-t-0`}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+      <span className="text-[11px] font-bold tracking-[0.06em] text-[#5a6474] uppercase">
+        {STATUS_GROUP_LABEL[status]}
+      </span>
+      <span className="text-[11px] font-semibold text-[#b0bac5]">
+        ({count})
+      </span>
+    </div>
   );
 };
 
@@ -353,6 +324,20 @@ const IconArrowLeft = () => (
   </svg>
 );
 
+const IconClock = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
+    <circle cx="8" cy="8" r="6.5" />
+    <path d="M8 5v3.5l2 1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Modal Preview PDF
 // ─────────────────────────────────────────────────────────────────────────────
@@ -462,37 +447,17 @@ const DokumenItem: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Detail Verifikasi (panel)
+// Detail Pengajuan (panel) — read-only, tanpa form/tombol verifikasi
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Keputusan = Extract<StatusFormulir, "teregistrasi" | "revisi">;
-
-const PanelVerifikasi: React.FC<{
+const PanelDetail: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onBack: () => void;
-  onSubmit: (keputusan: Keputusan, catatan: string) => void;
-}> = ({ pengajuan, onBack, onSubmit }) => {
-  const [keputusan, setKeputusan] = useState<Keputusan | null>(null);
-  const [catatan, setCatatan] = useState("");
+}> = ({ pengajuan, onBack }) => {
   const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
-  const [error, setError] = useState("");
 
   const dokumen = useMemo(() => buildDokumenList(pengajuan), [pengajuan]);
-
-  const handleSubmit = () => {
-    if (!keputusan) {
-      setError("Pilih hasil verifikasi: Lolos Verifikasi atau Perlu Revisi.");
-      return;
-    }
-    if (keputusan === "revisi" && catatan.trim().length < 5) {
-      setError(
-        "Keterangan wajib diisi (minimal 5 karakter) untuk pengajuan yang perlu direvisi.",
-      );
-      return;
-    }
-    setError("");
-    onSubmit(keputusan, catatan.trim());
-  };
+  const sudahDiverifikasi = pengajuan.status !== "diajukan";
 
   return (
     <div className="mx-auto w-full max-w-400">
@@ -633,73 +598,71 @@ const PanelVerifikasi: React.FC<{
           </div>
         </div>
 
-        {/* ── Kolom kanan: form keputusan ── */}
+        {/* ── Kolom kanan: info status (read-only, tanpa form keputusan) ── */}
         <div className="lg:col-span-1">
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5 lg:sticky lg:top-4">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-              Hasil Verifikasi
+              Status Verifikasi
             </div>
 
-            <div className="mb-4 grid grid-cols-2 gap-2.5">
-              <button
-                onClick={() => setKeputusan("teregistrasi")}
-                className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
-                  keputusan === "teregistrasi"
-                    ? "border-[#0f9b6e] bg-[#e6f7f2] text-[#0f9b6e]"
-                    : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#a7e8d4] hover:bg-[#e6f7f2]"
-                }`}
-              >
-                <IconCheck />
-                Lolos Verifikasi (Buat Nomor Registrasi)
-              </button>
-              <button
-                onClick={() => setKeputusan("revisi")}
-                className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
-                  keputusan === "revisi"
-                    ? "border-[#c0392b] bg-[#fdecea] text-[#c0392b]"
-                    : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#fecaca] hover:bg-[#fdecea]"
-                }`}
-              >
-                <IconX />
-                Perlu Revisi
-              </button>
-            </div>
-
-            <label className="mb-1.5 block text-[12px] font-semibold text-[#1a1a2e]">
-              Keterangan / Catatan
-              {keputusan === "revisi" && (
-                <span className="text-[#c0392b]"> *</span>
-              )}
-            </label>
-            <textarea
-              value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
-              rows={5}
-              placeholder={
-                keputusan === "revisi"
-                  ? "Jelaskan alasan revisi / dokumen yang perlu dilengkapi…"
-                  : "Catatan tambahan (opsional)…"
-              }
-              className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec]"
-            />
-
-            {error && (
-              <div className="mt-2 text-[12px] font-medium text-[#c0392b]">
-                {error}
+            {!sudahDiverifikasi ? (
+              <div className="flex flex-col items-center gap-2 rounded-sm border border-dashed border-[#e2e8f2] py-8 text-center">
+                <div className="text-[#b0bac5]">
+                  <IconClock />
+                </div>
+                <div className="text-[13px] font-semibold text-[#7a8899]">
+                  Belum diverifikasi
+                </div>
+                <div className="px-4 text-[11px] text-[#b0bac5]">
+                  Pengajuan ini masih menunggu tindakan verifikator.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                <div>
+                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+                    Hasil Verifikasi
+                  </div>
+                  <StatusBadge status={pengajuan.status} />
+                </div>
+                <div>
+                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+                    Diverifikasi Oleh
+                  </div>
+                  <div className="text-[13px] text-[#1a1a2e]">
+                    {pengajuan.verifikatorId || "-"}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+                    Tanggal Verifikasi
+                  </div>
+                  <div className="text-[13px] text-[#1a1a2e]">
+                    {pengajuan.tanggalVerifikasi
+                      ? formatTanggalWaktu(pengajuan.tanggalVerifikasi)
+                      : "-"}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+                    Keterangan / Catatan
+                  </div>
+                  <div className="text-[13px] text-[#1a1a2e]">
+                    {pengajuan.catatanVerifikasi || (
+                      <span className="text-[#b0bac5] italic">
+                        Tidak ada catatan
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
             <button
-              onClick={handleSubmit}
-              className="mt-4 w-full rounded-sm bg-[#1a4e8f] py-2.5 text-sm font-semibold text-white transition hover:bg-[#2d63a8]"
-            >
-              Simpan Hasil Verifikasi
-            </button>
-            <button
               onClick={onBack}
-              className="mt-2 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa]"
+              className="mt-4 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa]"
             >
-              Batal
+              Kembali
             </button>
           </div>
         </div>
@@ -716,8 +679,8 @@ const PanelVerifikasi: React.FC<{
 const PengajuanRowCardMobile: React.FC<{
   p: FormulirPenghapusanPiutangOPDRecord;
   no: number;
-  onVerifikasi: () => void;
-}> = ({ p, no, onVerifikasi }) => (
+  onLihatDetail: () => void;
+}> = ({ p, no, onLihatDetail }) => (
   <div className="space-y-2.5 p-4">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -748,37 +711,12 @@ const PengajuanRowCardMobile: React.FC<{
       <span className="shrink-0">{formatTanggal(p.tanggalSurat)}</span>
     </div>
 
-    {p.status === "diajukan" && (
-      <button
-        onClick={onVerifikasi}
-        className="w-full rounded-sm bg-[#1a4e8f] py-2 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
-      >
-        Verifikasi
-      </button>
-    )}
-  </div>
-);
-
-const RiwayatRowCardMobile: React.FC<{
-  pengajuan: FormulirPenghapusanPiutangOPDRecord;
-  keputusan: StatusFormulir;
-  catatan: string;
-}> = ({ pengajuan, keputusan, catatan }) => (
-  <div className="space-y-1.5 p-4">
-    <div className="flex items-center justify-between gap-2">
-      <span className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
-        {pengajuan.id}
-      </span>
-      <StatusBadge status={keputusan} />
-    </div>
-    <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
-      {pengajuan.namaOPD}
-    </div>
-    <div className="text-[11px] text-[#5a6474]">
-      {catatan || (
-        <span className="text-[#b0bac5] italic">Tidak ada catatan</span>
-      )}
-    </div>
+    <button
+      onClick={onLihatDetail}
+      className="w-full rounded-sm border border-[#e2e8f2] bg-white py-2 text-xs font-semibold text-[#1a4e8f] transition hover:bg-[#f7f8fa]"
+    >
+      Lihat Detail
+    </button>
   </div>
 );
 
@@ -786,49 +724,70 @@ const RiwayatRowCardMobile: React.FC<{
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface VerifikasiPengajuanProps {
-  /** Seluruh pengajuan dari parent (single source of truth), mis. MOCK_DATA */
+interface LihatDaftarPengajuanAdminProps {
+  /**
+   * Opsional — override sumber data (mis. untuk testing/storybook).
+   * Kalau tidak diisi, komponen ambil langsung dari usePengajuanStore()
+   * supaya selalu sinkron dengan data yang sama dipakai ModalLacak
+   * (homepage) & panel VerifikasiPengajuan — bukan data acak/mock lokal.
+   */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
-  /** Dipanggil setelah BPKAD memutuskan verifikasi — parent yang update status */
-  onStatusUpdate?: (
-    id: string,
-    status: Keputusan,
-    catatan?: string,
-    nomorRegistrasi?: string,
-  ) => void;
-  /** ID / nama akun verifikator BPKAD yang sedang login (untuk jejak audit) */
-  verifikatorId?: string;
 }
 
-export default function VerifikasiPengajuan({
-  semuaPengajuan,
-  onStatusUpdate,
-  verifikatorId,
-}: VerifikasiPengajuanProps = {}) {
-  // Derive daftar pengajuan langsung dari props — tidak perlu state lokal
-  // terpisah. Parent (page.tsx) adalah single source of truth; saat
-  // onStatusUpdate dipanggil, parent mengubah status di semuaPengajuan, dan
-  // useMemo otomatis menyusun ulang urutan tanpa perlu setState di effect.
-  const daftarPengajuan = useMemo(() => {
-    const sumber = semuaPengajuan ?? [];
-    // Panel verifikasi hanya menampilkan antrean yang masih perlu
-    // ditindak — status "revisi" & "teregistrasi" sudah final/menunggu
-    // OPD, jadi cukup dilihat di menu "Lihat Daftar Pengajuan".
-    return sumber
-      .filter((p) => p.status === "diajukan")
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
-  }, [semuaPengajuan]);
+// Urutan prioritas status: teregistrasi paling atas, lalu revisi, lalu
+// diajukan paling bawah. Di dalam grup status yang sama, urutkan dari
+// updatedAt paling baru ke paling lama.
+const STATUS_PRIORITY: Record<StatusFormulir, number> = {
+  teregistrasi: 0,
+  revisi: 1,
+  diajukan: 2,
+};
 
-  const [riwayat, setRiwayat] = useState<
-    {
-      pengajuan: FormulirPenghapusanPiutangOPDRecord;
-      keputusan: Keputusan;
-      catatan: string;
-    }[]
-  >([]);
+// Urutan grup pada tampilan daftar (kartu mobile & tabel desktop).
+const STATUS_GROUP_ORDER: StatusFormulir[] = [
+  "teregistrasi",
+  "revisi",
+  "diajukan",
+];
+
+// Label ringkas untuk header grup, mis. "Teregistrasi (3)".
+const STATUS_GROUP_LABEL: Record<StatusFormulir, string> = {
+  teregistrasi: "Teregistrasi",
+  revisi: "Perlu Revisi",
+  diajukan: "Diajukan",
+};
+
+function LihatDaftarPengajuanAdmin({
+  semuaPengajuan,
+}: LihatDaftarPengajuanAdminProps = {}) {
+  // Sumber data tunggal: pengajuan-store (localStorage + in-memory),
+  // sama seperti yang dipakai VerifikasiPengajuan & ModalLacak. Prop
+  // semuaPengajuan (kalau diisi) menang duluan sebagai override manual.
+  const { data: dataStore } = usePengajuanStore();
+
+  const daftarPengajuan = useMemo(() => {
+    const sumber = semuaPengajuan ?? dataStore;
+    return [...sumber].sort((a, b) => {
+      const priorityDiff =
+        STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
+      if (priorityDiff !== 0) return priorityDiff;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [semuaPengajuan, dataStore]);
+
+  // Ringkasan jumlah per status (seluruh data, bukan sesi)
+  const jumlahDiajukan = useMemo(
+    () => daftarPengajuan.filter((p) => p.status === "diajukan").length,
+    [daftarPengajuan],
+  );
+  const jumlahTeregistrasi = useMemo(
+    () => daftarPengajuan.filter((p) => p.status === "teregistrasi").length,
+    [daftarPengajuan],
+  );
+  const jumlahRevisi = useMemo(
+    () => daftarPengajuan.filter((p) => p.status === "revisi").length,
+    [daftarPengajuan],
+  );
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] =
@@ -845,65 +804,69 @@ export default function VerifikasiPengajuan({
     );
   }, [daftarPengajuan, search]);
 
-  const handleSubmitVerifikasi = (keputusan: Keputusan, catatan: string) => {
-    if (!selected) return;
+  // Kelompokkan hasil filter berdasarkan status, dengan urutan tetap:
+  // teregistrasi → revisi → diajukan. Nomor urut (No) tetap mengikuti
+  // posisi global di `filtered`, bukan diulang dari 1 tiap grup.
+  const groupedFiltered = useMemo(() => {
+    return STATUS_GROUP_ORDER.map((status) => ({
+      status,
+      items: filtered
+        .map((p, idx) => ({ p, no: idx + 1 }))
+        .filter(({ p }) => p.status === status),
+    })).filter((group) => group.items.length > 0);
+  }, [filtered]);
 
-    const tanggalVerifikasi = new Date().toISOString();
-
-    // Jika lolos verifikasi ("teregistrasi"), generate Nomor Registrasi.
-    // No urut antrian dihitung dari jumlah pengajuan yang sudah
-    // berstatus "teregistrasi" di SELURUH data (semuaPengajuan) — bukan
-    // dari daftarPengajuan, karena daftarPengajuan sudah difilter hanya
-    // status "diajukan" untuk ditampilkan di panel ini.
-    let nomorRegistrasi = selected.nomorRegistrasi;
-    if (keputusan === "teregistrasi") {
-      const jumlahSudahTeregistrasi = (semuaPengajuan ?? []).filter(
-        (p) => p.status === "teregistrasi",
-      ).length;
-      const noUrutAntrian = jumlahSudahTeregistrasi + 1;
-      nomorRegistrasi = generateNomorRegistrasi(
-        selected.namaOPD,
-        noUrutAntrian,
-        new Date(tanggalVerifikasi),
-      );
-    }
-
-    const hasil: FormulirPenghapusanPiutangOPDRecord = {
-      ...selected,
-      status: keputusan,
-      verifikatorId,
-      tanggalVerifikasi,
-      nomorRegistrasi,
-    };
-
-    // Catat di riwayat sesi ini
-    setRiwayat((prev) => [{ pengajuan: hasil, keputusan, catatan }, ...prev]);
-    // Beritahu parent — parent update status (dan nomorRegistrasi bila ada)
-    // di shared state; antrean otomatis reaktif karena di-derive via
-    // useMemo dari props.
-    onStatusUpdate?.(
-      selected.id,
-      keputusan,
-      catatan || undefined,
-      nomorRegistrasi || undefined,
-    );
-    setSelected(null);
-  };
-
-  // ── Render: panel verifikasi ──────────────────────────────────────────────
+  // ── Render: panel detail (read-only) ──────────────────────────────────────
   if (selected) {
     return (
-      <PanelVerifikasi
-        pengajuan={selected}
-        onBack={() => setSelected(null)}
-        onSubmit={handleSubmitVerifikasi}
-      />
+      <PanelDetail pengajuan={selected} onBack={() => setSelected(null)} />
     );
   }
 
-  // ── Render: daftar antrean ────────────────────────────────────────────────
+  // ── Render: daftar pengajuan ───────────────────────────────────────────────
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
+      {/* ── Summary ── */}
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-4.5 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-white">
+            <IconClock />
+          </div>
+          <div>
+            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
+              {jumlahDiajukan}
+            </div>
+            <div className="mt-0.5 text-xs text-[#7a8899]">
+              Menunggu Verifikasi
+            </div>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-4.5 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#0f9b6e] text-white">
+            <IconCheck />
+          </div>
+          <div>
+            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
+              {jumlahTeregistrasi}
+            </div>
+            <div className="mt-0.5 text-xs text-[#7a8899]">Teregistrasi</div>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4.5 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#c0392b] text-white">
+            <IconX />
+          </div>
+          <div>
+            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
+              {jumlahRevisi}
+            </div>
+            <div className="mt-0.5 text-xs text-[#7a8899]">Perlu Revisi</div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Search bar ── */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
@@ -952,14 +915,24 @@ export default function VerifikasiPengajuan({
         ) : (
           <>
             {/* Kartu — tampilan mobile (< sm) */}
-            <div className="divide-y divide-[#e2e8f2] sm:hidden">
-              {filtered.map((p, idx) => (
-                <PengajuanRowCardMobile
-                  key={p.id}
-                  p={p}
-                  no={idx + 1}
-                  onVerifikasi={() => setSelected(p)}
-                />
+            <div className="sm:hidden">
+              {groupedFiltered.map((group) => (
+                <div key={group.status}>
+                  <StatusGroupHeader
+                    status={group.status}
+                    count={group.items.length}
+                  />
+                  <div className="divide-y divide-[#e2e8f2]">
+                    {group.items.map(({ p, no }) => (
+                      <PengajuanRowCardMobile
+                        key={p.id}
+                        p={p}
+                        no={no}
+                        onLihatDetail={() => setSelected(p)}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -986,135 +959,93 @@ export default function VerifikasiPengajuan({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p, idx) => {
-                    const isLast = idx === filtered.length - 1;
-                    return (
-                      <tr
-                        key={p.id}
-                        className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
-                          isLast ? "" : "border-b border-[#e2e8f2]"
-                        }`}
-                      >
-                        {/* No */}
-                        <td className="w-8 p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
-                          {idx + 1}
-                        </td>
-
-                        {/* Kolom gabungan: No Reg + OPD + Penanggung Jawab */}
-                        <td className="p-[12px_14px]">
-                          <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                            {p.id}
-                          </div>
-                          <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                            {p.namaOPD}
-                          </div>
-                          <div className="mt-px text-[11px] text-[#7a8899]">
-                            {p.namaPenanggungJawab}
-                          </div>
-                        </td>
-
-                        {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
-                        <td className="p-[12px_14px] whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-bold text-[#1a1a2e]">
-                              {formatRupiah(p.totalNilaiPiutang)}
-                            </span>
-                            <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
-                          </div>
-                          <div className="mt-0.5 text-xs text-[#5a6474]">
-                            {labelJenisPiutang(p.jenisPiutang)}
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="p-[12px_14px] whitespace-nowrap">
-                          <StatusBadge status={p.status} />
-                        </td>
-
-                        {/* Tgl Surat */}
-                        <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
-                          {formatTanggal(p.tanggalSurat)}
-                        </td>
-
-                        {/* Tombol Aksi — hanya muncul untuk status "diajukan" */}
-                        <td className="p-[12px_14px] whitespace-nowrap">
-                          {p.status === "diajukan" ? (
-                            <button
-                              onClick={() => setSelected(p)}
-                              className="rounded-sm bg-[#1a4e8f] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
-                            >
-                              Verifikasi
-                            </button>
-                          ) : (
-                            <span className="text-xs text-[#b0bac5]">—</span>
-                          )}
+                  {groupedFiltered.map((group) => (
+                    <React.Fragment key={group.status}>
+                      {/* Header grup status */}
+                      <tr>
+                        <td colSpan={6} className="p-0">
+                          <StatusGroupHeader
+                            status={group.status}
+                            count={group.items.length}
+                          />
                         </td>
                       </tr>
-                    );
-                  })}
+
+                      {group.items.map(({ p, no }, idxInGroup) => {
+                        const isLastInGroup =
+                          idxInGroup === group.items.length - 1;
+                        return (
+                          <tr
+                            key={p.id}
+                            className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
+                              isLastInGroup ? "" : "border-b border-[#e2e8f2]"
+                            }`}
+                          >
+                            {/* No */}
+                            <td className="w-8 p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
+                              {no}
+                            </td>
+
+                            {/* Kolom gabungan: No Reg + OPD + Penanggung Jawab */}
+                            <td className="p-[12px_14px]">
+                              <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
+                                {p.id}
+                              </div>
+                              <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
+                                {p.namaOPD}
+                              </div>
+                              <div className="mt-px text-[11px] text-[#7a8899]">
+                                {p.namaPenanggungJawab}
+                              </div>
+                            </td>
+
+                            {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
+                            <td className="p-[12px_14px] whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-bold text-[#1a1a2e]">
+                                  {formatRupiah(p.totalNilaiPiutang)}
+                                </span>
+                                <JenisPenghapusanBadge
+                                  jenis={p.jenisPenghapusan}
+                                />
+                              </div>
+                              <div className="mt-0.5 text-xs text-[#5a6474]">
+                                {labelJenisPiutang(p.jenisPiutang)}
+                              </div>
+                            </td>
+
+                            {/* Status */}
+                            <td className="p-[12px_14px] whitespace-nowrap">
+                              <StatusBadge status={p.status} />
+                            </td>
+
+                            {/* Tgl Surat */}
+                            <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
+                              {formatTanggal(p.tanggalSurat)}
+                            </td>
+
+                            {/* Tombol Aksi — read-only, selalu "Lihat Detail" */}
+                            <td className="p-[12px_14px] whitespace-nowrap">
+                              <button
+                                onClick={() => setSelected(p)}
+                                className="rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+                              >
+                                Lihat Detail
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
                 </tbody>
               </table>
             </div>
           </>
         )}
       </div>
-
-      {/* ── Riwayat verifikasi sesi ini ── */}
-      {riwayat.length > 0 && (
-        <div className="mt-6">
-          <div className="mb-2.5 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-            Riwayat Verifikasi (Sesi Ini)
-          </div>
-          <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
-            {/* Kartu — tampilan mobile (< sm) */}
-            <div className="divide-y divide-[#e2e8f2] sm:hidden">
-              {riwayat.map(({ pengajuan, keputusan, catatan }) => (
-                <RiwayatRowCardMobile
-                  key={pengajuan.id}
-                  pengajuan={pengajuan}
-                  keputusan={keputusan}
-                  catatan={catatan}
-                />
-              ))}
-            </div>
-
-            {/* Tabel — tampilan tablet & desktop (>= sm) */}
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full border-collapse text-[13px]">
-                <tbody>
-                  {riwayat.map(({ pengajuan, keputusan, catatan }, idx) => (
-                    <tr
-                      key={pengajuan.id}
-                      className={
-                        idx === riwayat.length - 1
-                          ? ""
-                          : "border-b border-[#e2e8f2]"
-                      }
-                    >
-                      <td className="p-[12px_14px] font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                        {pengajuan.id}
-                      </td>
-                      <td className="p-[12px_14px] text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                        {pengajuan.namaOPD}
-                      </td>
-                      <td className="p-[12px_14px] whitespace-nowrap">
-                        <StatusBadge status={keputusan} />
-                      </td>
-                      <td className="p-[12px_14px] text-xs text-[#5a6474]">
-                        {catatan || (
-                          <span className="text-[#b0bac5] italic">
-                            Tidak ada catatan
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+export default LihatDaftarPengajuanAdmin;
