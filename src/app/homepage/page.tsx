@@ -665,6 +665,7 @@ function ModalPengajuan() {
     <AjukanPermohonanWizard
       onSubmitPengajuan={tambahPengajuan}
       allowFreeNavigation
+      defaultNamaOPD="Dinas Perhubungan"
     />
   );
 }
@@ -1180,14 +1181,34 @@ function ModalBunga({
     };
     document.addEventListener("keydown", handleKey);
 
-    // Kunci scroll halaman di belakang modal selama modal terbuka
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Kunci scroll halaman di belakang modal selama modal terbuka.
+    // Catatan: `overflow: hidden` saja TIDAK cukup di iOS Safari — browser
+    // tetap mengizinkan gesture scroll/rubber-band "bocor" ke halaman di
+    // belakang modal, apalagi saat ada modal preview PDF lain menumpuk di
+    // atasnya (mis. FileUploadCard). Efeknya: layar terasa "stuck"/tidak
+    // bisa discroll setelah modal preview ditutup. Pakai teknik
+    // position:fixed + simpan posisi scroll supaya benar-benar terkunci
+    // dan bisa dipulihkan persis ke posisi semula saat modal ditutup.
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const prevWidth = body.style.width;
+    const prevOverflow = body.style.overflow;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
 
     return () => {
       clearTimeout(t);
       document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = prevOverflow;
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      body.style.width = prevWidth;
+      body.style.overflow = prevOverflow;
+      window.scrollTo(0, scrollY);
     };
   }, [onClose]);
 
@@ -1220,6 +1241,7 @@ function ModalBunga({
         backgroundColor: visible ? "rgba(8,20,50,0.82)" : "rgba(8,20,50,0)",
         backdropFilter: visible ? "blur(3px)" : "blur(0px)",
         transition: "background-color 0.5s ease, backdrop-filter 0.5s ease",
+        overscrollBehavior: "contain",
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       onWheel={(e) => {
@@ -1284,7 +1306,7 @@ function ModalBunga({
           {/* Body */}
           <div
             ref={bodyRef}
-            className="max-h-[75vh] overflow-y-auto px-4 py-4 sm:max-h-[72vh] sm:px-6 sm:py-5"
+            className="max-h-[75vh] overflow-y-auto overscroll-contain px-4 py-4 sm:max-h-[72vh] sm:px-6 sm:py-5"
             style={{
               opacity: contentVisible ? 1 : 0,
               transform: contentVisible ? "translateY(0)" : "translateY(10px)",

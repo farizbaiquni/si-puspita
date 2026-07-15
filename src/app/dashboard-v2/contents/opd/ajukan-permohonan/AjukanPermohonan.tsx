@@ -134,8 +134,8 @@ const buildPengajuanRecord = (
 
   return {
     id,
-    opdId: "OPD-DISDAGKOP-UKM",
-    createdBy: "opd-disdagkop-ukm",
+    opdId: "OPD-DISHUB",
+    createdBy: "opd-dishub",
     namaOPD: form.namaOPD,
     status: "diajukan",
     createdAt: now,
@@ -555,6 +555,36 @@ const FileUploadCard = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [modalOpen]);
 
+  // Kunci scroll halaman selama preview PDF terbuka. Modal ini dirender
+  // lewat createPortal ke document.body dan bisa menumpuk di atas modal
+  // form (ModalPengajuan) yang sudah mengunci scroll juga — kalau dua-duanya
+  // cuma pakai `overflow: hidden`, di iOS Safari gesture scroll/zoom masih
+  // bisa "bocor" dan membuat halaman terasa stuck / tidak bisa discroll
+  // setelah preview ditutup, khususnya di layar mobile. Teknik
+  // position:fixed + simpan posisi scroll jauh lebih aman.
+  useEffect(() => {
+    if (!modalOpen) return;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const prevWidth = body.style.width;
+    const prevOverflow = body.style.overflow;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
+    return () => {
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      body.style.width = prevWidth;
+      body.style.overflow = prevOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [modalOpen]);
+
   const openModal = () => {
     previousFocusRef.current = document.activeElement as HTMLElement;
     setModalOpen(true);
@@ -659,6 +689,7 @@ const FileUploadCard = ({
           createPortal(
             <div
               className="fixed inset-0 z-200 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+              style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
               role="dialog"
               aria-modal="true"
               aria-label={`Preview ${file.name}`}
@@ -693,7 +724,7 @@ const FileUploadCard = ({
                     &times;
                   </button>
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden overscroll-contain">
                   <iframe
                     src={previewUrl}
                     className="h-full w-full"
@@ -832,7 +863,12 @@ export default function AjukanPermohonanWizard({
 
   const [currentStep, setCurrentStep] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showLoginNotice, setShowLoginNotice] = useState(false);
+  // Alert "formulir belum lengkap" — ditampilkan kalau user coba submit
+  // (di mode allowFreeNavigation / ModalPengajuan publik) padahal masih
+  // ada data/dokumen persyaratan yang belum diisi. Tidak ada lagi
+  // pemberitahuan "harus login" — begitu formulir lengkap, submit langsung
+  // diproses hingga data masuk ke storage.
+  const [showIncompleteAlert, setShowIncompleteAlert] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [docPreview, setDocPreview] = useState<{
@@ -877,6 +913,34 @@ export default function AjukanPermohonanWizard({
       urls.clear();
     };
   }, []);
+
+  // Kunci scroll halaman selama preview dokumen (docPreview) terbuka.
+  // Sama seperti preview di FileUploadCard — pakai position:fixed +
+  // simpan posisi scroll, bukan cuma overflow:hidden, supaya tidak
+  // meninggalkan halaman dalam kondisi stuck/tidak bisa discroll di
+  // mobile setelah modal ini ditutup.
+  useEffect(() => {
+    if (!docPreview) return;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const prevWidth = body.style.width;
+    const prevOverflow = body.style.overflow;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
+    return () => {
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      body.style.width = prevWidth;
+      body.style.overflow = prevOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [docPreview]);
 
   const createAndTrackURL = (file: File) => {
     const url = URL.createObjectURL(file);
@@ -1275,6 +1339,116 @@ export default function AjukanPermohonanWizard({
     return valid;
   };
 
+  // Validasi khusus Langkah 1 (Data Pengajuan) — diekstrak jadi fungsi
+  // tersendiri (bukan cuma inline di validateCurrentStep) supaya bisa
+  // dipanggil ulang dari validateAllSteps() tanpa bergantung pada step
+  // mana yang sedang aktif di layar (dipakai mode allowFreeNavigation).
+  const validateDataPengajuanStep = (): boolean => {
+    const fields = steps[0].fields!;
+    let allValid = true;
+    for (const field of fields) {
+      const value = form[field.name];
+      const isRequired = field.required !== false;
+      const err = validateField(
+        field.name,
+        value as string | File | null,
+        isRequired,
+      );
+      setErrors((prev) => {
+        const next = { ...prev };
+        if (err) next[field.name] = err;
+        else delete next[field.name];
+        return next;
+      });
+      markTouched(field.name);
+      if (err) allValid = false;
+    }
+
+    const jml = form.jumlahDebitur;
+    const errJml = validateField("jumlahDebitur", jml, true);
+    if (errJml) {
+      setErrors((prev) => ({ ...prev, jumlahDebitur: errJml }));
+      markTouched("jumlahDebitur");
+      allValid = false;
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.jumlahDebitur;
+        return next;
+      });
+    }
+
+    const total = form.totalNilaiPiutang;
+    const errTotal = validateField("totalNilaiPiutang", total, true);
+    if (errTotal) {
+      setErrors((prev) => ({ ...prev, totalNilaiPiutang: errTotal }));
+      markTouched("totalNilaiPiutang");
+      allValid = false;
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.totalNilaiPiutang;
+        return next;
+      });
+    }
+
+    if (!form.jenisPiutang) {
+      setErrors((prev) => ({
+        ...prev,
+        jenisPiutang: "Pilih jenis piutang",
+      }));
+      markTouched("jenisPiutang");
+      allValid = false;
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.jenisPiutang;
+        return next;
+      });
+    }
+
+    if (!form.jenisPenghapusan) {
+      setErrors((prev) => ({
+        ...prev,
+        jenisPenghapusan: "Pilih jenis penghapusan",
+      }));
+      markTouched("jenisPenghapusan");
+      allValid = false;
+    } else {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.jenisPenghapusan;
+        return next;
+      });
+    }
+
+    return allValid;
+  };
+
+  // Validasi checklist "Pernyataan OPD" (Langkah 4) — juga diekstrak
+  // sendiri dengan alasan yang sama seperti di atas.
+  const validatePernyataanStep = (): boolean => {
+    const { pernyataan } = form;
+    const allChecked =
+      pernyataan.dataBenar &&
+      pernyataan.dokumenResmi &&
+      pernyataan.upayaPenagihan &&
+      pernyataan.bersediaPerbaiki;
+    if (!allChecked) {
+      setErrors((prev) => ({
+        ...prev,
+        pernyataan: "Centang semua pernyataan",
+      }));
+      return false;
+    }
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.pernyataan;
+      return next;
+    });
+    return true;
+  };
+
   const validateCurrentStep = (): boolean => {
     if (current.id === "dokumenPendukung") {
       return validateNominatifStep();
@@ -1283,109 +1457,35 @@ export default function AjukanPermohonanWizard({
       return validatePersyaratanSubstantifStep();
     }
     if (current.id === "pernyataan") {
-      const { pernyataan } = form;
-      const allChecked =
-        pernyataan.dataBenar &&
-        pernyataan.dokumenResmi &&
-        pernyataan.upayaPenagihan &&
-        pernyataan.bersediaPerbaiki;
-      if (!allChecked) {
-        setErrors((prev) => ({
-          ...prev,
-          pernyataan: "Centang semua pernyataan",
-        }));
-        return false;
-      }
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next.pernyataan;
-        return next;
-      });
-      return true;
+      return validatePernyataanStep();
     }
-    if (current.fields) {
-      let allValid = true;
-      for (const field of current.fields) {
-        const value = form[field.name];
-        const isRequired = field.required !== false;
-        const err = validateField(
-          field.name,
-          value as string | File | null,
-          isRequired,
-        );
-        setErrors((prev) => {
-          const next = { ...prev };
-          if (err) next[field.name] = err;
-          else delete next[field.name];
-          return next;
-        });
-        markTouched(field.name);
-        if (err) allValid = false;
-      }
-
-      if (current.id === "dataPengajuan") {
-        const jml = form.jumlahDebitur;
-        const errJml = validateField("jumlahDebitur", jml, true);
-        if (errJml) {
-          setErrors((prev) => ({ ...prev, jumlahDebitur: errJml }));
-          markTouched("jumlahDebitur");
-          allValid = false;
-        } else {
-          setErrors((prev) => {
-            const next = { ...prev };
-            delete next.jumlahDebitur;
-            return next;
-          });
-        }
-
-        const total = form.totalNilaiPiutang;
-        const errTotal = validateField("totalNilaiPiutang", total, true);
-        if (errTotal) {
-          setErrors((prev) => ({ ...prev, totalNilaiPiutang: errTotal }));
-          markTouched("totalNilaiPiutang");
-          allValid = false;
-        } else {
-          setErrors((prev) => {
-            const next = { ...prev };
-            delete next.totalNilaiPiutang;
-            return next;
-          });
-        }
-
-        if (!form.jenisPiutang) {
-          setErrors((prev) => ({
-            ...prev,
-            jenisPiutang: "Pilih jenis piutang",
-          }));
-          markTouched("jenisPiutang");
-          allValid = false;
-        } else {
-          setErrors((prev) => {
-            const next = { ...prev };
-            delete next.jenisPiutang;
-            return next;
-          });
-        }
-
-        if (!form.jenisPenghapusan) {
-          setErrors((prev) => ({
-            ...prev,
-            jenisPenghapusan: "Pilih jenis penghapusan",
-          }));
-          markTouched("jenisPenghapusan");
-          allValid = false;
-        } else {
-          setErrors((prev) => {
-            const next = { ...prev };
-            delete next.jenisPenghapusan;
-            return next;
-          });
-        }
-      }
-
-      return allValid;
+    if (current.id === "dataPengajuan") {
+      return validateDataPengajuanStep();
     }
     return true;
+  };
+
+  // Validasi SEMUA langkah sekaligus, dipakai khusus di mode
+  // allowFreeNavigation (ModalPengajuan publik) — karena di mode ini user
+  // boleh lompat-lompat antar langkah tanpa validasi per-langkah, jadi
+  // saat submit di langkah terakhir kita perlu pastikan seluruh formulir
+  // (bukan cuma langkah yang sedang tampil) benar-benar sudah lengkap
+  // sebelum data ditulis ke storage.
+  const validateAllSteps = (): {
+    valid: boolean;
+    firstInvalidStep: number | null;
+  } => {
+    const results = [
+      validateDataPengajuanStep(),
+      validateNominatifStep(),
+      validatePersyaratanSubstantifStep(),
+      validatePernyataanStep(),
+    ];
+    const firstInvalidStep = results.findIndex((r) => !r);
+    return {
+      valid: results.every(Boolean),
+      firstInvalidStep: firstInvalidStep === -1 ? null : firstInvalidStep,
+    };
   };
 
   const goNext = () => {
@@ -1393,9 +1493,18 @@ export default function AjukanPermohonanWizard({
     if (currentStep < totalSteps - 1) {
       setCurrentStep((prev) => prev + 1);
     } else if (allowFreeNavigation) {
-      // Mode preview publik (ModalPengajuan) — login belum diimplementasikan,
-      // jadi di sini hanya menampilkan notifikasi, tidak benar-benar mengirim.
-      setShowLoginNotice(true);
+      // Mode ModalPengajuan publik — user boleh lompat bebas antar langkah,
+      // jadi di langkah terakhir ini kita validasi SELURUH formulir sekaligus.
+      // Kalau ada yang belum lengkap, arahkan ke langkah pertama yang
+      // bermasalah dan tampilkan alert. Kalau sudah lengkap, lanjut ke
+      // konfirmasi pengiriman seperti mode dashboard biasa.
+      const { valid, firstInvalidStep } = validateAllSteps();
+      if (!valid) {
+        if (firstInvalidStep !== null) setCurrentStep(firstInvalidStep);
+        setShowIncompleteAlert(true);
+        return;
+      }
+      setShowConfirm(true);
     } else {
       setShowConfirm(true);
     }
@@ -2417,32 +2526,33 @@ export default function AjukanPermohonanWizard({
 
   return (
     <>
-      {showLoginNotice &&
+      {showIncompleteAlert &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             className="fixed inset-0 z-200 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
-            aria-label="Login Diperlukan"
+            aria-label="Formulir Belum Lengkap"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowLoginNotice(false);
+              if (e.target === e.currentTarget) setShowIncompleteAlert(false);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setShowLoginNotice(false);
+              if (e.key === "Escape") setShowIncompleteAlert(false);
             }}
           >
             <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-5 shadow-lg">
               <h3 className="mb-2 font-semibold text-gray-800">
-                Login Diperlukan
+                Formulir Belum Lengkap
               </h3>
               <p className="mb-4 text-sm text-gray-600">
-                Untuk mengirimkan pengajuan ini, silakan login terlebih dahulu
-                sebagai OPD. Data yang sudah Anda isi di sini belum tersimpan.
+                Masih ada data atau dokumen persyaratan yang belum diisi.
+                Silakan lengkapi formulir terlebih dahulu sebelum mengirim
+                pengajuan.
               </p>
               <div className="flex justify-end">
                 <button
-                  onClick={() => setShowLoginNotice(false)}
+                  onClick={() => setShowIncompleteAlert(false)}
                   className="w-full rounded-md bg-[#1a4e8f] px-3 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-1.5"
                 >
                   Mengerti
@@ -2503,6 +2613,7 @@ export default function AjukanPermohonanWizard({
         createPortal(
           <div
             className="fixed inset-0 z-200 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
             role="dialog"
             aria-modal="true"
             aria-label={`Preview ${docPreview.title}`}
@@ -2526,7 +2637,7 @@ export default function AjukanPermohonanWizard({
                   &times;
                 </button>
               </div>
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden overscroll-contain">
                 <iframe
                   src={docPreview.url}
                   className="h-full w-full"

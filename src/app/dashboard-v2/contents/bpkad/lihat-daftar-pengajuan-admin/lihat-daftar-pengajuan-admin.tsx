@@ -148,7 +148,7 @@ const STATUS_BADGE: Record<
     dot: "bg-[#3b82f6]",
   },
   revisi: {
-    label: "Perlu Revisi",
+    label: "Revisi",
     cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dot: "bg-[#f97316]",
   },
