@@ -6,10 +6,14 @@ import type {
   FormulirPenghapusanPiutangOPDRecord,
   JenisPenghapusan,
   JenisPiutang,
-  NominatifPiutangRecord,
   OpsiDokumenDasarPiutang,
   OpsiRiwayatPenagihan,
   UploadedFileRef,
+} from "@/types/types-v2";
+import {
+  JENIS_PENGHAPUSAN_OPTIONS,
+  JENIS_PIUTANG_OPTIONS,
+  OPSI_RIWAYAT_PENAGIHAN_LABEL,
 } from "@/types/types-v2";
 
 /* ------------------------------------------------------------------ */
@@ -126,9 +130,25 @@ const buildPengajuanRecord = (
   const now = new Date().toISOString();
   const id = `REG-${Date.now()}`;
 
-  const nominatif: NominatifPiutangRecord = {
-    id: `NOM-${Date.now()}`,
-    formulirId: id,
+  return {
+    id,
+    opdId: "OPD-DISDAGKOP-UKM",
+    createdBy: "opd-disdagkop-ukm",
+    namaOPD: form.namaOPD,
+    status: "diajukan",
+    createdAt: now,
+    updatedAt: now,
+    namaPenanggungJawab: form.namaPenanggungJawab,
+    jabatan: form.jabatan,
+    nomorSurat: form.nomorSurat,
+    tanggalSurat: form.tanggalSurat,
+    fileSurat: toUploadedFileRefOrNull(form.fileSurat),
+    jumlahDebitur: form.jumlahDebitur,
+    totalNilaiPiutang: form.totalNilaiPiutang,
+    jenisPiutang: form.jenisPiutang as JenisPiutang,
+    jenisPenghapusan: form.jenisPenghapusan as JenisPenghapusan,
+
+    // Dokumen nominatif — sekarang field datar, bukan objek nested
     suratPengantarUsulan: toUploadedFileRefOrNull(form.suratPengantarUsulan),
     daftarNominatifPiutang: toUploadedFileRefOrNull(
       form.daftarNominatifPiutang,
@@ -151,26 +171,7 @@ const buildPengajuanRecord = (
     opsiDokumenDasarPiutang:
       form.opsiDokumenDasarPiutang as OpsiDokumenDasarPiutang,
     dokumenDasarPiutang: toUploadedFileRefOrNull(form.dokumenDasarPiutang),
-  };
 
-  return {
-    id,
-    opdId: "OPD-DISDAGKOP-UKM",
-    createdBy: "opd-disdagkop-ukm",
-    namaOPD: form.namaOPD,
-    status: "diajukan",
-    createdAt: now,
-    updatedAt: now,
-    namaPenanggungJawab: form.namaPenanggungJawab,
-    jabatan: form.jabatan,
-    nomorSurat: form.nomorSurat,
-    tanggalSurat: form.tanggalSurat,
-    fileSurat: toUploadedFileRefOrNull(form.fileSurat),
-    jumlahDebitur: form.jumlahDebitur,
-    totalNilaiPiutang: form.totalNilaiPiutang,
-    jenisPiutang: form.jenisPiutang as JenisPiutang,
-    jenisPenghapusan: form.jenisPenghapusan as JenisPenghapusan,
-    nominatif,
     pernyataan: form.pernyataan,
   };
 };
@@ -1105,7 +1106,7 @@ export default function AjukanPermohonanWizard({
     }
 
     // 8. Surat tagihan / pernyataan OPD sesuai pilihan riwayat penagihan di langkah 2
-    if (form.opsiRiwayatPenagihan === "pernyataan") {
+    if (form.opsiRiwayatPenagihan === "penyataan_opd") {
       markTouched("filePernyataanOPD");
       if (!form.filePernyataanOPD) {
         setErrors((prev) => ({
@@ -1687,30 +1688,32 @@ export default function AjukanPermohonanWizard({
                   <input
                     type="radio"
                     name="opsiRiwayatPenagihan"
-                    value="riwayat"
-                    checked={form.opsiRiwayatPenagihan === "riwayat"}
+                    value="riwayat_tagihan"
+                    checked={form.opsiRiwayatPenagihan === "riwayat_tagihan"}
                     onChange={() =>
-                      updateField("opsiRiwayatPenagihan", "riwayat")
+                      updateField("opsiRiwayatPenagihan", "riwayat_tagihan")
                     }
                     className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                   />
                   <span className="text-sm text-gray-800">
-                    Ada bukti riwayat penagihan
+                    Ada bukti{" "}
+                    {OPSI_RIWAYAT_PENAGIHAN_LABEL.riwayat_tagihan.toLowerCase()}
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="radio"
                     name="opsiRiwayatPenagihan"
-                    value="pernyataan"
-                    checked={form.opsiRiwayatPenagihan === "pernyataan"}
+                    value="penyataan_opd"
+                    checked={form.opsiRiwayatPenagihan === "penyataan_opd"}
                     onChange={() =>
-                      updateField("opsiRiwayatPenagihan", "pernyataan")
+                      updateField("opsiRiwayatPenagihan", "penyataan_opd")
                     }
                     className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
                   />
                   <span className="text-sm text-gray-800">
-                    Ada bukti pernyataan dari OPD
+                    Ada bukti{" "}
+                    {OPSI_RIWAYAT_PENAGIHAN_LABEL.penyataan_opd.toLowerCase()}
                   </span>
                 </label>
               </div>
@@ -2044,7 +2047,7 @@ export default function AjukanPermohonanWizard({
           </p>
           <div className="space-y-6 rounded-md border border-gray-200 p-3 sm:p-4">
             {/* 8. Surat tagihan telah diterbitkan */}
-            {form.opsiRiwayatPenagihan === "pernyataan" ? (
+            {form.opsiRiwayatPenagihan === "penyataan_opd" ? (
               renderField(
                 fieldConfig(
                   "filePernyataanOPD",
@@ -2421,65 +2424,26 @@ export default function AjukanPermohonanWizard({
                             <span className="text-red-500">*</span>
                           </legend>
                           <div className="flex flex-col gap-2">
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name="jenisPiutang"
-                                value="Piutang Retribusi Daerah"
-                                checked={
-                                  form.jenisPiutang ===
-                                  "Piutang Retribusi Daerah"
-                                }
-                                onChange={() =>
-                                  updateField(
-                                    "jenisPiutang",
-                                    "Piutang Retribusi Daerah",
-                                  )
-                                }
-                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
-                              />
-                              <span className="text-sm text-gray-800">
-                                Piutang Retribusi Daerah
-                              </span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name="jenisPiutang"
-                                value="Piutang Lain-lain PAD yang Sah"
-                                checked={
-                                  form.jenisPiutang ===
-                                  "Piutang Lain-lain PAD yang Sah"
-                                }
-                                onChange={() =>
-                                  updateField(
-                                    "jenisPiutang",
-                                    "Piutang Lain-lain PAD yang Sah",
-                                  )
-                                }
-                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
-                              />
-                              <span className="text-sm text-gray-800">
-                                Piutang Lain-lain PAD yang Sah
-                              </span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name="jenisPiutang"
-                                value="Piutang Lainnya"
-                                checked={
-                                  form.jenisPiutang === "Piutang Lainnya"
-                                }
-                                onChange={() =>
-                                  updateField("jenisPiutang", "Piutang Lainnya")
-                                }
-                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
-                              />
-                              <span className="text-sm text-gray-800">
-                                Piutang Lainnya
-                              </span>
-                            </label>
+                            {JENIS_PIUTANG_OPTIONS.map((opsi) => (
+                              <label
+                                key={opsi}
+                                className="flex cursor-pointer items-center gap-2"
+                              >
+                                <input
+                                  type="radio"
+                                  name="jenisPiutang"
+                                  value={opsi}
+                                  checked={form.jenisPiutang === opsi}
+                                  onChange={() =>
+                                    updateField("jenisPiutang", opsi)
+                                  }
+                                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
+                                />
+                                <span className="text-sm text-gray-800">
+                                  {opsi}
+                                </span>
+                              </label>
+                            ))}
                           </div>
                           {touched.jenisPiutang && errors.jenisPiutang && (
                             <p className="mt-2 text-sm text-red-600">
@@ -2494,47 +2458,26 @@ export default function AjukanPermohonanWizard({
                             <span className="text-red-500">*</span>
                           </legend>
                           <div className="flex flex-col gap-2">
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name="jenisPenghapusan"
-                                value="Penghapusan Bersyarat"
-                                checked={
-                                  form.jenisPenghapusan ===
-                                  "Penghapusan Bersyarat"
-                                }
-                                onChange={() =>
-                                  updateField(
-                                    "jenisPenghapusan",
-                                    "Penghapusan Bersyarat",
-                                  )
-                                }
-                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
-                              />
-                              <span className="text-sm text-gray-800">
-                                Penghapusan Bersyarat
-                              </span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name="jenisPenghapusan"
-                                value="Penghapusan Mutlak"
-                                checked={
-                                  form.jenisPenghapusan === "Penghapusan Mutlak"
-                                }
-                                onChange={() =>
-                                  updateField(
-                                    "jenisPenghapusan",
-                                    "Penghapusan Mutlak",
-                                  )
-                                }
-                                className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
-                              />
-                              <span className="text-sm text-gray-800">
-                                Penghapusan Mutlak
-                              </span>
-                            </label>
+                            {JENIS_PENGHAPUSAN_OPTIONS.map((opsi) => (
+                              <label
+                                key={opsi}
+                                className="flex cursor-pointer items-center gap-2"
+                              >
+                                <input
+                                  type="radio"
+                                  name="jenisPenghapusan"
+                                  value={opsi}
+                                  checked={form.jenisPenghapusan === opsi}
+                                  onChange={() =>
+                                    updateField("jenisPenghapusan", opsi)
+                                  }
+                                  className="h-4 w-4 shrink-0 border-gray-300 accent-[#1a4e8f] scheme-light"
+                                />
+                                <span className="text-sm text-gray-800">
+                                  {opsi}
+                                </span>
+                              </label>
+                            ))}
                           </div>
                           {touched.jenisPenghapusan &&
                             errors.jenisPenghapusan && (

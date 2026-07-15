@@ -1,35 +1,49 @@
 /* ------------------------------------------------------------------ */
 /*  types-v2.ts                                                       */
-/*  Tipe data untuk Formulir Pengajuan Penghapusan Piutang OPD         */
-/*                                                                      */
-/*  Struktur file ini dibagi 3 bagian:                                 */
-/*   1. Enum / literal types      -> dipakai di form maupun entity     */
-/*   2. Form types (client state) -> File | null (objek File mentah)   */
-/*   3. Entity / record types     -> UploadedFileRef | null (hasil     */
-/*      upload, representasi row dari database / response API)        */
-/*                                                                      */
-/*  Alur konversi:                                                     */
-/*    FormulirPenghapusanPiutangOPD (state form)                       */
-/*      -> upload tiap File ke storage                                 */
-/*      -> FormulirPenghapusanPiutangOPDRecord (payload API / DB)      */
+/*  Tipe data Formulir Pengajuan Penghapusan Piutang OPD               */
 /* ------------------------------------------------------------------ */
 
-/* ==================================================================== */
-/*  1. Enum / literal types                                             */
-/* ==================================================================== */
+/* ==================== 1. Enum / literal types ==================== */
 
-export type JenisPiutang =
-  | "Piutang Retribusi Daerah"
-  | "Piutang Lain-lain PAD yang Sah"
-  | "Piutang Lainnya";
+// Istilah resmi (PMK 137/2022) — stabil, tidak perlu di-snake_case-kan.
+export const JENIS_PIUTANG_OPTIONS = [
+  "Piutang Retribusi Daerah",
+  "Piutang Lain-lain PAD yang Sah",
+  "Piutang Lainnya",
+] as const;
+export type JenisPiutang = (typeof JENIS_PIUTANG_OPTIONS)[number];
 
-export type JenisPenghapusan = "Penghapusan Bersyarat" | "Penghapusan Mutlak";
+export const JENIS_PENGHAPUSAN_OPTIONS = [
+  "Penghapusan Bersyarat",
+  "Penghapusan Mutlak",
+] as const;
+export type JenisPenghapusan = (typeof JENIS_PENGHAPUSAN_OPTIONS)[number];
 
-export type OpsiRiwayatPenagihan = "riwayat" | "pernyataan" | "tidak_ada";
+// Kategori internal — identifier pendek, label tampilan terpisah di bawah.
+export type OpsiRiwayatPenagihan = "riwayat_tagihan" | "penyataan_opd";
+export const OPSI_RIWAYAT_PENAGIHAN_LABEL: Record<
+  OpsiRiwayatPenagihan,
+  string
+> = {
+  riwayat_tagihan: "Riwayat Tagihan",
+  penyataan_opd: "Pernyataan OPD",
+};
 
 export type OpsiDokumenDasarPiutang = "ada" | "tidak_ada";
+export const OPSI_DOKUMEN_DASAR_PIUTANG_LABEL: Record<
+  OpsiDokumenDasarPiutang,
+  string
+> = {
+  ada: "Ada",
+  tidak_ada: "Tidak Ada",
+};
 
-export type StatusFormulir = "diajukan" | "revisi" | "lolos_verifikasi";
+export type StatusFormulir = "diajukan" | "revisi" | "teregistrasi";
+export const STATUS_FORMULIR_LABEL: Record<StatusFormulir, string> = {
+  diajukan: "Diajukan",
+  revisi: "Revisi",
+  teregistrasi: "Teregistrasi",
+};
 
 export interface PernyataanOPD {
   dataBenar: boolean;
@@ -38,10 +52,26 @@ export interface PernyataanOPD {
   bersediaPerbaiki: boolean;
 }
 
-export interface NominatifPiutang {
-  id: string;
+/* ==================== 2. Form types (client state) ==================== */
+/*  Field dokumen bertipe `File | null` — objek file mentah dari input.  */
+/*  Dokumen nominatif (daftar penanggung piutang) ada di sini sebagai    */
+/*  field datar: OPD hanya mengunggah satu PDF berisi banyak baris       */
+/*  debitur, jadi tidak perlu array atau entity terpisah.                */
 
-  // Dokumen wajib utama
+export interface FormulirPenghapusanPiutangOPD {
+  // Data Pengajuan
+  namaOPD: string;
+  namaPenanggungJawab: string;
+  jabatan: string;
+  nomorSurat: string;
+  tanggalSurat: string;
+  fileSurat: File | null;
+  jumlahDebitur: string;
+  totalNilaiPiutang: string;
+  jenisPiutang: JenisPiutang | "";
+  jenisPenghapusan: JenisPenghapusan | "";
+
+  // Dokumen Nominatif
   suratPengantarUsulan: File | null;
   daftarNominatifPiutang: File | null;
   rekapitulasiSaldoPiutang: File | null;
@@ -59,92 +89,40 @@ export interface NominatifPiutang {
   // Dokumen Dasar Piutang
   opsiDokumenDasarPiutang: OpsiDokumenDasarPiutang | "";
   dokumenDasarPiutang: File | null;
-}
 
-/** Formulir OPD — top-level state form. */
-export interface FormulirPenghapusanPiutangOPD {
-  // Identitas Usulan / Data OPD (diisi sekali per formulir)
-  namaOPD: string;
-  namaPenanggungJawab: string;
-  jabatan: string;
-  nomorSurat: string;
-  tanggalSurat: string;
-  fileSurat: File | null;
-  jumlahDebitur: string;
-  totalNilaiPiutang: string;
-  jenisPiutang: JenisPiutang | "";
-  jenisPenghapusan: JenisPenghapusan | "";
-
-  // SATU nominatif (bukan array)
-  nominatif: NominatifPiutang;
-
-  // Pernyataan OPD (langkah akhir)
   pernyataan: PernyataanOPD;
 }
 
-/* -------------------- Nilai awal / default helpers -------------------- */
+/* ==================== 3. Entity / record types ==================== */
+/*  Representasi data setelah tersimpan di server. Field dokumen jadi   */
+/*  `UploadedFileRef | null` karena file sudah dipindah ke storage.     */
 
-export const initialPernyataanOPD: PernyataanOPD = {
-  dataBenar: false,
-  dokumenResmi: false,
-  upayaPenagihan: false,
-  bersediaPerbaiki: false,
-};
-
-export const createEmptyNominatifPiutang = (id: string): NominatifPiutang => ({
-  id,
-  suratPengantarUsulan: null,
-  daftarNominatifPiutang: null,
-  rekapitulasiSaldoPiutang: null,
-  neracaAwalPencatatanPiutang: null,
-  dokumenPendukungSuratTidakMampuBayar: null,
-  rekapitulasiAngsuran: null,
-  opsiRiwayatPenagihan: "",
-  riwayatPenagihan1: null,
-  riwayatPenagihan2: null,
-  riwayatPenagihan3: null,
-  filePernyataanOPD: null,
-  opsiDokumenDasarPiutang: "",
-  dokumenDasarPiutang: null,
-});
-
-export const initialFormulirPenghapusanPiutangOPD: FormulirPenghapusanPiutangOPD =
-  {
-    namaOPD: "",
-    namaPenanggungJawab: "",
-    jabatan: "",
-    nomorSurat: "",
-    tanggalSurat: "",
-    fileSurat: null,
-    jumlahDebitur: "",
-    totalNilaiPiutang: "",
-    jenisPiutang: "",
-    jenisPenghapusan: "",
-    nominatif: createEmptyNominatifPiutang("NOM-001"), // satu objek default
-    pernyataan: { ...initialPernyataanOPD },
-  };
-
-/* ==================================================================== */
-/*  3. Entity / record types — representasi data setelah tersimpan      */
-/*     di server (hasil query database / response API).                 */
-/*     Field dokumen berubah dari `File | null` menjadi                 */
-/*     `UploadedFileRef | null` karena file fisik sudah dipindah ke      */
-/*     storage (S3 / Supabase Storage / disk) dan yang tersimpan di DB   */
-/*     hanyalah referensinya.                                            */
-/* ==================================================================== */
-
-/** Referensi file yang sudah selesai diupload ke storage. */
 export interface UploadedFileRef {
   id: string;
-  url: string; // path/URL ke storage (S3, Supabase storage, dll)
+  url: string;
   namaFile: string;
   ukuranBytes: number;
   uploadedAt: string; // ISO date
 }
 
-export interface NominatifPiutangRecord {
+export interface FormulirPenghapusanPiutangOPDRecord {
   id: string;
-  formulirId: string; // FK -> FormulirPenghapusanPiutangOPDRecord.id
+  opdId: string;
+  createdBy: string;
+  namaOPD: string;
+  status: StatusFormulir;
+  createdAt: string;
+  updatedAt: string;
+
+  namaPenanggungJawab: string;
+  jabatan: string;
+  nomorSurat: string;
+  tanggalSurat: string;
+  fileSurat: UploadedFileRef | null;
+  jumlahDebitur: string;
+  totalNilaiPiutang: string;
+  jenisPiutang: JenisPiutang;
+  jenisPenghapusan: JenisPenghapusan;
 
   suratPengantarUsulan: UploadedFileRef | null;
   daftarNominatifPiutang: UploadedFileRef | null;
@@ -161,66 +139,58 @@ export interface NominatifPiutangRecord {
 
   opsiDokumenDasarPiutang: OpsiDokumenDasarPiutang;
   dokumenDasarPiutang: UploadedFileRef | null;
-}
-
-export interface FormulirPenghapusanPiutangOPDRecord {
-  id: string;
-  opdId: string; // FK -> tabel master OPD
-  createdBy: string; // FK -> tabel user (akun yang submit)
-  namaOPD: string;
-  status: StatusFormulir;
-  createdAt: string;
-  updatedAt: string;
-
-  namaPenanggungJawab: string;
-  jabatan: string;
-  nomorSurat: string;
-  tanggalSurat: string;
-  fileSurat: UploadedFileRef | null;
-  jumlahDebitur: string;
-  totalNilaiPiutang: string;
-  jenisPiutang: JenisPiutang;
-  jenisPenghapusan: JenisPenghapusan;
-
-  // SATU nominatif (bukan array)
-  nominatif: NominatifPiutangRecord;
 
   pernyataan: PernyataanOPD;
 
-  /* -------------------- Jejak audit verifikasi BPKAD -------------------- */
-  /* Opsional: hanya terisi setelah pengajuan diverifikasi (status !=       */
-  /* "diajukan"). Checklist Persyaratan Substantif diisi manual oleh        */
-  /* verifikator saat meninjau dokumen — disimpan di sini agar jadi jejak   */
-  /* audit permanen (siapa verifikator, poin mana yang dicentang, kapan),   */
-  /* alih-alih hilang sebagai state lokal panel saat panel ditutup.         */
-
-  /** Peta id item checklist -> status centang (lihat ChecklistItemDef.id  */
-  /*  di VerifikasiPengajuan.tsx, mis. "tidak_ada_jaminan", "status_macet") */
+  // Diisi BPKAD saat verifikasi, kosong selama status masih "diajukan".
   checklistSubstantif?: Record<string, boolean>;
-
-  /** ID / nama akun verifikator BPKAD yang mengeluarkan keputusan.        */
   verifikatorId?: string;
-
-  /** Tanggal & waktu keputusan verifikasi dikeluarkan (ISO date).         */
   tanggalVerifikasi?: string;
-
-  /** Keterangan/catatan dari BPKAD — terutama alasan revisi, agar OPD    */
-  /*  tahu persis apa yang perlu diperbaiki (lihat panel "Hasil           */
-  /*  Verifikasi" pada VerifikasiPengajuan.tsx).                          */
   catatanVerifikasi?: string;
 }
 
-/* ==================================================================== */
-/*  Payload konversi File -> UploadedFileRef (dipakai saat proses        */
-/*  upload sebelum data dikirim sebagai record/payload API)             */
-/* ==================================================================== */
-
-/** Bentuk payload saat submit: form yang field File-nya sudah          */
-/*  dikonversi jadi UploadedFileRef, tapi belum lengkap metadata server  */
-/*  (id, createdAt, dll — biasanya di-generate backend).                */
+// Payload submit: field File sudah dikonversi ke UploadedFileRef,
+// metadata server (id, status, dll) belum ada — akan digenerate backend.
 export type FormulirPenghapusanPiutangOPDSubmitPayload = Omit<
   FormulirPenghapusanPiutangOPDRecord,
   "id" | "createdBy" | "status" | "createdAt" | "updatedAt"
 > & {
   opdId: string;
 };
+
+/* ==================== Nilai awal / default ==================== */
+
+export const initialPernyataanOPD: PernyataanOPD = {
+  dataBenar: false,
+  dokumenResmi: false,
+  upayaPenagihan: false,
+  bersediaPerbaiki: false,
+};
+
+export const initialFormulirPenghapusanPiutangOPD: FormulirPenghapusanPiutangOPD =
+  {
+    namaOPD: "",
+    namaPenanggungJawab: "",
+    jabatan: "",
+    nomorSurat: "",
+    tanggalSurat: "",
+    fileSurat: null,
+    jumlahDebitur: "",
+    totalNilaiPiutang: "",
+    jenisPiutang: "",
+    jenisPenghapusan: "",
+    suratPengantarUsulan: null,
+    daftarNominatifPiutang: null,
+    rekapitulasiSaldoPiutang: null,
+    neracaAwalPencatatanPiutang: null,
+    dokumenPendukungSuratTidakMampuBayar: null,
+    rekapitulasiAngsuran: null,
+    opsiRiwayatPenagihan: "",
+    riwayatPenagihan1: null,
+    riwayatPenagihan2: null,
+    riwayatPenagihan3: null,
+    filePernyataanOPD: null,
+    opsiDokumenDasarPiutang: "",
+    dokumenDasarPiutang: null,
+    pernyataan: { ...initialPernyataanOPD },
+  };

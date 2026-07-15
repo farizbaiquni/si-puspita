@@ -283,8 +283,8 @@ const STATUS_CONFIG_LACAK: Record<
     badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
     dotClass: "bg-[#f97316]",
   },
-  lolos_verifikasi: {
-    label: "Lolos Verifikasi",
+  teregistrasi: {
+    label: "Teregistrasi",
     badgeClass: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
     dotClass: "bg-[#10b981]",
   },
@@ -742,9 +742,9 @@ function DetailPengajuanLacak({
           {data.catatanVerifikasi}
         </div>
       )}
-      {data.status === "lolos_verifikasi" && data.catatanVerifikasi && (
+      {data.status === "teregistrasi" && data.catatanVerifikasi && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
-          <p className="mb-1 font-semibold">Lolos Verifikasi BPKAD</p>
+          <p className="mb-1 font-semibold">Teregistrasi BPKAD</p>
           {data.catatanVerifikasi}
         </div>
       )}
@@ -798,8 +798,7 @@ function ModalLacak() {
       SEMUA: MOCK_DATA.length,
       diajukan: MOCK_DATA.filter((d) => d.status === "diajukan").length,
       revisi: MOCK_DATA.filter((d) => d.status === "revisi").length,
-      lolos_verifikasi: MOCK_DATA.filter((d) => d.status === "lolos_verifikasi")
-        .length,
+      teregistrasi: MOCK_DATA.filter((d) => d.status === "teregistrasi").length,
     }),
     [],
   );
@@ -808,7 +807,7 @@ function ModalLacak() {
     { key: "SEMUA", label: "Semua" },
     { key: "diajukan", label: "Diajukan" },
     { key: "revisi", label: "Revisi" },
-    { key: "lolos_verifikasi", label: "Lolos Verifikasi" },
+    { key: "teregistrasi", label: "Teregistrasi" },
   ];
 
   return (
@@ -1155,7 +1154,8 @@ function ModalBunga({
           displayedItem.id === "informasi" ||
           displayedItem.id === "sop&flowchart" ||
           displayedItem.id === "upload-dokumen" ||
-          displayedItem.id === "pengajuan"
+          displayedItem.id === "pengajuan" ||
+          displayedItem.id === "lacak"
             ? "max-w-260"
             : "max-w-160"
         }`}
