@@ -72,21 +72,21 @@ const OPD_MENUS: MenuItem[] = [
   },
 ];
 
-const BPKAD_MENUS: MenuItem[] = [
+const ADMIN_MENUS: MenuItem[] = [
   {
     key: "verifikasi-pengajuan",
     icon: <IconChecklist />,
     label: "Verifikasi Pengajuan",
   },
   {
-    key: "lihat-daftar-pengajuan-admin",
-    icon: <IconEye />,
-    label: "Lihat Pengajuan",
-  },
-  {
     key: "register-digital",
     icon: <IconList />,
     label: "Register Digital",
+  },
+  {
+    key: "lihat-daftar-pengajuan-admin",
+    icon: <IconEye />,
+    label: "Lihat Pengajuan",
   },
 ];
 
@@ -194,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onCloseMobile,
 }) => {
-  const menus = role === "OPD" ? OPD_MENUS : BPKAD_MENUS;
+  const menus = role === "OPD" ? OPD_MENUS : ADMIN_MENUS;
 
   const handleNavigate = (key: MenuKey) => {
     onNavigate(key);
@@ -415,7 +415,8 @@ const Header: React.FC<HeaderProps> = ({
       </div>
       <div className="flex-1" />
 
-      <RoleDropdown role={role} onChange={onRoleChange} />
+      {/* Sementara ini disable dulu ya  */}
+      {/* <RoleDropdown role={role} onChange={onRoleChange} /> */}
 
       <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconMail />

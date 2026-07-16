@@ -650,8 +650,8 @@ const PanelDetail: React.FC<{
 const PengajuanRowCardMobile: React.FC<{
   p: FormulirPenghapusanPiutangOPDRecord;
   no: number;
-  onLihatDetail: () => void;
-}> = ({ p, no, onLihatDetail }) => (
+  onLihatNominatif: () => void;
+}> = ({ p, no, onLihatNominatif }) => (
   <div className="space-y-2.5 p-4">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -682,12 +682,17 @@ const PengajuanRowCardMobile: React.FC<{
       <span className="shrink-0">{formatTanggal(p.tanggalSurat)}</span>
     </div>
 
-    <button
-      onClick={onLihatDetail}
-      className="w-full rounded-sm border border-[#e2e8f2] bg-white py-2 text-xs font-semibold text-[#1a4e8f] transition hover:bg-[#f7f8fa]"
-    >
-      Lihat Detail
-    </button>
+    <div className="flex gap-2">
+      {p.daftarNominatifPiutang && (
+        <button
+          onClick={onLihatNominatif}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white py-2 text-xs font-semibold text-[#1a4e8f] transition hover:bg-[#f7f8fa]"
+        >
+          <IconEye />
+          Lihat Nominatif
+        </button>
+      )}
+    </div>
   </div>
 );
 
@@ -745,21 +750,59 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
   }, [semuaPengajuan, dataStore]);
 
   const [search, setSearch] = useState("");
+  const [filterOPD, setFilterOPD] = useState("");
+  const [filterStatus, setFilterStatus] = useState<StatusFormulir | "">("");
   const [selected, setSelected] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+  // Preview PDF Daftar Nominatif Piutang langsung dari menu aksi tabel/kartu,
+  // tanpa perlu masuk ke halaman detail dulu.
+  const [previewNominatif, setPreviewNominatif] =
+    useState<UploadedFileRef | null>(null);
+
+  // Daftar opsi OPD unik untuk dropdown filter, diambil dari seluruh data
+  // (bukan dari hasil filter) supaya opsi tidak berubah-ubah saat difilter,
+  // diurutkan A-Z.
+  const daftarOPD = useMemo(() => {
+    const set = new Set<string>();
+    daftarPengajuan.forEach((p) => {
+      if (p.namaOPD) set.add(p.namaOPD);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
+  }, [daftarPengajuan]);
+
+  const isFilterAktif = Boolean(search || filterOPD || filterStatus);
+
+  const resetFilter = () => {
+    setSearch("");
+    setFilterOPD("");
+    setFilterStatus("");
+  };
 
   const filtered = useMemo(() => {
-    if (!search) return daftarPengajuan;
-    const q = search.toLowerCase();
-    return daftarPengajuan.filter(
-      (p) =>
-        p.id.toLowerCase().includes(q) ||
-        p.nomorSurat.toLowerCase().includes(q) ||
-        (p.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
-        p.namaOPD.toLowerCase().includes(q) ||
-        p.namaPenanggungJawab.toLowerCase().includes(q),
-    );
-  }, [daftarPengajuan, search]);
+    let hasil = daftarPengajuan;
+
+    if (filterOPD) {
+      hasil = hasil.filter((p) => p.namaOPD === filterOPD);
+    }
+
+    if (filterStatus) {
+      hasil = hasil.filter((p) => p.status === filterStatus);
+    }
+
+    if (search) {
+      const q = search.toLowerCase();
+      hasil = hasil.filter(
+        (p) =>
+          p.id.toLowerCase().includes(q) ||
+          p.nomorSurat.toLowerCase().includes(q) ||
+          (p.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
+          p.namaOPD.toLowerCase().includes(q) ||
+          p.namaPenanggungJawab.toLowerCase().includes(q),
+      );
+    }
+
+    return hasil;
+  }, [daftarPengajuan, search, filterOPD, filterStatus]);
 
   // Pengelompokan berdasarkan nama OPD, urutan grup mengikuti urutan
   // kemunculan di `filtered` (yang sudah A-Z karena disortir di
@@ -796,6 +839,14 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
   // ── Render: daftar pengajuan ───────────────────────────────────────────────
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
+      {previewNominatif && (
+        <ModalPreviewPDF
+          namaFile={previewNominatif.namaFile}
+          url={previewNominatif.url}
+          onClose={() => setPreviewNominatif(null)}
+        />
+      )}
+
       {/* ── Search bar ── */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
@@ -818,6 +869,43 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
             </button>
           )}
         </div>
+
+        {/* Filter OPD */}
+        <select
+          value={filterOPD}
+          onChange={(e) => setFilterOPD(e.target.value)}
+          className="w-full shrink-0 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.75 text-[13px] text-[#1a1a2e] outline-none sm:w-auto sm:min-w-40"
+        >
+          <option value="">Semua OPD</option>
+          {daftarOPD.map((opd) => (
+            <option key={opd} value={opd}>
+              {opd}
+            </option>
+          ))}
+        </select>
+
+        {/* Filter Status */}
+        <select
+          value={filterStatus}
+          onChange={(e) =>
+            setFilterStatus(e.target.value as StatusFormulir | "")
+          }
+          className="w-full shrink-0 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.75 text-[13px] text-[#1a1a2e] outline-none sm:w-auto sm:min-w-36"
+        >
+          <option value="">Semua Status</option>
+          <option value="diajukan">Diajukan</option>
+          <option value="revisi">Revisi</option>
+          <option value="teregistrasi">Teregistrasi</option>
+        </select>
+
+        <button
+          onClick={resetFilter}
+          disabled={!isFilterAktif}
+          className="shrink-0 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.75 text-xs font-semibold whitespace-nowrap text-[#7a8899] transition enabled:hover:border-[#a0bdec] enabled:hover:bg-[#e8f0fb] enabled:hover:text-[#1a4e8f] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Reset Filter
+        </button>
+
         <div className="shrink-0 text-xs text-[#7a8899]">
           {filtered.length} dari {daftarPengajuan.length} pengajuan
         </div>
@@ -838,7 +926,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
             <div className="text-xs text-[#b0bac5]">
               {daftarPengajuan.length === 0
                 ? "Belum ada formulir yang masuk dari OPD."
-                : "Coba ubah kata kunci pencarian."}
+                : "Coba ubah kata kunci pencarian atau filter."}
             </div>
           </div>
         ) : (
@@ -883,7 +971,10 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                               key={p.id}
                               p={p}
                               no={idx + 1}
-                              onLihatDetail={() => setSelected(p)}
+                              onLihatNominatif={() =>
+                                p.daftarNominatifPiutang &&
+                                setPreviewNominatif(p.daftarNominatifPiutang)
+                              }
                             />
                           ))}
                         </div>
@@ -1012,14 +1103,22 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                                   {p.nomorRegistrasi || "-"}
                                 </td>
 
-                                {/* Tombol Aksi — read-only, selalu "Lihat Detail" */}
+                                {/* Tombol Aksi — Lihat Nominatif (modal PDF) */}
                                 <td className="p-[12px_14px] whitespace-nowrap">
-                                  <button
-                                    onClick={() => setSelected(p)}
-                                    className="rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
-                                  >
-                                    Lihat Detail
-                                  </button>
+                                  {p.daftarNominatifPiutang && (
+                                    <button
+                                      onClick={() =>
+                                        setPreviewNominatif(
+                                          p.daftarNominatifPiutang!,
+                                        )
+                                      }
+                                      className="flex items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+                                      title="Lihat Daftar Nominatif Piutang"
+                                    >
+                                      <IconEye />
+                                      Lihat
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );
