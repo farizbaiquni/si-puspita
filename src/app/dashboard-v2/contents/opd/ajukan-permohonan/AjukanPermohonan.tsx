@@ -265,7 +265,7 @@ const steps: StepConfig[] = [
         name: "namaOPD",
         label: "Nama OPD",
         type: "text",
-        placeholder: "Nama OPD terisi otomatis",
+        placeholder: "Dinas Perdagangan Koperasi dan UKM",
         required: true,
         disabled: true,
       },
@@ -280,7 +280,7 @@ const steps: StepConfig[] = [
         name: "jabatan",
         label: "Jabatan (Kepala OPD)",
         type: "text",
-        placeholder: "Contoh: Kepala Dinas Pendidikan",
+        placeholder: "Contoh: Kepala Dinas Perdagangan Koperasi dan UKM",
         required: true,
       },
       {

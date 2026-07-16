@@ -667,7 +667,7 @@ function ModalPengajuan() {
     <AjukanPermohonanWizard
       onSubmitPengajuan={tambahPengajuan}
       allowFreeNavigation
-      defaultNamaOPD="Dinas Perhubungan"
+      defaultNamaOPD="Nama OPD Terisi Otomatis"
       onRequireLogin={handleRequireLogin}
     />
   );
