@@ -269,36 +269,6 @@ const IconEye = () => (
   </svg>
 );
 
-const IconCheck = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path
-      d="M3 8l3.5 3.5L13 4.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconX = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
-  </svg>
-);
-
 const IconArrowLeft = () => (
   <svg
     width="16"
@@ -774,20 +744,6 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
     });
   }, [semuaPengajuan, dataStore]);
 
-  // Ringkasan jumlah per status (seluruh data, bukan sesi)
-  const jumlahDiajukan = useMemo(
-    () => daftarPengajuan.filter((p) => p.status === "diajukan").length,
-    [daftarPengajuan],
-  );
-  const jumlahTeregistrasi = useMemo(
-    () => daftarPengajuan.filter((p) => p.status === "teregistrasi").length,
-    [daftarPengajuan],
-  );
-  const jumlahRevisi = useMemo(
-    () => daftarPengajuan.filter((p) => p.status === "revisi").length,
-    [daftarPengajuan],
-  );
-
   const [search, setSearch] = useState("");
   const [selected, setSelected] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
@@ -840,47 +796,6 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
   // ── Render: daftar pengajuan ───────────────────────────────────────────────
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
-      {/* ── Summary ── */}
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-4.5 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-white">
-            <IconClock />
-          </div>
-          <div>
-            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {jumlahDiajukan}
-            </div>
-            <div className="mt-0.5 text-xs text-[#7a8899]">
-              Menunggu Verifikasi
-            </div>
-          </div>
-        </div>
-
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-4.5 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#0f9b6e] text-white">
-            <IconCheck />
-          </div>
-          <div>
-            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {jumlahTeregistrasi}
-            </div>
-            <div className="mt-0.5 text-xs text-[#7a8899]">Teregistrasi</div>
-          </div>
-        </div>
-
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4.5 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#c0392b] text-white">
-            <IconX />
-          </div>
-          <div>
-            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {jumlahRevisi}
-            </div>
-            <div className="mt-0.5 text-xs text-[#7a8899]">Perlu Revisi</div>
-          </div>
-        </div>
-      </div>
-
       {/* ── Search bar ── */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
@@ -988,7 +903,8 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                       "Pengajuan",
                       "Piutang & Nominal",
                       "Status",
-                      "Tgl Surat",
+                      "Nomor Pengajuan",
+                      "No Register",
                       "Aksi",
                     ].map((label, idx) => (
                       <th
@@ -1006,7 +922,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                     <tbody key={group.opd}>
                       {/* Header grup — bisa diklik untuk collapse/expand */}
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f4fb]">
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={7} className="p-0">
                           <button
                             onClick={() => toggleGroup(group.opd)}
                             className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-[#e8f0fb]"
@@ -1032,7 +948,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                         (group.items.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="py-5 text-center text-xs text-[#b0bac5]"
                             >
                               Tidak ada pengajuan.
@@ -1056,16 +972,13 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                                   {idx + 1}
                                 </td>
 
-                                {/* Kolom gabungan: No Reg/No Surat + OPD + Penanggung Jawab */}
-                                <td className="p-[12px_14px]">
-                                  <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                                    {nomorTampilan(p)}
+                                {/* Kolom Pengajuan: jumlah debitur */}
+                                <td className="p-[12px_14px] whitespace-nowrap">
+                                  <div className="text-[13px] font-bold text-[#1a1a2e]">
+                                    {p.jumlahDebitur || "-"}
                                   </div>
-                                  <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
-                                    {p.namaOPD}
-                                  </div>
-                                  <div className="mt-px text-[11px] text-[#7a8899]">
-                                    {p.namaPenanggungJawab}
+                                  <div className="mt-0.5 text-[11px] text-[#7a8899]">
+                                    Debitur
                                   </div>
                                 </td>
 
@@ -1089,9 +1002,14 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                                   <StatusBadge status={p.status} />
                                 </td>
 
-                                {/* Tgl Surat */}
-                                <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
-                                  {formatTanggal(p.tanggalSurat)}
+                                {/* Nomor Pengajuan (ID) */}
+                                <td className="p-[12px_14px] font-mono text-xs whitespace-nowrap text-[#7a8899]">
+                                  {p.id}
+                                </td>
+
+                                {/* No Register */}
+                                <td className="p-[12px_14px] font-mono text-xs font-semibold whitespace-nowrap text-[#1a4e8f]">
+                                  {p.nomorRegistrasi || "-"}
                                 </td>
 
                                 {/* Tombol Aksi — read-only, selalu "Lihat Detail" */}
