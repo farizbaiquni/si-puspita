@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, type ChangeEvent } from "react";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
+  UploadedFileRef,
+} from "@/types/types-v2";
+import {
+  JENIS_PENGHAPUSAN_OPTIONS,
+  JENIS_PIUTANG_OPTIONS,
 } from "@/types/types-v2";
 import { MOCK_DATA } from "../../dummyData";
 import {
@@ -21,6 +26,47 @@ import {
   IconTrash,
   IconFile,
 } from "./icons";
+
+// Ikon kecil khusus dipakai di dalam file ini (edit/upload) — tidak ada di
+// ./icons, jadi didefinisikan lokal saja.
+const IconPencil = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M11.5 2.5a1.5 1.5 0 012.12 2.12L5 13.25l-3 .75.75-3 8.75-8.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const IconUpload = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M8 10.5V2M8 2L5 5M8 2l3 3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M2.5 10.5v2a1.5 1.5 0 001.5 1.5h8a1.5 1.5 0 001.5-1.5v-2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 // ────────────────────────────── HELPERS ─────────────────────────────────────
 function formatRupiah(angka: string): string {
@@ -644,6 +690,444 @@ const ModalDetail: React.FC<{
   );
 };
 
+// ──────────────────── SLOT FILE (upload ulang) DI FORM EDIT ────────────────
+// Menampilkan file yang sudah ada (existingFile) atau file baru yang baru
+// dipilih user (newFile) — dan tombol untuk mengganti/membatalkan penggantian.
+const EditFileSlot: React.FC<{
+  label: string;
+  existingFile: UploadedFileRef | null;
+  newFile: File | null;
+  onChangeFile: (file: File | null) => void;
+  required?: boolean;
+}> = ({ label, existingFile, newFile, onChangeFile, required = true }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    onChangeFile(file);
+    e.target.value = "";
+  };
+
+  const tampilanNama = newFile ? newFile.name : existingFile?.namaFile;
+  const adaFile = Boolean(newFile || existingFile);
+
+  return (
+    <div className="space-y-1">
+      <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      <div
+        className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 ${
+          newFile
+            ? "border-[#a0bdec] bg-[#eff6ff]"
+            : adaFile
+              ? "border-[#e2e8f2] bg-[#f7f8fa]"
+              : "border-red-200 bg-red-50"
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-[#7a8899]">
+            <IconFile />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[12.5px] font-medium text-[#1a1a2e]">
+              {tampilanNama || "Belum ada file"}
+            </p>
+            {newFile && (
+              <p className="text-[10.5px] font-semibold text-[#1a4e8f]">
+                File baru — akan menggantikan file lama
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handlePick}
+          />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex items-center gap-1 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#1a4e8f] hover:bg-[#e8f0fb]"
+          >
+            <IconUpload />
+            {adaFile ? "Ganti" : "Unggah"}
+          </button>
+          {newFile && (
+            <button
+              type="button"
+              onClick={() => onChangeFile(null)}
+              className="rounded-sm border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50"
+            >
+              Batal
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ──────────────────────── MODAL EDIT (KHUSUS STATUS REVISI) ────────────────
+// Memungkinkan OPD memperbaiki input teks & mengunggah ulang PDF sesuai
+// keterangan revisi dari BPKAD, lalu mengajukan ulang (status kembali ke
+// "diajukan" supaya diverifikasi lagi oleh BPKAD).
+const ModalEditRevisi: React.FC<{
+  record: FormulirPenghapusanPiutangOPDRecord;
+  onClose: () => void;
+  onSimpan: (
+    id: string,
+    updates: Partial<FormulirPenghapusanPiutangOPDRecord>,
+  ) => void;
+}> = ({ record, onClose, onSimpan }) => {
+  const [namaPenanggungJawab, setNamaPenanggungJawab] = useState(
+    record.namaPenanggungJawab,
+  );
+  const [jabatan, setJabatan] = useState(record.jabatan);
+  const [nomorSurat, setNomorSurat] = useState(record.nomorSurat);
+  const [tanggalSurat, setTanggalSurat] = useState(record.tanggalSurat);
+  const [jumlahDebitur, setJumlahDebitur] = useState(record.jumlahDebitur);
+  const [totalNilaiPiutang, setTotalNilaiPiutang] = useState(
+    record.totalNilaiPiutang,
+  );
+  const [jenisPiutang, setJenisPiutang] = useState(record.jenisPiutang);
+  const [jenisPenghapusan, setJenisPenghapusan] = useState(
+    record.jenisPenghapusan,
+  );
+
+  // File baru per field — null berarti "belum diganti, tetap pakai file lama".
+  const [fileBaru, setFileBaru] = useState<
+    Partial<Record<string, File | null>>
+  >({});
+  const setFile = (key: string, file: File | null) =>
+    setFileBaru((prev) => ({ ...prev, [key]: file }));
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const toRef = (file: File): UploadedFileRef => ({
+    id: `FILE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    url: URL.createObjectURL(file),
+    namaFile: file.name,
+    ukuranBytes: file.size,
+    uploadedAt: new Date().toISOString(),
+  });
+
+  const handleSimpan = async () => {
+    setIsSaving(true);
+    try {
+      const updates: Partial<FormulirPenghapusanPiutangOPDRecord> = {
+        namaPenanggungJawab,
+        jabatan,
+        nomorSurat,
+        tanggalSurat,
+        jumlahDebitur,
+        totalNilaiPiutang,
+        jenisPiutang,
+        jenisPenghapusan,
+        status: "diajukan", // diajukan ulang — menunggu verifikasi BPKAD lagi
+        updatedAt: new Date().toISOString(),
+      };
+
+      (
+        Object.keys(fileBaru) as (keyof FormulirPenghapusanPiutangOPDRecord)[]
+      ).forEach((key) => {
+        const file = fileBaru[key as string];
+        if (file) {
+          (updates as Record<string, UploadedFileRef>)[key as string] =
+            toRef(file);
+        }
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      onSimpan(record.id, updates);
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const tampilkanRiwayatTagihan =
+    record.opsiRiwayatPenagihan === "riwayat_tagihan";
+  const tampilkanPernyataanOPD =
+    record.opsiRiwayatPenagihan === "penyataan_opd";
+  const tampilkanDasarPiutang = record.opsiDokumenDasarPiutang === "ada";
+
+  return (
+    <div
+      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,20,40,0.45)] p-0 backdrop-blur-sm sm:p-4 lg:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-linear-to-r from-[#c0392b] to-[#9a2e22] px-4 py-3 text-white sm:px-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <IconPencil />
+              <h2 className="text-base font-bold">Edit &amp; Ajukan Ulang</h2>
+            </div>
+            <p className="truncate text-sm text-red-100">
+              {record.namaPenanggungJawab} · {record.nomorSurat}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+            title="Tutup"
+          >
+            <IconClose />
+          </button>
+        </div>
+
+        {/* Catatan revisi BPKAD — pengingat singkat di atas form */}
+        {record.catatanVerifikasi && (
+          <div className="shrink-0 border-b border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[12.5px] text-[#7a1f1f] sm:px-6">
+            <span className="font-bold">Catatan BPKAD: </span>
+            {record.catatanVerifikasi}
+          </div>
+        )}
+
+        {/* Body scrollable */}
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
+          {/* Data Utama */}
+          <div>
+            <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+              Data Pengajuan
+            </h3>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Nama Penanggung Jawab
+                </label>
+                <input
+                  type="text"
+                  value={namaPenanggungJawab}
+                  onChange={(e) => setNamaPenanggungJawab(e.target.value)}
+                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Jabatan
+                </label>
+                <input
+                  type="text"
+                  value={jabatan}
+                  onChange={(e) => setJabatan(e.target.value)}
+                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Nomor Surat Pengantar
+                </label>
+                <input
+                  type="text"
+                  value={nomorSurat}
+                  onChange={(e) => setNomorSurat(e.target.value)}
+                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Tanggal Surat
+                </label>
+                <input
+                  type="date"
+                  value={tanggalSurat}
+                  onChange={(e) => setTanggalSurat(e.target.value)}
+                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] scheme-light outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Jumlah Debitur
+                </label>
+                <input
+                  type="text"
+                  value={jumlahDebitur}
+                  onChange={(e) =>
+                    setJumlahDebitur(e.target.value.replace(/[^0-9]/g, ""))
+                  }
+                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Total Nilai Piutang
+                </label>
+                <input
+                  type="text"
+                  value={totalNilaiPiutang}
+                  onChange={(e) =>
+                    setTotalNilaiPiutang(e.target.value.replace(/[^0-9]/g, ""))
+                  }
+                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Jenis Piutang
+                </label>
+                <select
+                  value={jenisPiutang}
+                  onChange={(e) =>
+                    setJenisPiutang(e.target.value as typeof jenisPiutang)
+                  }
+                  className="w-full cursor-pointer rounded-md border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                >
+                  {JENIS_PIUTANG_OPTIONS.map((opsi) => (
+                    <option key={opsi} value={opsi}>
+                      {opsi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+                  Jenis Penghapusan
+                </label>
+                <select
+                  value={jenisPenghapusan}
+                  onChange={(e) =>
+                    setJenisPenghapusan(
+                      e.target.value as typeof jenisPenghapusan,
+                    )
+                  }
+                  className="w-full cursor-pointer rounded-md border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                >
+                  {JENIS_PENGHAPUSAN_OPTIONS.map((opsi) => (
+                    <option key={opsi} value={opsi}>
+                      {opsi}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Upload ulang dokumen */}
+          <div>
+            <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+              Unggah Ulang Dokumen
+            </h3>
+            <p className="mb-3 text-[11.5px] text-[#7a8899]">
+              Klik &quot;Ganti&quot; hanya pada dokumen yang perlu diperbaiki
+              sesuai catatan BPKAD. Dokumen yang tidak diganti akan tetap
+              memakai file lama.
+            </p>
+            <div className="space-y-3">
+              <EditFileSlot
+                label="1. Surat Pengantar Usulan"
+                existingFile={record.suratPengantarUsulan}
+                newFile={fileBaru.suratPengantarUsulan ?? null}
+                onChangeFile={(f) => setFile("suratPengantarUsulan", f)}
+              />
+              <EditFileSlot
+                label="2. Daftar Nominatif Usulan Piutang SKPD"
+                existingFile={record.daftarNominatifPiutang}
+                newFile={fileBaru.daftarNominatifPiutang ?? null}
+                onChangeFile={(f) => setFile("daftarNominatifPiutang", f)}
+              />
+              <EditFileSlot
+                label="Rekapitulasi Saldo Piutang"
+                existingFile={record.rekapitulasiSaldoPiutang}
+                newFile={fileBaru.rekapitulasiSaldoPiutang ?? null}
+                onChangeFile={(f) => setFile("rekapitulasiSaldoPiutang", f)}
+              />
+              <EditFileSlot
+                label="Neraca Awal Pencatatan Piutang"
+                existingFile={record.neracaAwalPencatatanPiutang}
+                newFile={fileBaru.neracaAwalPencatatanPiutang ?? null}
+                onChangeFile={(f) => setFile("neracaAwalPencatatanPiutang", f)}
+              />
+              <EditFileSlot
+                label="Rekapitulasi Angsuran"
+                existingFile={record.rekapitulasiAngsuran}
+                newFile={fileBaru.rekapitulasiAngsuran ?? null}
+                onChangeFile={(f) => setFile("rekapitulasiAngsuran", f)}
+              />
+              <EditFileSlot
+                label="Dokumen Pendukung (Surat Tidak Mampu Bayar)"
+                existingFile={record.dokumenPendukungSuratTidakMampuBayar}
+                newFile={fileBaru.dokumenPendukungSuratTidakMampuBayar ?? null}
+                onChangeFile={(f) =>
+                  setFile("dokumenPendukungSuratTidakMampuBayar", f)
+                }
+                required={false}
+              />
+              {tampilkanDasarPiutang && (
+                <EditFileSlot
+                  label="Dokumen Dasar Piutang"
+                  existingFile={record.dokumenDasarPiutang}
+                  newFile={fileBaru.dokumenDasarPiutang ?? null}
+                  onChangeFile={(f) => setFile("dokumenDasarPiutang", f)}
+                />
+              )}
+              {tampilkanRiwayatTagihan && (
+                <>
+                  <EditFileSlot
+                    label="Riwayat Penagihan Ke-1"
+                    existingFile={record.riwayatPenagihan1}
+                    newFile={fileBaru.riwayatPenagihan1 ?? null}
+                    onChangeFile={(f) => setFile("riwayatPenagihan1", f)}
+                  />
+                  <EditFileSlot
+                    label="Riwayat Penagihan Ke-2"
+                    existingFile={record.riwayatPenagihan2}
+                    newFile={fileBaru.riwayatPenagihan2 ?? null}
+                    onChangeFile={(f) => setFile("riwayatPenagihan2", f)}
+                  />
+                  <EditFileSlot
+                    label="Riwayat Penagihan Ke-3"
+                    existingFile={record.riwayatPenagihan3}
+                    newFile={fileBaru.riwayatPenagihan3 ?? null}
+                    onChangeFile={(f) => setFile("riwayatPenagihan3", f)}
+                  />
+                </>
+              )}
+              {tampilkanPernyataanOPD && (
+                <EditFileSlot
+                  label="Surat Pernyataan OPD (Tanpa Riwayat Penagihan)"
+                  existingFile={record.filePernyataanOPD}
+                  newFile={fileBaru.filePernyataanOPD ?? null}
+                  onChangeFile={(f) => setFile("filePernyataanOPD", f)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer aksi */}
+        <div className="flex shrink-0 flex-col-reverse gap-2.5 border-t border-[#e2e8f2] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSaving}
+            className="w-full rounded-md border border-[#e2e8f2] bg-white px-4 py-2.5 text-sm font-medium text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleSimpan}
+            disabled={isSaving}
+            className="w-full rounded-md bg-[#1a4e8f] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#0e3b6e] disabled:opacity-60 sm:w-auto"
+          >
+            {isSaving ? "Menyimpan…" : "Simpan & Ajukan Ulang"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─────────────────── KARTU PENGAJUAN (TAMPILAN MOBILE, PENGGANTI TABEL) ─────
 const RecordCardMobile: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
@@ -719,7 +1203,15 @@ export default function DaftarPengajuanOPDBaru({
 }: {
   data?: FormulirPenghapusanPiutangOPDRecord[];
 }) {
-  const data = useMemo(() => dataProp ?? MOCK_DATA, [dataProp]);
+  // Nama OPD yang datanya ditampilkan di daftar ini. Hardcode sementara ke
+  // "Disdagkop UKM" — nanti kalau sistem login per-OPD sudah ada, ganti jadi
+  // nama OPD dari sesi user yang sedang login.
+  const NAMA_OPD_AKTIF = "Disdagkop UKM";
+
+  const data = useMemo(() => {
+    const source = dataProp ?? MOCK_DATA;
+    return source.filter((r) => r.namaOPD === NAMA_OPD_AKTIF);
+  }, [dataProp]);
 
   const [filter, setFilter] = useState<{
     search: string;

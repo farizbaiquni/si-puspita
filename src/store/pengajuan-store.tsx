@@ -39,15 +39,18 @@ class PengajuanStore {
   private listeners = new Set<Listener>();
   private storageListenerAttached = false;
 
-  private readFromStorage(): Data | null {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as Data;
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
-    } catch {
-      return null;
+  constructor() {
+    // Modul ini di-evaluasi ulang setiap kali halaman benar-benar di-refresh
+    // (full reload) — karena itu, constructor adalah tempat yang tepat untuk
+    // membuang data lama di localStorage supaya store selalu mulai dari
+    // MOCK_DATA lagi. Navigasi client-side (tanpa refresh) TIDAK memicu ini
+    // karena instance `store` di bawah tidak dibuat ulang.
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // localStorage tidak tersedia (mis. mode private) — abaikan.
+      }
     }
   }
 
@@ -82,33 +85,29 @@ class PengajuanStore {
   subscribe = (listener: Listener) => {
     this.listeners.add(listener);
 
-    // Saat pertama kali ada yang subscribe di client, baca localStorage.
-    // Ini bagian dari siklus subscribe useSyncExternalStore itu sendiri
-    // (bukan efek terpisah), jadi tidak kena warning cascading render.
-    if (typeof window !== "undefined") {
-      const stored = this.readFromStorage();
-      if (stored && stored !== this.data) {
-        this.data = stored;
-        listener();
-      }
-
-      // Sinkron antar-tab: kalau dashboard BPKAD dibuka di tab lain lalu
-      // verifikasi sebuah pengajuan, tab ini ikut update.
-      if (!this.storageListenerAttached) {
-        this.storageListenerAttached = true;
-        window.addEventListener("storage", (e: StorageEvent) => {
-          if (e.key !== STORAGE_KEY || !e.newValue) return;
-          try {
-            const parsed = JSON.parse(e.newValue) as Data;
-            if (Array.isArray(parsed)) {
-              this.data = parsed;
-              this.emit();
-            }
-          } catch {
-            // payload rusak — abaikan
+    // Catatan: TIDAK lagi membaca localStorage di sini seperti sebelumnya.
+    // constructor sudah membuang data lama saat modul di-refresh, jadi
+    // `this.data` yang dipakai selalu MOCK_DATA di awal sesi — perubahan
+    // (tambah/verifikasi pengajuan) baru ditulis ke localStorage lewat
+    // setData() dan hanya berlaku selama sesi/tab ini berjalan.
+    if (typeof window !== "undefined" && !this.storageListenerAttached) {
+      // Sinkron antar-tab DALAM sesi yang sama (belum refresh): kalau
+      // dashboard BPKAD dibuka di tab lain lalu verifikasi sebuah
+      // pengajuan, tab ini ikut update selama tab-tab tersebut belum
+      // di-refresh ulang.
+      this.storageListenerAttached = true;
+      window.addEventListener("storage", (e: StorageEvent) => {
+        if (e.key !== STORAGE_KEY || !e.newValue) return;
+        try {
+          const parsed = JSON.parse(e.newValue) as Data;
+          if (Array.isArray(parsed)) {
+            this.data = parsed;
+            this.emit();
           }
-        });
-      }
+        } catch {
+          // payload rusak — abaikan
+        }
+      });
     }
 
     return () => {
