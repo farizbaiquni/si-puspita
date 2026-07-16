@@ -1890,7 +1890,7 @@ export default function AjukanPermohonanWizard({
             id="legendRiwayatPenagihanPreview"
             className="mb-2 text-sm font-semibold text-gray-700"
           >
-            Riwayat Penagihan / Pernyataan OPD
+            5. Riwayat Penagihan / Pernyataan OPD
           </p>
           <div
             role="group"
@@ -1899,8 +1899,7 @@ export default function AjukanPermohonanWizard({
           >
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Apakah terdapat bukti riwayat penagihan? (opsi ini akan
-                ditanyakan kembali secara resmi di Langkah 3)
+                Apakah terdapat bukti dokumen riwayat penagihan ?
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <label className="flex cursor-pointer items-center gap-2">
@@ -1940,29 +1939,29 @@ export default function AjukanPermohonanWizard({
           </div>
         </div>
 
-        {/* 5. Neraca awal pencatatan piutang */}
+        {/* 6. Neraca awal pencatatan piutang */}
         {renderCheckboxQuestion(
           "neracaAwalPencatatanPiutang",
-          "5. Neraca awal pencatatan piutang",
+          "6. Neraca awal pencatatan piutang",
           undefined,
           [
             "Di atas 5 th untuk piutang nominal ≤ Rp 8 Jt per penanggung",
             "Di atas 7 th untuk nominal Rp 8 jt sd. 50 jt per penanggung",
-            "Di atas 10 th untuk nominal ≥ Rp 50 jt sd. per penanggung",
+            "Di atas 10 th untuk nominal > Rp 50 jt per penanggung",
           ],
         )}
 
-        {/* 6. Rekapitulasi angsuran (Rp) */}
+        {/* 7. Rekapitulasi angsuran (Rp) */}
         {renderCheckboxQuestion(
           "rekapitulasiAngsuran",
-          "6. Rekapitulasi angsuran (Rp)",
+          "7. Rekapitulasi angsuran (Rp)",
           "nilaiRekapitulasiAngsuran",
         )}
 
-        {/* 7. Dokumen pendukung lainnya (Surat tidak mampu bayar) */}
+        {/* 8. Dokumen pendukung lainnya (Surat tidak mampu bayar) */}
         {renderCheckboxQuestion(
           "dokumenPendukungSuratTidakMampuBayar",
-          "7. Dokumen pendukung lainnya (Surat tidak mampu bayar)",
+          "8. Dokumen pendukung lainnya (Surat tidak mampu bayar)",
           undefined,
           [
             "Kartu keluarga miskin",
@@ -2068,7 +2067,7 @@ export default function AjukanPermohonanWizard({
         {renderField(
           fieldConfig(
             "persyaratanPiutangMacet",
-            "2. Piutang telah berstatus macet (upload SKRD/SK/Surat Perjanjian)",
+            "2. Piutang telah berstatus macet dengan usia piutang > 3 tahun (upload SKRD/SK/Surat Perjanjian)",
           ),
         )}
 
@@ -2091,7 +2090,7 @@ export default function AjukanPermohonanWizard({
               <li>
                 Di atas 7 th untuk nominal Rp 8 jt sd. 50 jt per penanggung
               </li>
-              <li>Di atas 10 th untuk nominal ≥ Rp 50 jt sd. per penanggung</li>
+              <li>Di atas 10 th untuk nominal {">"} Rp 50 jt per penanggung</li>
             </ul>
           </div>
         </div>

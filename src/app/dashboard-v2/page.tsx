@@ -6,6 +6,7 @@ import AjukanPermohonanWizard from "./contents/opd/ajukan-permohonan/AjukanPermo
 import DaftarPengajuanOPDBaru from "./contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
 import VerifikasiPengajuan from "./contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
 import LihatDaftarPengajuanAdmin from "./contents/bpkad/lihat-daftar-pengajuan-admin/lihat-daftar-pengajuan-admin";
+import RegisterDigital from "./contents/bpkad/register-digital/register-digital";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -28,7 +29,6 @@ import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
 } from "@/types/types-v2";
-import LihatDaftarPengajuan from "../dashboard/contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,10 @@ const ROLE_LABEL: Record<UserRole, string> = {
 
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
-type BPKADMenuKey = "verifikasi-pengajuan" | "lihat-daftar-pengajuan-admin";
+type BPKADMenuKey =
+  | "verifikasi-pengajuan"
+  | "lihat-daftar-pengajuan-admin"
+  | "register-digital";
 
 type MenuKey = OPDMenuKey | BPKADMenuKey;
 
@@ -80,6 +83,11 @@ const BPKAD_MENUS: MenuItem[] = [
     icon: <IconEye />,
     label: "Lihat Pengajuan",
   },
+  {
+    key: "register-digital",
+    icon: <IconList />,
+    label: "Register Digital",
+  },
 ];
 
 const PAGE_META: Record<
@@ -103,6 +111,11 @@ const PAGE_META: Record<
   "lihat-daftar-pengajuan-admin": {
     title: "Lihat Pengajuan",
     subtitle: "Tampilkan semua pengajuan yang telah diproses.",
+  },
+  "register-digital": {
+    title: "Register Digital",
+    subtitle:
+      "Daftar nominatif piutang yang telah diusulkan, dikelompokkan per OPD.",
   },
 };
 
@@ -486,6 +499,8 @@ const MainContent: React.FC<MainContentProps> = ({
         <DaftarPengajuanOPDBaru data={semuaPengajuan} />
       ) : activeMenu === "lihat-daftar-pengajuan-admin" ? (
         <LihatDaftarPengajuanAdmin semuaPengajuan={semuaPengajuan} />
+      ) : activeMenu === "register-digital" ? (
+        <RegisterDigital semuaPengajuan={semuaPengajuan} />
       ) : activeMenu === "verifikasi-pengajuan" ? (
         <VerifikasiPengajuan
           semuaPengajuan={semuaPengajuan}

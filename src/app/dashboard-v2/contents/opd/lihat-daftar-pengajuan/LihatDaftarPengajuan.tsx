@@ -108,7 +108,7 @@ const StatusGroupHeader: React.FC<{
       <span className="text-[11.5px] font-bold tracking-wide uppercase">
         {cfg.label}
       </span>
-      <span className="rounded-full bg-white/70 px-1.75 py-0.25 text-[10.5px] font-bold">
+      <span className="rounded-full bg-white/70 px-1.75 py-px text-[10.5px] font-bold">
         {count}
       </span>
     </div>
@@ -216,7 +216,7 @@ const HasilVerifikasiSection: React.FC<{
       </h3>
 
       {isRevisi ? (
-        <div className="overflow-hidden rounded-lg border border-[#fecaca] bg-gradient-to-br from-[#fef2f2] to-white shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-[#fecaca] bg-linear-to-br from-[#fef2f2] to-white shadow-sm">
           <div className="flex items-start gap-3 border-b border-[#fecaca]/70 p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#c0392b]">
               <svg
@@ -271,7 +271,7 @@ const HasilVerifikasiSection: React.FC<{
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[#a7f3d0] bg-gradient-to-br from-[#ecfdf5] to-white shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-[#a7f3d0] bg-linear-to-br from-[#ecfdf5] to-white shadow-sm">
           <div className="flex items-start gap-3 p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d1fae5] text-[#0f6e56]">
               <svg
@@ -1065,7 +1065,7 @@ export default function DaftarPengajuanOPDBaru({
                               <span className="text-[11px] font-bold tracking-[0.06em] uppercase">
                                 {cfg.label}
                               </span>
-                              <span className="rounded-full bg-white/70 px-1.75 py-0.25 text-[10px] font-bold">
+                              <span className="rounded-full bg-white/70 px-1.75 py-px text-[10px] font-bold">
                                 {group.items.length}
                               </span>
                             </div>

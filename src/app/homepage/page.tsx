@@ -214,16 +214,6 @@ const SOP_STEPS_BUNGA = [
   },
 ];
 
-const SOP_DASAR_HUKUM_BUNGA = [
-  "PP No. 35 Tahun 2017 tentang Perubahan Kedua atas PP No. 14 Tahun 2005 tentang Tata Cara Penghapusan Piutang Negara/Daerah",
-  "Permendagri No. 52 Tahun 2011 tentang SOP di Lingkungan Pemerintah Kabupaten/Kota",
-  "PP No. 12 Tahun 2019 tentang Pengelolaan Keuangan Daerah",
-  "PermenPAN-RB No. 52 Tahun 2011 tentang Pedoman Penyusunan SOP Administrasi Pemerintah",
-  "Permendagri No. 77 Tahun 2020 tentang Pedoman Teknis Pengelolaan Keuangan Daerah",
-  "PMK No. 137/PMK.06/2022 tentang Penghapusan Piutang Daerah yang Tidak Dapat Diserahkan Pengurusannya kepada PUPN",
-  "Perbup Kendal No. 49 Tahun 2025 tentang Perubahan atas Perbup No. 66 Tahun 2021 tentang Kebijakan Akuntansi Pemerintah Daerah Kabupaten Kendal",
-];
-
 // Aksen warna per tahap SOP, disesuaikan dengan pihak yang berwenang pada tahap tersebut
 function getSopAccent(pelaksana: string) {
   if (pelaksana.includes("Inspektorat")) {
@@ -521,7 +511,7 @@ function ModalSOP() {
           📌 Dasar Hukum
         </p>
         <div className="space-y-2.5">
-          {SOP_DASAR_HUKUM_BUNGA.map((d, i) => (
+          {DASAR_HUKUM_BUNGA.map((d, i) => (
             <div key={i} className="flex gap-3">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10.5px] font-bold text-amber-700 ring-1 ring-amber-200">
                 {i + 1}
