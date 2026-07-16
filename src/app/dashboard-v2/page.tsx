@@ -15,8 +15,6 @@ import {
   IconList,
   IconChecklist,
   IconEye,
-  IconSettings,
-  IconHelp,
   IconLogout,
   IconSearch,
   IconMail,
@@ -251,19 +249,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             />
           ))}
         </div>
-
-        <div className="border-t border-[#f0f0f0] px-3 pt-3 pb-3">
-          <p className="mb-2 px-4 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
-            General
-          </p>
-          <NavItem
-            icon={<IconSettings />}
-            label="Settings"
-            onClick={() => {}}
-          />
-          <NavItem icon={<IconHelp />} label="Help" onClick={() => {}} />
-          <NavItem icon={<IconLogout />} label="Logout" onClick={() => {}} />
-        </div>
       </aside>
     </>
   );
@@ -347,17 +332,94 @@ const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
   );
 };
 
+// ── Profile Dropdown ──────────────────────────────────────────────────────────
+interface ProfileDropdownProps {
+  name: string;
+  subtitle: string;
+  initials: string;
+  avatarGradient: string;
+  onLogout: () => void;
+}
+
+const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
+  name,
+  subtitle,
+  initials,
+  avatarGradient,
+  onLogout,
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex cursor-pointer items-center gap-3 rounded-xl px-1.5 py-1 transition-colors hover:bg-[#f7f8fa]"
+      >
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${avatarGradient} text-sm font-semibold text-white`}
+        >
+          {initials}
+        </div>
+        <div className="hidden flex-col items-start md:flex">
+          <span className="text-sm leading-tight font-semibold text-slate-800">
+            {name}
+          </span>
+          <span className="text-xs text-slate-500">{subtitle}</span>
+        </div>
+        <span className="hidden text-[#b0bac5] md:block">
+          <IconChevronDown />
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-[#ebebeb] bg-white py-1 shadow-lg">
+          <div className="border-b border-[#f0f0f0] px-4 py-3">
+            <p className="truncate text-sm font-semibold text-slate-800">
+              {name}
+            </p>
+            <p className="truncate text-xs text-slate-500">{subtitle}</p>
+          </div>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onLogout();
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+          >
+            <IconLogout />
+            Logout
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Header ───────────────────────────────────────────────────────────────────
 interface HeaderProps {
   role: UserRole;
   onRoleChange: (role: UserRole) => void;
   onOpenMobileMenu: () => void;
+  onLogout: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
   role,
   onRoleChange,
   onOpenMobileMenu,
+  onLogout,
 }) => {
   const userData: Record<
     UserRole,
@@ -425,19 +487,13 @@ const Header: React.FC<HeaderProps> = ({
         <IconBell />
       </button>
       <div className="hidden h-8 w-px bg-[#ebebeb] sm:block" />
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${currentUser.avatarGradient} text-sm font-semibold text-white`}
-        >
-          {currentUser.initials}
-        </div>
-        <div className="hidden flex-col md:flex">
-          <span className="text-sm leading-tight font-semibold text-slate-800">
-            {currentUser.name}
-          </span>
-          <span className="text-xs text-slate-500">{currentUser.subtitle}</span>
-        </div>
-      </div>
+      <ProfileDropdown
+        name={currentUser.name}
+        subtitle={currentUser.subtitle}
+        initials={currentUser.initials}
+        avatarGradient={currentUser.avatarGradient}
+        onLogout={onLogout}
+      />
     </header>
   );
 };
@@ -607,6 +663,12 @@ const DashboardContent: React.FC = () => {
     });
   };
 
+  const handleLogout = () => {
+    // TODO: sambungkan ke proses logout sesungguhnya (clear session/token,
+    // panggil API, dll) begitu autentikasi nyata sudah tersedia.
+    router.push("/homepage");
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f7f8fa] font-sans">
       <Sidebar
@@ -621,6 +683,7 @@ const DashboardContent: React.FC = () => {
           role={role}
           onRoleChange={handleRoleChange}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onLogout={handleLogout}
         />
         <MainContent
           activeMenu={activeMenu}
