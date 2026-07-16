@@ -826,6 +826,7 @@ export default function AjukanPermohonanWizard({
   onSubmitPengajuan,
   allowFreeNavigation = false,
   defaultNamaOPD = "",
+  onRequireLogin,
 }: {
   /** Dipanggil setelah submit berhasil — parent yang menambahkan ke daftar/state */
   onSubmitPengajuan?: (record: FormulirPenghapusanPiutangOPDRecord) => void;
@@ -835,10 +836,11 @@ export default function AjukanPermohonanWizard({
    * mengirim data.
    *
    * `true` (dipakai di ModalPengajuan/landing page publik): user boleh
-   * pindah langkah bebas tanpa harus mengisi semua field — tapi di
-   * langkah terakhir, tombol "Kirim" tidak benar-benar mengirim apa pun.
-   * Sistem login belum diimplementasikan, jadi yang muncul hanya notifikasi
-   * bahwa pengajuan sesungguhnya harus dilakukan setelah login.
+   * pindah langkah bebas tanpa harus mengisi semua field. Begitu formulir
+   * lengkap dan user menekan "Kirim" di langkah terakhir, TIDAK langsung
+   * mengirim data — karena sistem login belum diimplementasikan di sini,
+   * yang muncul adalah alert bahwa OPD harus login dahulu (lihat
+   * `showLoginRequiredAlert` / prop `onRequireLogin`).
    */
   allowFreeNavigation?: boolean;
   /**
@@ -848,6 +850,13 @@ export default function AjukanPermohonanWizard({
    * sesi user yang sedang login.
    */
   defaultNamaOPD?: string;
+  /**
+   * Dipanggil saat user menekan "Login Sekarang" di alert "harus login
+   * dahulu" (mode allowFreeNavigation). Opsional — kalau parent ingin,
+   * misalnya, langsung membuka modal login. Kalau tidak diisi, tombol
+   * hanya menutup alert ini.
+   */
+  onRequireLogin?: () => void;
 } = {}) {
   const {
     form,
@@ -865,10 +874,12 @@ export default function AjukanPermohonanWizard({
   const [showConfirm, setShowConfirm] = useState(false);
   // Alert "formulir belum lengkap" — ditampilkan kalau user coba submit
   // (di mode allowFreeNavigation / ModalPengajuan publik) padahal masih
-  // ada data/dokumen persyaratan yang belum diisi. Tidak ada lagi
-  // pemberitahuan "harus login" — begitu formulir lengkap, submit langsung
-  // diproses hingga data masuk ke storage.
+  // ada data/dokumen persyaratan yang belum diisi.
   const [showIncompleteAlert, setShowIncompleteAlert] = useState(false);
+  // Alert "harus login dahulu" — ditampilkan di mode allowFreeNavigation
+  // ketika formulir SUDAH lengkap tapi belum ada sesi login OPD. Submit
+  // sesungguhnya baru diproses lewat dashboard setelah OPD login.
+  const [showLoginRequiredAlert, setShowLoginRequiredAlert] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [docPreview, setDocPreview] = useState<{
@@ -1496,15 +1507,17 @@ export default function AjukanPermohonanWizard({
       // Mode ModalPengajuan publik — user boleh lompat bebas antar langkah,
       // jadi di langkah terakhir ini kita validasi SELURUH formulir sekaligus.
       // Kalau ada yang belum lengkap, arahkan ke langkah pertama yang
-      // bermasalah dan tampilkan alert. Kalau sudah lengkap, lanjut ke
-      // konfirmasi pengiriman seperti mode dashboard biasa.
+      // bermasalah dan tampilkan alert. Kalau sudah lengkap, TETAP belum
+      // benar-benar mengirim data — tampilkan alert "harus login dahulu",
+      // karena pengajuan sesungguhnya hanya bisa dikirim lewat dashboard
+      // OPD yang sudah login.
       const { valid, firstInvalidStep } = validateAllSteps();
       if (!valid) {
         if (firstInvalidStep !== null) setCurrentStep(firstInvalidStep);
         setShowIncompleteAlert(true);
         return;
       }
-      setShowConfirm(true);
+      setShowLoginRequiredAlert(true);
     } else {
       setShowConfirm(true);
     }
@@ -2555,6 +2568,72 @@ export default function AjukanPermohonanWizard({
                   className="w-full rounded-md bg-[#1a4e8f] px-3 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-1.5"
                 >
                   Mengerti
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {showLoginRequiredAlert &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-200 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Login Diperlukan"
+            onClick={(e) => {
+              if (e.target === e.currentTarget)
+                setShowLoginRequiredAlert(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setShowLoginRequiredAlert(false);
+            }}
+          >
+            <div className="w-full max-w-sm rounded-md border border-gray-200 bg-white p-5 shadow-lg">
+              <div className="mb-3 flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fff7ed] text-[#c2740f]">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                  >
+                    <rect x="4.5" y="9" width="11" height="8" rx="1.5" />
+                    <path
+                      d="M7 9V6.5a3 3 0 016 0V9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800">
+                  Login Diperlukan
+                </h3>
+              </div>
+              <p className="mb-4 text-sm text-gray-600">
+                Formulir Anda sudah lengkap. Namun, untuk mengirimkan pengajuan
+                ini, OPD harus login terlebih dahulu. Silakan login lalu
+                kirimkan kembali pengajuan Anda melalui dashboard OPD.
+              </p>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  onClick={() => setShowLoginRequiredAlert(false)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 sm:w-auto sm:py-1.5"
+                >
+                  Nanti Saja
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLoginRequiredAlert(false);
+                    onRequireLogin?.();
+                  }}
+                  className="w-full rounded-md bg-[#1a4e8f] px-3 py-2 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-1.5"
+                >
+                  Login Sekarang
                 </button>
               </div>
             </div>

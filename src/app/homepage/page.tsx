@@ -651,11 +651,24 @@ function ModalPengajuan() {
   // jadi begitu OPD submit di sini, data langsung tersedia di ModalLacak
   // homepage maupun di dashboard-v2 tanpa reload.
   const { tambahPengajuan } = usePengajuanStore();
+
+  // ModalPengajuan didefinisikan di luar SiPuspitaLandingPage (dipakai
+  // lewat KELOPAK_LIST di level modul), jadi tidak punya akses langsung ke
+  // state modal login (setLoginOpen) di komponen utama. Dihubungkan lewat
+  // custom event ringan — didengarkan di SiPuspitaLandingPage — daripada
+  // merestrukturisasi KELOPAK_LIST hanya untuk satu callback ini.
+  const handleRequireLogin = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("si-puspita:request-login"));
+    }
+  };
+
   return (
     <AjukanPermohonanWizard
       onSubmitPengajuan={tambahPengajuan}
       allowFreeNavigation
       defaultNamaOPD="Dinas Perhubungan"
+      onRequireLogin={handleRequireLogin}
     />
   );
 }
@@ -1601,6 +1614,20 @@ export default function SiPuspitaLandingPage() {
       setIsModalClosing(false);
     }, 600); // perpanjang agar animasi selesai dulu
   };
+
+  // Didengarkan dari ModalPengajuan (lewat AjukanPermohonanWizard ->
+  // onRequireLogin) — saat OPD menekan "Login Sekarang" di alert "harus
+  // login dahulu", tutup modal pengajuan yang sedang terbuka lalu buka
+  // modal login.
+  useEffect(() => {
+    const handler = () => {
+      handleCloseModal();
+      setLoginOpen(true);
+    };
+    window.addEventListener("si-puspita:request-login", handler);
+    return () =>
+      window.removeEventListener("si-puspita:request-login", handler);
+  }, []);
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
