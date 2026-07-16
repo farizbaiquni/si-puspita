@@ -32,6 +32,9 @@ import type {
 
 type UserRole = "OPD" | "BPKAD";
 
+// Nama resmi OPD yang login (sementara hardcode, nanti ganti dari data auth/session).
+const NAMA_OPD = "Dinas Perdagangan Koperasi dan UKM";
+
 // Label tampilan di UI — value internal role tetap "BPKAD" (dipakai di
 // URL param, logika menu, dll), tapi yang dilihat user cukup "Admin".
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -432,7 +435,7 @@ const Header: React.FC<HeaderProps> = ({
   > = {
     OPD: {
       name: "Disdagkop UKM",
-      subtitle: "Dinas Perdagangan Koperasi dan UKM",
+      subtitle: NAMA_OPD,
       initials: "D",
       avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
     },
@@ -531,6 +534,7 @@ interface MainContentProps {
     catatan?: string,
     nomorRegistrasi?: string,
   ) => void;
+  defaultNamaOPD: string;
 }
 
 const MainContent: React.FC<MainContentProps> = ({
@@ -538,6 +542,7 @@ const MainContent: React.FC<MainContentProps> = ({
   semuaPengajuan,
   onTambahPengajuan,
   onStatusUpdate,
+  defaultNamaOPD,
 }) => {
   const meta = PAGE_META[activeMenu];
 
@@ -551,7 +556,10 @@ const MainContent: React.FC<MainContentProps> = ({
         </div>
       </div>
       {activeMenu === "ajukan-permohonan" ? (
-        <AjukanPermohonanWizard onSubmitPengajuan={onTambahPengajuan} />
+        <AjukanPermohonanWizard
+          onSubmitPengajuan={onTambahPengajuan}
+          defaultNamaOPD={defaultNamaOPD}
+        />
       ) : activeMenu === "lihat-daftar-pengajuan" ? (
         <DaftarPengajuanOPDBaru data={semuaPengajuan} />
       ) : activeMenu === "lihat-daftar-pengajuan-admin" ? (
@@ -690,6 +698,7 @@ const DashboardContent: React.FC = () => {
           semuaPengajuan={semuaPengajuan}
           onTambahPengajuan={handleTambahPengajuan}
           onStatusUpdate={handleStatusUpdate}
+          defaultNamaOPD={NAMA_OPD}
         />
       </div>
     </div>
