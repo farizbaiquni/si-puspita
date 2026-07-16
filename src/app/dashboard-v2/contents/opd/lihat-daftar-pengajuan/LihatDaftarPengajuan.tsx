@@ -1133,7 +1133,8 @@ const RecordCardMobile: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   nomor: number;
   onLihatDetail: () => void;
-}> = ({ record, nomor, onLihatDetail }) => (
+  onEditRevisi: () => void;
+}> = ({ record, nomor, onLihatDetail, onEditRevisi }) => (
   <div className="rounded-md border border-[#e2e8f2] bg-white p-3.5">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -1147,13 +1148,24 @@ const RecordCardMobile: React.FC<{
           {record.jabatan}
         </div>
       </div>
-      <button
-        onClick={onLihatDetail}
-        title="Lihat Detail"
-        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-      >
-        <IconEye />
-      </button>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          onClick={onLihatDetail}
+          title="Lihat Detail"
+          className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+        >
+          <IconEye /> Lihat
+        </button>
+        {record.status === "revisi" && (
+          <button
+            onClick={onEditRevisi}
+            title="Edit Pengajuan"
+            className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
+          >
+            <IconPencil /> Edit
+          </button>
+        )}
+      </div>
     </div>
 
     <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#f1f5f9] pt-3 text-xs">
@@ -1208,10 +1220,18 @@ export default function DaftarPengajuanOPDBaru({
   // nama OPD dari sesi user yang sedang login.
   const NAMA_OPD_AKTIF = "Disdagkop UKM";
 
+  // Overrides hasil "Simpan & Ajukan Ulang" dari modal edit revisi — di-merge
+  // ke record aslinya supaya perubahan langsung terlihat di daftar.
+  const [overrides, setOverrides] = useState<
+    Record<string, Partial<FormulirPenghapusanPiutangOPDRecord>>
+  >({});
+
   const data = useMemo(() => {
     const source = dataProp ?? MOCK_DATA;
-    return source.filter((r) => r.namaOPD === NAMA_OPD_AKTIF);
-  }, [dataProp]);
+    return source
+      .filter((r) => r.namaOPD === NAMA_OPD_AKTIF)
+      .map((r) => (overrides[r.id] ? { ...r, ...overrides[r.id] } : r));
+  }, [dataProp, overrides]);
 
   const [filter, setFilter] = useState<{
     search: string;
@@ -1222,6 +1242,15 @@ export default function DaftarPengajuanOPDBaru({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedRecord, setSelectedRecord] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+  const [editRecord, setEditRecord] =
+    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+
+  const handleSimpanEdit = (
+    id: string,
+    updates: Partial<FormulirPenghapusanPiutangOPDRecord>,
+  ) => {
+    setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...updates } }));
+  };
 
   // ── Derived stats ──
   const stats = useMemo(() => {
@@ -1290,6 +1319,14 @@ export default function DaftarPengajuanOPDBaru({
         <ModalDetail
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
+        />
+      )}
+
+      {editRecord && (
+        <ModalEditRevisi
+          record={editRecord}
+          onClose={() => setEditRecord(null)}
+          onSimpan={handleSimpanEdit}
         />
       )}
 
@@ -1486,6 +1523,7 @@ export default function DaftarPengajuanOPDBaru({
                         record={record}
                         nomor={counter}
                         onLihatDetail={() => setSelectedRecord(record)}
+                        onEditRevisi={() => setEditRecord(record)}
                       />
                     );
                   })}
@@ -1604,13 +1642,24 @@ export default function DaftarPengajuanOPDBaru({
                                 )}
                               </td>
                               <td className="p-[12px_14px] whitespace-nowrap">
-                                <button
-                                  onClick={() => setSelectedRecord(record)}
-                                  title="Lihat Detail"
-                                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-                                >
-                                  <IconEye />
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => setSelectedRecord(record)}
+                                    title="Lihat Detail"
+                                    className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                                  >
+                                    <IconEye /> Lihat
+                                  </button>
+                                  {record.status === "revisi" && (
+                                    <button
+                                      onClick={() => setEditRecord(record)}
+                                      title="Edit Pengajuan"
+                                      className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
+                                    >
+                                      <IconPencil /> Edit
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
