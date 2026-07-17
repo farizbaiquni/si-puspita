@@ -2991,7 +2991,7 @@ export default function AjukanPermohonanWizard({
                   <button
                     type="button"
                     onClick={goNext}
-                    className="w-full rounded-md bg-[#1a4e8f] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0e3b6e] sm:w-auto sm:py-2"
+                    className="w-full rounded-md bg-[#1a4e8f] px-4 py-2.5 text-sm font-medium text-white hover:cursor-pointer hover:bg-[#0e3b6e] sm:w-auto sm:py-2"
                   >
                     Berikutnya
                   </button>

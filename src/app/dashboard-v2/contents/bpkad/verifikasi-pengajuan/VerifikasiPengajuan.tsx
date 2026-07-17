@@ -130,18 +130,15 @@ const NOMINATIF_DOC_LABELS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
 }[] = [
-  { key: "suratPengantarUsulan", label: "Surat Pengantar Usulan" },
-  { key: "daftarNominatifPiutang", label: "Daftar Nominatif Piutang" },
-  { key: "rekapitulasiSaldoPiutang", label: "Rekapitulasi Saldo Piutang" },
+  { key: "suratPengantarUsulan", label: "Surat Pengantar Usulan dari OPD" },
   {
-    key: "neracaAwalPencatatanPiutang",
-    label: "Neraca Awal Pencatatan Piutang",
+    key: "daftarNominatifPiutang",
+    label: "Daftar Nominatif Usulan Piutang SKPD",
   },
   {
-    key: "dokumenPendukungSuratTidakMampuBayar",
-    label: "Surat Pernyataan Tidak Mampu Bayar",
+    key: "dokumenDasarPiutang",
+    label: "Dokumen yang menjadi dasar timbulnya piutang",
   },
-  { key: "rekapitulasiAngsuran", label: "Rekapitulasi Angsuran" },
   { key: "riwayatPenagihan1", label: "Riwayat Penagihan Ke-1" },
   { key: "riwayatPenagihan2", label: "Riwayat Penagihan Ke-2" },
   { key: "riwayatPenagihan3", label: "Riwayat Penagihan Ke-3" },
@@ -149,7 +146,16 @@ const NOMINATIF_DOC_LABELS: {
     key: "filePernyataanOPD",
     label: "Surat Pernyataan OPD (Tanpa Riwayat Penagihan)",
   },
-  { key: "dokumenDasarPiutang", label: "Dokumen Dasar Piutang" },
+  { key: "rekapitulasiSaldoPiutang", label: "Rekapitulasi Saldo Piutang" },
+  { key: "rekapitulasiAngsuran", label: "Rekapitulasi Angsuran" },
+  {
+    key: "neracaAwalPencatatanPiutang",
+    label: "Neraca Awal Pencatatan Piutang",
+  },
+  {
+    key: "dokumenPendukungSuratTidakMampuBayar",
+    label: "Dokumen pendukung lainnya",
+  },
 ];
 
 function buildDokumenList(
@@ -431,11 +437,13 @@ const ModalPreviewPDF: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DokumenItem: React.FC<{
+  index: number;
   dok: DokumenEntry;
   onPreview: () => void;
-}> = ({ dok, onPreview }) => {
+}> = ({ index, dok, onPreview }) => {
   return (
     <div className="flex items-center gap-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2.5">
+      <div className="text-xs text-gray-500">{index + 1}</div>
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
         <IconPdf />
       </div>
@@ -443,16 +451,13 @@ const DokumenItem: React.FC<{
         <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
           {dok.label}
         </div>
-        <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
-          {dok.file.namaFile}
-        </div>
         <div className="text-[11px] text-[#7a8899]">
           {formatUkuran(dok.file.ukuranBytes)}
         </div>
       </div>
       <button
         onClick={onPreview}
-        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:cursor-pointer hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
       >
         <IconEye />
         Lihat PDF
@@ -507,7 +512,7 @@ const PanelVerifikasi: React.FC<{
       {/* Back */}
       <button
         onClick={onBack}
-        className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-[#1a4e8f] hover:underline"
+        className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-[#1a4e8f] hover:cursor-pointer hover:underline"
       >
         <IconArrowLeft />
         Kembali ke daftar
@@ -621,8 +626,9 @@ const PanelVerifikasi: React.FC<{
               </div>
             ) : (
               <div className="space-y-2">
-                {dokumen.map((dok) => (
+                {dokumen.map((dok, index) => (
                   <DokumenItem
+                    index={index}
                     key={dok.key}
                     dok={dok}
                     onPreview={() => setPreviewDoc(dok)}
@@ -636,14 +642,14 @@ const PanelVerifikasi: React.FC<{
         {/* ── Kolom kanan: form keputusan ── */}
         <div className="lg:col-span-1">
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5 lg:sticky lg:top-4">
-            <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-              Hasil Verifikasi
+            <div className="mb-3 text-[12px] font-bold tracking-[0.08em] text-gray-500">
+              HASIL VERIFIKASI
             </div>
 
             <div className="mb-4 grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => setKeputusan("teregistrasi")}
-                className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
+                className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition hover:cursor-pointer ${
                   keputusan === "teregistrasi"
                     ? "border-[#0f9b6e] bg-[#e6f7f2] text-[#0f9b6e]"
                     : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#a7e8d4] hover:bg-[#e6f7f2]"
@@ -654,7 +660,7 @@ const PanelVerifikasi: React.FC<{
               </button>
               <button
                 onClick={() => setKeputusan("revisi")}
-                className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition ${
+                className={`flex flex-col items-center gap-1.5 rounded-sm border-2 px-3 py-3 text-sm font-semibold transition hover:cursor-pointer ${
                   keputusan === "revisi"
                     ? "border-[#c0392b] bg-[#fdecea] text-[#c0392b]"
                     : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#fecaca] hover:bg-[#fdecea]"
@@ -665,8 +671,8 @@ const PanelVerifikasi: React.FC<{
               </button>
             </div>
 
-            <label className="mb-1.5 block text-[12px] font-semibold text-[#1a1a2e]">
-              Keterangan / Catatan
+            <label className="mb-1.5 block text-[12px] font-bold text-gray-500">
+              KETERANGAN / CATATAN
               {keputusan === "revisi" && (
                 <span className="text-[#c0392b]"> *</span>
               )}
@@ -680,7 +686,7 @@ const PanelVerifikasi: React.FC<{
                   ? "Jelaskan alasan revisi / dokumen yang perlu dilengkapi…"
                   : "Catatan tambahan (opsional)…"
               }
-              className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec]"
+              className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-gray-100 p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec]"
             />
 
             {error && (
@@ -691,13 +697,13 @@ const PanelVerifikasi: React.FC<{
 
             <button
               onClick={handleSubmit}
-              className="mt-4 w-full rounded-sm bg-[#1a4e8f] py-2.5 text-sm font-semibold text-white transition hover:bg-[#2d63a8]"
+              className="mt-4 w-full rounded-sm bg-[#1a4e8f] py-2.5 text-sm font-semibold text-white transition hover:cursor-pointer hover:bg-[#2d63a8]"
             >
-              Simpan Hasil Verifikasi
+              Submit
             </button>
             <button
               onClick={onBack}
-              className="mt-2 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa]"
+              className="mt-2 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:cursor-pointer hover:bg-[#f7f8fa]"
             >
               Batal
             </button>

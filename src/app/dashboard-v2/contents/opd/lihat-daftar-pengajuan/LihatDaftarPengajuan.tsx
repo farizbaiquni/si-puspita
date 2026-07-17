@@ -46,6 +46,49 @@ const IconPencil = () => (
   </svg>
 );
 
+const IconCopy = () => (
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <rect
+      x="5.5"
+      y="5.5"
+      width="8.5"
+      height="8.5"
+      rx="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path
+      d="M3 8.5l3.2 3L13 4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const IconUpload = () => (
   <svg
     width="15"
@@ -98,6 +141,12 @@ function formatTanggalWaktu(iso: string): string {
     d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) +
     " WIB"
   );
+}
+
+function truncateMiddle(str: string, keep = 6): string {
+  if (!str) return "";
+  if (str.length <= keep * 2 + 1) return str;
+  return `${str.slice(0, keep)}…${str.slice(-keep)}`;
 }
 
 // ────────────────────────────── STATUS CONFIG ───────────────────────────────
@@ -198,6 +247,67 @@ const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
       {cfg.label}
     </span>
+  );
+};
+
+// ──────────────────── IDENTIFIER CHIP (ID / NO. REGISTRASI + SALIN) ─────────
+const IdentifierChip: React.FC<{
+  status: StatusFormulir;
+  id: string;
+  nomorRegistrasi: string | null;
+  className?: string;
+}> = ({ status, id, nomorRegistrasi, className = "" }) => {
+  const [copied, setCopied] = useState(false);
+  const isRegistered = status === "teregistrasi";
+  const rawValue = isRegistered ? (nomorRegistrasi ?? null) : id;
+  const label = isRegistered ? "No. Registrasi" : "No. Pengajuan";
+  const canCopy = !!rawValue;
+  const displayValue = rawValue
+    ? isRegistered
+      ? rawValue
+      : truncateMiddle(rawValue, 6)
+    : "Belum terbit";
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!rawValue) return;
+    try {
+      await navigator.clipboard.writeText(rawValue);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API tidak tersedia — abaikan secara diam-diam.
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={!canCopy}
+      title={
+        canCopy
+          ? `${label}: ${rawValue} — klik untuk salin`
+          : "Nomor registrasi belum terbit"
+      }
+      className={`group/chip mt-1 inline-flex max-w-full items-center gap-1 rounded-[5px] border px-1.5 py-0.5 text-[10.5px] font-medium transition-colors duration-150 ${
+        isRegistered
+          ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46] hover:bg-[#d7f7e8]"
+          : "border-[#fed7aa] bg-[#fff7ed] text-[#9a3412] hover:bg-[#ffedd5]"
+      } ${canCopy ? "cursor-pointer" : "cursor-default opacity-70"} ${className}`}
+    >
+      <span className="shrink-0 opacity-75">{label}</span>
+      <span className="truncate font-mono text-[10.5px]">{displayValue}</span>
+      {canCopy && (
+        <span
+          className={`shrink-0 transition-opacity duration-150 ${
+            copied ? "opacity-100" : "opacity-50 group-hover/chip:opacity-100"
+          }`}
+        >
+          {copied ? <IconCheck /> : <IconCopy />}
+        </span>
+      )}
+    </button>
   );
 };
 
@@ -1147,6 +1257,11 @@ const RecordCardMobile: React.FC<{
         <div className="truncate text-[11px] text-[#7a8899]">
           {record.jabatan}
         </div>
+        <IdentifierChip
+          status={record.status}
+          id={record.id}
+          nomorRegistrasi={record.nomorRegistrasi}
+        />
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <button
@@ -1270,6 +1385,7 @@ export default function DaftarPengajuanOPDBaru({
       result = result.filter(
         (r) =>
           r.id.toLowerCase().includes(q) ||
+          (r.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
           r.namaPenanggungJawab.toLowerCase().includes(q) ||
           r.nomorSurat.toLowerCase().includes(q),
       );
@@ -1620,6 +1736,11 @@ export default function DaftarPengajuanOPDBaru({
                                 <div className="mt-px text-[11px] text-[#7a8899]">
                                   {record.jabatan}
                                 </div>
+                                <IdentifierChip
+                                  status={record.status}
+                                  id={record.id}
+                                  nomorRegistrasi={record.nomorRegistrasi}
+                                />
                               </td>
                               <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
                                 {formatTanggal(record.tanggalSurat)}

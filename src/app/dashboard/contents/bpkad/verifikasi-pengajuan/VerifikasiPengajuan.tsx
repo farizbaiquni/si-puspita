@@ -432,25 +432,20 @@ const DokumenItem: React.FC<{
   const { keterangan, namaFile } = parseDocLabel(dok);
   return (
     <div className="flex items-center gap-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2.5">
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
-        <IconPdf />
-      </div>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]"></div>
       <div className="min-w-0 flex-1">
         {keterangan && (
           <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
             {keterangan}
           </div>
         )}
-        <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
-          {namaFile}
-        </div>
         <div className="text-[11px] text-[#7a8899]">
           {formatUkuran(dok.ukuranBytes)}
         </div>
       </div>
       <button
         onClick={onPreview}
-        className="flex flex-shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
       >
         <IconEye />
         Lihat PDF
