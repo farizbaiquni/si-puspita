@@ -1082,22 +1082,14 @@ export default function AjukanPermohonanWizard({
       }
     }
 
-    // Opsi riwayat penagihan (item 5) — cukup pilih salah satu opsi
-    const opsi = form.opsiRiwayatPenagihan;
-    markTouched("opsiRiwayatPenagihan");
-    if (!opsi) {
-      setErrors((prev) => ({
-        ...prev,
-        opsiRiwayatPenagihan: "Pilih salah satu opsi",
-      }));
-      valid = false;
-    } else {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next.opsiRiwayatPenagihan;
-        return next;
-      });
-    }
+    // Catatan: validasi "opsiRiwayatPenagihan" SENGAJA tidak dilakukan di
+    // langkah ini. Radio button pada item 5 di layar Langkah 2 hanya preview
+    // (terhubung ke `previewOpsiRiwayatPenagihan`, bukan `form.opsiRiwayatPenagihan`),
+    // sedangkan pilihan resminya baru diisi user di Langkah 3. Validasi yang
+    // benar untuk field ini sudah ada di `validatePersyaratanSubstantifStep`.
+    // (Bug lama: dulu ada pengecekan `form.opsiRiwayatPenagihan` di sini juga,
+    // sehingga tombol "Berikutnya" selalu terblokir karena field itu memang
+    // belum pernah terisi saat masih di Langkah 2.)
 
     // Opsi dokumen dasar piutang (item 3) — cukup pilih salah satu opsi
     const opsiDok = form.opsiDokumenDasarPiutang;
