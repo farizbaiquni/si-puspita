@@ -125,7 +125,7 @@ const SiPuspitaLogo = () => (
   <div className="relative">
     <Link href="/homepage">
       <Image
-        src="/Logo_Si-Puspita_v1.png"
+        src="/logo-si-puspita-full-bg-removed.png"
         alt="Logo"
         width={640}
         height={640}
