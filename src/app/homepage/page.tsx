@@ -2152,7 +2152,7 @@ export default function SiPuspitaLandingPage() {
             {/* Brand + deskripsi singkat */}
             <div className="max-w-80 shrink-0">
               <Image
-                src="/Logo_Si-Puspita_v2.png"
+                src="/logo-si-puspita-full-bg-removed.png"
                 alt="Logo SI PUSPITA"
                 width={640}
                 height={640}
@@ -2349,7 +2349,7 @@ export default function SiPuspitaLandingPage() {
               <div className="mb-8 flex items-start justify-between">
                 <div>
                   <Image
-                    src="/Logo_Si-Puspita_v1.png"
+                    src="/logo-si-puspita-full-bg-removed.png"
                     alt="Logo"
                     width={640}
                     height={640}
