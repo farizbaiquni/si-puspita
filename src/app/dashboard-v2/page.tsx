@@ -119,6 +119,16 @@ const OPD_BADGE_BY_SLUG: Record<string, string> = {
   setwan: "SW",
 };
 
+// Singkatan resmi OPD (dipakai sebagai nama utama di Header/ProfileDropdown),
+// beda dari OPD_BADGE_BY_SLUG di atas yang cuma 2 huruf khusus avatar.
+const OPD_SINGKATAN_BY_SLUG: Record<string, string> = {
+  rsud: "RSUD",
+  dishub: "Dishub",
+  diskominfo: "Diskominfo",
+  disdagkopukm: "Disdagkopukm",
+  setwan: "Setwan",
+};
+
 // ── Logo ─────────────────────────────────────────────────────────────────────
 
 const SiPuspitaLogo = () => (
@@ -359,8 +369,10 @@ const Header: React.FC<HeaderProps> = ({
           // namaOPD & opdSlug berasal dari sesi login (lihat useAuth()) —
           // otomatis mengikuti akun yang sedang login, bukan lagi
           // hardcode ke satu OPD tertentu.
-          name: namaOPD ?? "OPD",
-          subtitle: "Operator OPD",
+          // name = singkatan OPD (mis. "Dishub"), subtitle = nama resmi
+          // panjangnya (mis. "Dinas Perhubungan").
+          name: (opdSlug && OPD_SINGKATAN_BY_SLUG[opdSlug]) || "OPD",
+          subtitle: namaOPD ?? "Operator OPD",
           initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
           avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
         };
