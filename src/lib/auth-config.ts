@@ -42,7 +42,7 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
   },
   {
     username: "disdagkopukm",
-    password: "disdagkop_si_puspita",
+    password: "disdagkopukm_si_puspita",
     role: "OPD",
     opdSlug: "disdagkopukm",
   },
@@ -53,8 +53,8 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
     opdSlug: "setwan",
   },
   {
-    username: "DPMPTSP",
-    password: "DPMPTSP_si_puspita",
+    username: "dpmptsp",
+    password: "dpmptsp_si_puspita",
     role: "OPD",
     opdSlug: "DPMPTSP",
   },
