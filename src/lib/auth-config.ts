@@ -52,6 +52,12 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
     role: "OPD",
     opdSlug: "setwan",
   },
+  {
+    username: "DPMPTSP",
+    password: "DPMPTSP_si_puspita",
+    role: "OPD",
+    opdSlug: "DPMPTSP",
+  },
 ] as const;
 
 /** Cocokkan username+password ke DAFTAR_AKUN (case-insensitive utk username). */
