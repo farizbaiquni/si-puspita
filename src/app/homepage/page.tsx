@@ -1792,7 +1792,7 @@ export default function SiPuspitaLandingPage() {
             {/* Logo — ikon bunga + tulisan SI PUSPITA */}
             <div className="flex shrink-0 items-center gap-2.5">
               <Image
-                src="/Logo_Si-Puspita_v2-bg_removed.png"
+                src="/logo-si-puspita-full-bg-removed.png"
                 alt="Logo SI PUSPITA"
                 width={2400}
                 height={644}
