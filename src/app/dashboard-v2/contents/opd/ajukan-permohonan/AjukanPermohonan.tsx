@@ -571,7 +571,10 @@ const FileUploadCard = ({
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-800">
+              <p
+                className="truncate text-sm font-medium text-gray-800"
+                title={file.name}
+              >
                 {file.name}
               </p>
               <p className="text-xs text-gray-500">
