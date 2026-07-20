@@ -5,12 +5,13 @@ import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
   UploadedFileRef,
-} from "@/types/types-v2";
+} from "@/types/types";
 import {
   JENIS_PENGHAPUSAN_OPTIONS,
   JENIS_PIUTANG_OPTIONS,
-} from "@/types/types-v2";
-import { MOCK_DATA } from "../../dummyData";
+  getOpdBySlug,
+} from "@/types/types";
+import { usePengajuanStore } from "@/store/pengajuan-store";
 import {
   IconSearch,
   IconFilter,
@@ -143,12 +144,6 @@ function formatTanggalWaktu(iso: string): string {
   );
 }
 
-function truncateMiddle(str: string, keep = 6): string {
-  if (!str) return "";
-  if (str.length <= keep * 2 + 1) return str;
-  return `${str.slice(0, keep)}…${str.slice(-keep)}`;
-}
-
 // ────────────────────────────── STATUS CONFIG ───────────────────────────────
 const STATUS_CONFIG: Record<
   StatusFormulir,
@@ -250,23 +245,23 @@ const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
   );
 };
 
-// ──────────────────── IDENTIFIER CHIP (ID / NO. REGISTRASI + SALIN) ─────────
+// ──────────────────── IDENTIFIER CHIP (NO. PENGAJUAN / NO. REGISTRASI + SALIN) ─
 const IdentifierChip: React.FC<{
   status: StatusFormulir;
-  id: string;
+  nomorPengajuan: string;
   nomorRegistrasi: string | null;
   className?: string;
-}> = ({ status, id, nomorRegistrasi, className = "" }) => {
+}> = ({ status, nomorPengajuan, nomorRegistrasi, className = "" }) => {
   const [copied, setCopied] = useState(false);
   const isRegistered = status === "teregistrasi";
-  const rawValue = isRegistered ? (nomorRegistrasi ?? null) : id;
+  const rawValue = isRegistered ? (nomorRegistrasi ?? null) : nomorPengajuan;
   const label = isRegistered ? "No. Registrasi" : "No. Pengajuan";
   const canCopy = !!rawValue;
-  const displayValue = rawValue
-    ? isRegistered
-      ? rawValue
-      : truncateMiddle(rawValue, 6)
-    : "Belum terbit";
+  // Nomor pengajuan & nomor registrasi sekarang sama-sama format resmi
+  // yang pendek dan bermakna (XXX/PENGAJUAN|REG-PUSPITA/DISDAGKOPUKM/MM/YYYY),
+  // jadi tidak perlu dipotong tengah lagi seperti dulu waktu masih pakai
+  // ID Firestore acak.
+  const displayValue = rawValue ?? "Belum terbit";
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1259,7 +1254,7 @@ const RecordCardMobile: React.FC<{
         </div>
         <IdentifierChip
           status={record.status}
-          id={record.id}
+          nomorPengajuan={record.nomorPengajuan}
           nomorRegistrasi={record.nomorRegistrasi}
         />
       </div>
@@ -1327,26 +1322,43 @@ const RecordCardMobile: React.FC<{
 // ──────────────────────────── MAIN COMPONENT ─────────────────────────────────
 export default function DaftarPengajuanOPDBaru({
   data: dataProp,
+  namaOPDAktif,
 }: {
   data?: FormulirPenghapusanPiutangOPDRecord[];
+  /**
+   * Nama OPD yang sedang login — dipakai untuk memfilter daftar supaya
+   * OPD hanya melihat pengajuannya sendiri. Diteruskan dari page.tsx
+   * (saat ini masih dari konstanta NAMA_OPD, nanti ganti ke nama OPD
+   * dari sesi user begitu autentikasi nyata sudah tersedia). Fallback
+   * ke nama resmi "Dinas Perdagangan Koperasi dan UKM" (dari DAFTAR_OPD)
+   * hanya untuk jaga-jaga bila komponen dipakai
+   * tanpa prop ini (mis. storybook/testing).
+   */
+  namaOPDAktif?: string;
 }) {
-  // Nama OPD yang datanya ditampilkan di daftar ini. Hardcode sementara ke
-  // "Disdagkop UKM" — nanti kalau sistem login per-OPD sudah ada, ganti jadi
-  // nama OPD dari sesi user yang sedang login.
-  const NAMA_OPD_AKTIF = "Disdagkop UKM";
+  const NAMA_OPD_AKTIF =
+    namaOPDAktif ?? getOpdBySlug("disdagkopukm")?.nama ?? "";
+
+  // Sumber data utama sekarang Firestore (real-time via onSnapshot di
+  // PengajuanProvider), bukan lagi MOCK_DATA. `dataProp` tetap didukung
+  // untuk kasus testing/storybook yang mau mem-supply data manual.
+  const { data: dataStore, isLoading } = usePengajuanStore();
 
   // Overrides hasil "Simpan & Ajukan Ulang" dari modal edit revisi — di-merge
   // ke record aslinya supaya perubahan langsung terlihat di daftar.
+  // Catatan: begitu handleSimpan di modal edit memanggil updatePengajuan()
+  // (Firestore) alih-alih hanya state lokal, mekanisme overrides ini bisa
+  // dihapus karena onSnapshot sudah otomatis membawa perubahannya.
   const [overrides, setOverrides] = useState<
     Record<string, Partial<FormulirPenghapusanPiutangOPDRecord>>
   >({});
 
   const data = useMemo(() => {
-    const source = dataProp ?? MOCK_DATA;
+    const source = dataProp ?? dataStore;
     return source
       .filter((r) => r.namaOPD === NAMA_OPD_AKTIF)
       .map((r) => (overrides[r.id] ? { ...r, ...overrides[r.id] } : r));
-  }, [dataProp, overrides]);
+  }, [dataProp, dataStore, overrides, NAMA_OPD_AKTIF]);
 
   const [filter, setFilter] = useState<{
     search: string;
@@ -1385,6 +1397,7 @@ export default function DaftarPengajuanOPDBaru({
       result = result.filter(
         (r) =>
           r.id.toLowerCase().includes(q) ||
+          r.nomorPengajuan.toLowerCase().includes(q) ||
           (r.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
           r.namaPenanggungJawab.toLowerCase().includes(q) ||
           r.nomorSurat.toLowerCase().includes(q),
@@ -1429,6 +1442,14 @@ export default function DaftarPengajuanOPDBaru({
   };
 
   // ── Render ──
+  if (isLoading && !dataProp) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-[#7a8899]">
+        Memuat daftar pengajuan…
+      </div>
+    );
+  }
+
   return (
     <div className="font-inherit">
       {selectedRecord && (
@@ -1738,7 +1759,7 @@ export default function DaftarPengajuanOPDBaru({
                                 </div>
                                 <IdentifierChip
                                   status={record.status}
-                                  id={record.id}
+                                  nomorPengajuan={record.nomorPengajuan}
                                   nomorRegistrasi={record.nomorRegistrasi}
                                 />
                               </td>

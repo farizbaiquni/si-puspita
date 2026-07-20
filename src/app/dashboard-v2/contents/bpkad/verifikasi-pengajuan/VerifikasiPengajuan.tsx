@@ -7,11 +7,12 @@ import type {
   JenisPiutang,
   StatusFormulir,
   UploadedFileRef,
-} from "@/types/types-v2";
+} from "@/types/types";
 import {
   OPSI_DOKUMEN_DASAR_PIUTANG_LABEL,
   OPSI_RIWAYAT_PENAGIHAN_LABEL,
-} from "@/types/types-v2";
+} from "@/types/types";
+import { usePengajuanStore } from "@/store/pengajuan-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -49,73 +50,11 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Nomor Registrasi — generator
-// Format: reg-{no urut antrian}/{kode instansi}/{singkatan instansi}/{bulan romawi}/{tahun}
-// ─────────────────────────────────────────────────────────────────────────────
-
-const KODE_INSTANSI: { match: string; kode: string; singkatan: string }[] = [
-  { match: "RSUD", kode: "22", singkatan: "RSUD" },
-  { match: "Dinas Perhubungan", kode: "24", singkatan: "DISHUB" },
-  {
-    match: "Dinas Komunikasi dan Informatika",
-    kode: "46",
-    singkatan: "DISKOMINFO",
-  },
-  {
-    match: "Dinas Perdagangan Koperasi dan UKM",
-    kode: "51",
-    singkatan: "DISPERINDAGKOP",
-  },
-  { match: "Setwan", kode: "59", singkatan: "SETWAN" },
-];
-
-function getKodeInstansi(namaOPD: string): { kode: string; singkatan: string } {
-  const found = KODE_INSTANSI.find((k) =>
-    namaOPD.toLowerCase().includes(k.match.toLowerCase()),
-  );
-  if (found) return { kode: found.kode, singkatan: found.singkatan };
-  // Fallback untuk OPD yang belum terdaftar di mapping — tetap hasilkan
-  // nomor registrasi yang valid alih-alih gagal.
-  return {
-    kode: "00",
-    singkatan:
-      namaOPD
-        .replace(/[^a-zA-Z\s]/g, "")
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 10) || "OPD",
-  };
-}
-
-const BULAN_ROMAWI = [
-  "I",
-  "II",
-  "III",
-  "IV",
-  "V",
-  "VI",
-  "VII",
-  "VIII",
-  "IX",
-  "X",
-  "XI",
-  "XII",
-];
-
-function generateNomorRegistrasi(
-  namaOPD: string,
-  noUrutAntrian: number,
-  tanggal: Date = new Date(),
-): string {
-  const { kode, singkatan } = getKodeInstansi(namaOPD);
-  const bulanRomawi = BULAN_ROMAWI[tanggal.getMonth()];
-  const tahun = tanggal.getFullYear();
-  return `reg-${noUrutAntrian}/${kode}/${singkatan}/${bulanRomawi}/${tahun}`;
-}
-
+// Nomor Registrasi sekarang di-generate oleh registrasiPengajuan() di
+// pengajuan-store.tsx (Firestore transaction, format
+// XXX/REG-PUSPITA/DISDAGKOPUKM/MM/YYYY) — bukan lagi digenerate lokal di sini,
+// supaya tidak ada dua sumber kebenaran & aman dari race condition saat
+// dua verifikator klik "Registrasi" hampir bersamaan.
 // ─────────────────────────────────────────────────────────────────────────────
 // Daftar dokumen — dibangun dari field dokumen flat FormulirPenghapusanPiutangOPDRecord + fileSurat
 // ─────────────────────────────────────────────────────────────────────────────
@@ -476,7 +415,11 @@ const PanelVerifikasi: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onBack: () => void;
   onSubmit: (keputusan: Keputusan, catatan: string) => void;
-}> = ({ pengajuan, onBack, onSubmit }) => {
+  /** True selagi handleSubmitVerifikasi di parent sedang menulis ke Firestore. */
+  submitting: boolean;
+  /** Pesan error dari operasi Firestore (registrasiPengajuan/updatePengajuan) di parent. */
+  submitError: string;
+}> = ({ pengajuan, onBack, onSubmit, submitting, submitError }) => {
   const [keputusan, setKeputusan] = useState<Keputusan | null>(null);
   const [catatan, setCatatan] = useState("");
   const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
@@ -485,6 +428,7 @@ const PanelVerifikasi: React.FC<{
   const dokumen = useMemo(() => buildDokumenList(pengajuan), [pengajuan]);
 
   const handleSubmit = () => {
+    if (submitting) return;
     if (!keputusan) {
       setError("Pilih hasil verifikasi: Lolos Verifikasi atau Perlu Revisi.");
       return;
@@ -526,6 +470,12 @@ const PanelVerifikasi: React.FC<{
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
+                  Nomor Pengajuan
+                </div>
+                <div className="font-mono text-sm font-bold text-[#1a4e8f]">
+                  {pengajuan.nomorPengajuan}
+                </div>
+                <div className="mt-1.5 mb-0.5 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
                   Nomor Surat
                 </div>
                 <div className="text-lg font-bold text-[#1a1a2e]">
@@ -689,21 +639,23 @@ const PanelVerifikasi: React.FC<{
               className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-gray-100 p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec]"
             />
 
-            {error && (
+            {(error || submitError) && (
               <div className="mt-2 text-[12px] font-medium text-[#c0392b]">
-                {error}
+                {error || submitError}
               </div>
             )}
 
             <button
               onClick={handleSubmit}
-              className="mt-4 w-full rounded-sm bg-[#1a4e8f] py-2.5 text-sm font-semibold text-white transition hover:cursor-pointer hover:bg-[#2d63a8]"
+              disabled={submitting}
+              className="mt-4 w-full rounded-sm bg-[#1a4e8f] py-2.5 text-sm font-semibold text-white transition hover:cursor-pointer hover:bg-[#2d63a8] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Submit
+              {submitting ? "Menyimpan…" : "Submit"}
             </button>
             <button
               onClick={onBack}
-              className="mt-2 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:cursor-pointer hover:bg-[#f7f8fa]"
+              disabled={submitting}
+              className="mt-2 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:cursor-pointer hover:bg-[#f7f8fa] disabled:cursor-not-allowed disabled:opacity-60"
             >
               Batal
             </button>
@@ -728,7 +680,7 @@ const PengajuanRowCardMobile: React.FC<{
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
         <div className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
-          #{no} · {p.id}
+          #{no} · {p.nomorPengajuan}
         </div>
         <div className="mt-0.5 truncate text-[14px] font-semibold text-[#1a1a2e]">
           {p.namaOPD}
@@ -773,7 +725,7 @@ const RiwayatRowCardMobile: React.FC<{
   <div className="space-y-1.5 p-4">
     <div className="flex items-center justify-between gap-2">
       <span className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
-        {pengajuan.id}
+        {pengajuan.nomorPengajuan}
       </span>
       <StatusBadge status={keputusan} />
     </div>
@@ -793,9 +745,21 @@ const RiwayatRowCardMobile: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface VerifikasiPengajuanProps {
-  /** Seluruh pengajuan dari parent (single source of truth), mis. MOCK_DATA */
+  /**
+   * Seluruh pengajuan — opsional. Kalau tidak diberikan (kasus normal di
+   * production), diambil langsung dari usePengajuanStore() (Firestore
+   * real-time). Prop ini tetap didukung untuk testing/storybook yang mau
+   * mem-supply data manual.
+   */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
-  /** Dipanggil setelah BPKAD memutuskan verifikasi — parent yang update status */
+  /**
+   * Opsional — dipanggil setelah BPKAD memutuskan verifikasi, di ATAS
+   * proses tulis ke Firestore yang sudah dilakukan komponen ini sendiri
+   * (lihat handleSubmitVerifikasi). Berguna kalau parent masih perlu tahu
+   * hasil keputusan untuk keperluan lain (mis. notifikasi), TAPI parent
+   * tidak perlu lagi mengubah status secara manual — itu sudah ditangani
+   * lewat updatePengajuan()/registrasiPengajuan() dari store.
+   */
   onStatusUpdate?: (
     id: string,
     status: Keputusan,
@@ -811,12 +775,19 @@ export default function VerifikasiPengajuan({
   onStatusUpdate,
   verifikatorId,
 }: VerifikasiPengajuanProps = {}) {
-  // Derive daftar pengajuan langsung dari props — tidak perlu state lokal
-  // terpisah. Parent (page.tsx) adalah single source of truth; saat
-  // onStatusUpdate dipanggil, parent mengubah status di semuaPengajuan, dan
-  // useMemo otomatis menyusun ulang urutan tanpa perlu setState di effect.
+  // Sumber data utama sekarang Firestore (real-time via onSnapshot di
+  // PengajuanProvider). `semuaPengajuan` tetap didukung sebagai override
+  // manual untuk testing/storybook.
+  const {
+    data: dataStore,
+    isLoading,
+    error: storeError,
+    updatePengajuan,
+    registrasiPengajuan,
+  } = usePengajuanStore();
+
   const daftarPengajuan = useMemo(() => {
-    const sumber = semuaPengajuan ?? [];
+    const sumber = semuaPengajuan ?? dataStore;
     // Panel verifikasi hanya menampilkan antrean yang masih perlu
     // ditindak — status "revisi" & "teregistrasi" sudah final/menunggu
     // OPD, jadi cukup dilihat di menu "Lihat Daftar Pengajuan".
@@ -826,7 +797,7 @@ export default function VerifikasiPengajuan({
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       );
-  }, [semuaPengajuan]);
+  }, [semuaPengajuan, dataStore]);
 
   const [riwayat, setRiwayat] = useState<
     {
@@ -839,6 +810,8 @@ export default function VerifikasiPengajuan({
   const [search, setSearch] = useState("");
   const [selected, setSelected] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const filtered = useMemo(() => {
     if (!search) return daftarPengajuan;
@@ -846,54 +819,83 @@ export default function VerifikasiPengajuan({
     return daftarPengajuan.filter(
       (p) =>
         p.id.toLowerCase().includes(q) ||
+        p.nomorPengajuan.toLowerCase().includes(q) ||
         p.namaOPD.toLowerCase().includes(q) ||
         p.namaPenanggungJawab.toLowerCase().includes(q),
     );
   }, [daftarPengajuan, search]);
 
-  const handleSubmitVerifikasi = (keputusan: Keputusan, catatan: string) => {
-    if (!selected) return;
+  const handleSubmitVerifikasi = async (
+    keputusan: Keputusan,
+    catatan: string,
+  ) => {
+    if (!selected || submitting) return;
 
-    const tanggalVerifikasi = new Date().toISOString();
+    setSubmitting(true);
+    setSubmitError("");
 
-    // Jika lolos verifikasi ("teregistrasi"), generate Nomor Registrasi.
-    // No urut antrian dihitung dari jumlah pengajuan yang sudah
-    // berstatus "teregistrasi" di SELURUH data (semuaPengajuan) — bukan
-    // dari daftarPengajuan, karena daftarPengajuan sudah difilter hanya
-    // status "diajukan" untuk ditampilkan di panel ini.
-    let nomorRegistrasi = selected.nomorRegistrasi;
-    if (keputusan === "teregistrasi") {
-      const jumlahSudahTeregistrasi = (semuaPengajuan ?? []).filter(
-        (p) => p.status === "teregistrasi",
-      ).length;
-      const noUrutAntrian = jumlahSudahTeregistrasi + 1;
-      nomorRegistrasi = generateNomorRegistrasi(
-        selected.namaOPD,
-        noUrutAntrian,
-        new Date(tanggalVerifikasi),
+    try {
+      let nomorRegistrasi = selected.nomorRegistrasi;
+      const tanggalVerifikasi = new Date().toISOString();
+
+      // Firestore menolak field bernilai `undefined` (beda dengan `null`)
+      // baik lewat updateDoc() maupun transaction.update() — jadi field
+      // yang opsional/kosong wajib benar-benar TIDAK disertakan di objek,
+      // bukan diisi `undefined`. Dibangun begini alih-alih spread langsung
+      // supaya aman dipakai ulang di kedua cabang di bawah.
+      const extraOpsional: Record<string, string> = {};
+      if (verifikatorId) extraOpsional.verifikatorId = verifikatorId;
+      if (catatan.trim()) extraOpsional.catatanVerifikasi = catatan.trim();
+
+      if (keputusan === "teregistrasi") {
+        // Lolos verifikasi → generate Nomor Registrasi lewat Firestore
+        // transaction (registrasiPengajuan di pengajuan-store), supaya
+        // nomor urut aman dari race condition kalau dua verifikator
+        // klik "Registrasi" hampir bersamaan. Ini juga sekaligus yang
+        // meng-update status jadi "teregistrasi" di Firestore.
+        nomorRegistrasi = await registrasiPengajuan(selected.id, extraOpsional);
+      } else {
+        // Perlu revisi → cukup update status + catatan verifikasi biasa,
+        // tidak perlu nomor registrasi.
+        await updatePengajuan(selected.id, {
+          status: "revisi",
+          tanggalVerifikasi,
+          ...extraOpsional,
+        });
+      }
+
+      const hasil: FormulirPenghapusanPiutangOPDRecord = {
+        ...selected,
+        status: keputusan,
+        tanggalVerifikasi,
+        nomorRegistrasi,
+        ...extraOpsional,
+      };
+
+      // Catat di riwayat sesi ini
+      setRiwayat((prev) => [{ pengajuan: hasil, keputusan, catatan }, ...prev]);
+
+      // Opsional — beri tahu parent (mis. untuk notifikasi tambahan).
+      // Perubahan status sendiri sudah tersimpan di Firestore di atas,
+      // dan akan otomatis muncul di seluruh komponen lain lewat
+      // onSnapshot — parent TIDAK perlu lagi mengubah state manual.
+      onStatusUpdate?.(
+        selected.id,
+        keputusan,
+        catatan || undefined,
+        nomorRegistrasi || undefined,
       );
+      setSelected(null);
+    } catch (err) {
+      console.error("Gagal menyimpan hasil verifikasi:", err);
+      setSubmitError(
+        err instanceof Error
+          ? `Gagal menyimpan hasil verifikasi: ${err.message}`
+          : "Gagal menyimpan hasil verifikasi. Silakan coba lagi.",
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    const hasil: FormulirPenghapusanPiutangOPDRecord = {
-      ...selected,
-      status: keputusan,
-      verifikatorId,
-      tanggalVerifikasi,
-      nomorRegistrasi,
-    };
-
-    // Catat di riwayat sesi ini
-    setRiwayat((prev) => [{ pengajuan: hasil, keputusan, catatan }, ...prev]);
-    // Beritahu parent — parent update status (dan nomorRegistrasi bila ada)
-    // di shared state; antrean otomatis reaktif karena di-derive via
-    // useMemo dari props.
-    onStatusUpdate?.(
-      selected.id,
-      keputusan,
-      catatan || undefined,
-      nomorRegistrasi || undefined,
-    );
-    setSelected(null);
   };
 
   // ── Render: panel verifikasi ──────────────────────────────────────────────
@@ -901,15 +903,36 @@ export default function VerifikasiPengajuan({
     return (
       <PanelVerifikasi
         pengajuan={selected}
-        onBack={() => setSelected(null)}
+        onBack={() => {
+          if (submitting) return;
+          setSubmitError("");
+          setSelected(null);
+        }}
         onSubmit={handleSubmitVerifikasi}
+        submitting={submitting}
+        submitError={submitError}
       />
+    );
+  }
+
+  // ── Render: memuat data dari Firestore ───────────────────────────────────
+  if (isLoading && !semuaPengajuan) {
+    return (
+      <div className="flex items-center justify-center py-16 text-sm text-[#7a8899]">
+        Memuat antrean verifikasi…
+      </div>
     );
   }
 
   // ── Render: daftar antrean ────────────────────────────────────────────────
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
+      {storeError && !semuaPengajuan && (
+        <div className="mb-3.5 rounded-sm border border-[#fed7aa] bg-[#fff7ed] px-4 py-2.5 text-[13px] font-medium text-[#9a3412]">
+          Gagal memuat data pengajuan: {storeError}
+        </div>
+      )}
+
       {/* ── Search bar ── */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
@@ -918,7 +941,7 @@ export default function VerifikasiPengajuan({
           </span>
           <input
             type="text"
-            placeholder="Cari Nomor Registrasi, nama OPD, atau penanggung jawab…"
+            placeholder="Cari Nomor Pengajuan, nama OPD, atau penanggung jawab…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full min-w-0 border-none bg-transparent text-[13px] text-[#1a1a2e] outline-none"
@@ -1009,7 +1032,7 @@ export default function VerifikasiPengajuan({
                         {/* Kolom gabungan: No Reg + OPD + Penanggung Jawab */}
                         <td className="p-[12px_14px]">
                           <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                            {p.id}
+                            {p.nomorPengajuan}
                           </div>
                           <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
                             {p.namaOPD}
@@ -1098,7 +1121,7 @@ export default function VerifikasiPengajuan({
                       }
                     >
                       <td className="p-[12px_14px] font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
-                        {pengajuan.id}
+                        {pengajuan.nomorPengajuan}
                       </td>
                       <td className="p-[12px_14px] text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
                         {pengajuan.namaOPD}

@@ -7,6 +7,8 @@ import {
   Menu,
   X,
   LogIn,
+  LogOut,
+  ChevronDown,
   Eye,
   EyeOff,
   MapPin,
@@ -18,16 +20,18 @@ import {
   Smartphone,
   Link2,
   Zap,
+  CheckCircle2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import AjukanPermohonanWizard from "@/app/dashboard-v2/contents/opd/ajukan-permohonan/AjukanPermohonan";
 import { usePengajuanStore } from "@/store/pengajuan-store";
+import { useAuth } from "@/store/auth-store";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
-} from "@/types/types-v2";
+} from "@/types/types";
 
 // ─── Bunga Menu — Data & Types ────────────────────────────────────────────────
 
@@ -447,7 +451,7 @@ function ModalSOP() {
       {/* Legenda pihak berwenang */}
       <div className="flex flex-wrap gap-3 text-[12px] font-medium">
         <span className="flex items-center gap-1.5 text-gray-700">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> OPD / BPKAD
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
         </span>
         <span className="flex items-center gap-1.5 text-gray-700">
           <span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Inspektorat
@@ -1524,7 +1528,19 @@ function BungaSVG({
   );
 }
 
+// Inisial pendek untuk avatar profil navbar, per slug OPD — konsisten
+// dengan badge yang dipakai di Header dashboard-v2.
+const OPD_BADGE_BY_SLUG: Record<string, string> = {
+  rsud: "RS",
+  dishub: "DH",
+  diskominfo: "DK",
+  disdagkopukm: "UKM",
+  setwan: "SW",
+};
+
 export default function SiPuspitaLandingPage() {
+  const router = useRouter();
+  const { login, user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
@@ -1533,6 +1549,101 @@ export default function SiPuspitaLandingPage() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [lastModalItem, setLastModalItem] = useState<KelopakItem | null>(null);
+
+  // Dropdown profil di navbar (desktop) saat sudah login.
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Data tampilan profil navbar, diturunkan dari sesi login (useAuth()) —
+  // null kalau belum login, supaya navbar tahu kapan menampilkan
+  // tombol "Login" vs kartu profil + Logout.
+  const navProfile = !user
+    ? null
+    : user.role === "ADMIN"
+      ? {
+          name: "Admin",
+          subtitle: "Tim Admin",
+          initials: "AD",
+          avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+        }
+      : {
+          name: user.namaOPD ?? "OPD",
+          subtitle: "Operator OPD",
+          initials: (user.opdSlug && OPD_BADGE_BY_SLUG[user.opdSlug]) || "OP",
+          avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
+        };
+
+  // Notifikasi kecil (toast) untuk hasil login — sukses atau gagal.
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleLogoutClick = () => {
+    logout();
+    setProfileOpen(false);
+    setMobileOpen(false);
+    setToast({ type: "success", message: "Anda telah logout." });
+  };
+
+  // Modal info "harus login dulu" saat OPD/Admin klik tombol aksi tanpa
+  // sesi yang sesuai. "opd" -> perlu login sebagai OPD, "admin" -> perlu
+  // login sebagai Admin.
+  const [authGuardOpen, setAuthGuardOpen] = useState<"opd" | "admin" | null>(
+    null,
+  );
+
+  const authGuardInfo =
+    authGuardOpen === "opd"
+      ? {
+          title: "Login OPD diperlukan",
+          message: user
+            ? "Akun Anda saat ini login sebagai Admin. Untuk mengajukan permohonan, silakan logout lalu masuk kembali menggunakan akun OPD."
+            : "Untuk mengajukan permohonan penghapusan piutang, silakan login terlebih dahulu menggunakan akun OPD.",
+        }
+      : authGuardOpen === "admin"
+        ? {
+            title: "Login Admin diperlukan",
+            message: user
+              ? `Akun Anda saat ini login sebagai OPD${user.namaOPD ? ` (${user.namaOPD})` : ""}. Halaman verifikasi hanya untuk Admin BPKAD — silakan logout lalu masuk menggunakan akun Admin.`
+              : "Halaman verifikasi hanya bisa diakses oleh Admin BPKAD. Silakan login menggunakan akun Admin.",
+          }
+        : null;
+
+  const handleAjukanClick = () => {
+    if (user?.role === "OPD") {
+      router.push("/dashboard-v2");
+    } else {
+      setAuthGuardOpen("opd");
+    }
+  };
+
+  const handleVerifikasiClick = () => {
+    if (user?.role === "ADMIN") {
+      router.push("/dashboard-v2");
+    } else {
+      setAuthGuardOpen("admin");
+    }
+  };
 
   // Bunga menu state
   const [bungaActiveId, setBungaActiveId] = useState<KelopakId | null>(null);
@@ -1637,10 +1748,30 @@ export default function SiPuspitaLandingPage() {
       return;
     }
     setLoginLoading(true);
+    // Delay kecil murni utk UX (spinner tombol) — login() sendiri sinkron
+    // karena masih dicocokkan ke DAFTAR_AKUN hardcode di lib/auth-config.ts.
     setTimeout(() => {
+      const hasil = login(loginForm.username, loginForm.password);
       setLoginLoading(false);
-      setLoginError("Username atau password salah. Silakan coba lagi.");
-    }, 1200);
+
+      if (!hasil.ok) {
+        const pesan =
+          hasil.pesan ?? "Username atau password salah. Silakan coba lagi.";
+        setLoginError(pesan);
+        setToast({ type: "error", message: pesan });
+        return;
+      }
+
+      setLoginOpen(false);
+      setLoginForm({ username: "", password: "" });
+      setToast({
+        type: "success",
+        message: "Login berhasil! Mengalihkan ke dashboard…",
+      });
+      // Beri jeda sebentar supaya toast sukses sempat terlihat sebelum
+      // pindah halaman (halaman ini akan unmount saat navigasi).
+      setTimeout(() => router.push("/dashboard-v2"), 700);
+    }, 600);
   };
   useEffect(() => {
     if (isModalOpen || isModalClosing) {
@@ -1676,18 +1807,63 @@ export default function SiPuspitaLandingPage() {
 
             {/* CTA */}
             <div className="hidden items-center gap-3 lg:flex">
-              <button
-                onClick={() => setLoginOpen(true)}
-                className="group relative flex items-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-200 hover:cursor-pointer hover:text-slate-700"
-              >
-                <LogIn className="h-3.5 w-3.5" /> Login
-                <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              </button>
-              <Link href={"/dashboard-v2"}>
-                <button className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md">
-                  Ajukan Sekarang
+              {navProfile ? (
+                <div ref={profileRef} className="relative">
+                  <button
+                    onClick={() => setProfileOpen((v) => !v)}
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:cursor-pointer hover:bg-gray-100"
+                  >
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${navProfile.avatarGradient} text-[11px] font-semibold text-white`}
+                    >
+                      {navProfile.initials}
+                    </div>
+                    <div className="flex flex-col items-start leading-tight">
+                      <span className="max-w-32 truncate text-[12.5px] font-semibold text-gray-800">
+                        {navProfile.name}
+                      </span>
+                      <span className="text-[10.5px] text-gray-400">
+                        {navProfile.subtitle}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                  </button>
+
+                  {profileOpen && (
+                    <div className="absolute top-full right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-lg">
+                      <div className="border-b border-gray-100 px-4 py-3">
+                        <p className="truncate text-sm font-semibold text-gray-800">
+                          {navProfile.name}
+                        </p>
+                        <p className="truncate text-xs text-gray-400">
+                          {navProfile.subtitle}
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleLogoutClick}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition-colors hover:cursor-pointer hover:bg-red-50"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => setLoginOpen(true)}
+                  className="group relative flex items-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-200 hover:cursor-pointer hover:text-slate-700"
+                >
+                  <LogIn className="h-3.5 w-3.5" /> Login
+                  <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 </button>
-              </Link>
+              )}
+              <button
+                onClick={handleAjukanClick}
+                className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md"
+              >
+                Ajukan Sekarang
+              </button>
             </div>
 
             {/* Mobile toggler */}
@@ -1712,21 +1888,51 @@ export default function SiPuspitaLandingPage() {
           >
             <div className="flex flex-col gap-3 border-t border-gray-100 bg-white/90 px-6 py-5 backdrop-blur-md">
               <hr className="my-1 border-gray-200" />
-              <Link href={"/dashboard-v2"} onClick={() => setMobileOpen(false)}>
-                <button className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]">
-                  Ajukan Sekarang
-                </button>
-              </Link>
               <button
                 onClick={() => {
-                  setLoginOpen(true);
                   setMobileOpen(false);
+                  handleAjukanClick();
                 }}
-                className="group relative w-fit rounded-lg px-4 py-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-[#1a4e8f]"
+                className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]"
               >
-                Masuk
-                <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                Ajukan Sekarang
               </button>
+              {navProfile ? (
+                <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${navProfile.avatarGradient} text-[11px] font-semibold text-white`}
+                    >
+                      {navProfile.initials}
+                    </div>
+                    <div className="flex min-w-0 flex-col leading-tight">
+                      <span className="truncate text-[13px] font-semibold text-gray-800">
+                        {navProfile.name}
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        {navProfile.subtitle}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogoutClick}
+                    className="shrink-0 text-[12.5px] font-semibold text-red-600 transition-colors hover:cursor-pointer hover:text-red-700"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setLoginOpen(true);
+                    setMobileOpen(false);
+                  }}
+                  className="group relative w-fit rounded-lg px-4 py-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-[#1a4e8f]"
+                >
+                  Masuk
+                  <span className="absolute inset-x-4 bottom-1.5 h-[1.5px] origin-left scale-x-0 rounded-full bg-[#1a4e8f] transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                </button>
+              )}
             </div>
           </div>
         </nav>
@@ -1815,20 +2021,22 @@ export default function SiPuspitaLandingPage() {
 
                 {/* CTA utama */}
                 <div className="mt-8 flex w-full max-w-2xl flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-                  <Link
-                    href="/dashboard-v2"
+                  <button
+                    type="button"
+                    onClick={handleAjukanClick}
                     className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#0f2d5e] px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-lg shadow-[#0f2d5e]/20 transition-all hover:bg-[#153a75] active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     Ajukan Permohonan
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </Link>
-                  <Link
-                    href="/dashboard-v2?user-role=bpkad"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifikasiClick}
                     className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     Verifikasi Admin
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </Link>
+                  </button>
                 </div>
 
                 {/* Tagline chip */}
@@ -2265,6 +2473,67 @@ export default function SiPuspitaLandingPage() {
                 <div className="h-px flex-1 bg-gray-100" />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════ MODAL INFO: HARUS LOGIN DULU ══════════════════ */}
+      {authGuardInfo && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(8,13,28,0.65)",
+            backdropFilter: "blur(6px)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAuthGuardOpen(null);
+          }}
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <LogIn className="h-6 w-6" />
+            </div>
+            <h3 className="text-[16px] font-bold text-gray-900">
+              {authGuardInfo.title}
+            </h3>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-gray-500">
+              {authGuardInfo.message}
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={() => setAuthGuardOpen(null)}
+                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-[13.5px] font-semibold text-gray-600 transition-colors hover:cursor-pointer hover:bg-gray-50"
+              >
+                Nanti dulu
+              </button>
+              <button
+                onClick={() => {
+                  setAuthGuardOpen(null);
+                  setLoginOpen(true);
+                }}
+                className="flex-1 rounded-xl bg-yellow-500 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:cursor-pointer hover:bg-yellow-600"
+              >
+                Login Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════ TOAST: INFO HASIL LOGIN ══════════════════ */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 z-200 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
+          <div
+            className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-[13.5px] font-medium text-white shadow-lg ${
+              toast.type === "success" ? "bg-emerald-600" : "bg-red-600"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
+            ) : (
+              <X className="h-4.5 w-4.5 shrink-0" />
+            )}
+            <span>{toast.message}</span>
           </div>
         </div>
       )}

@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import AjukanPermohonanWizard from "./contents/opd/ajukan-permohonan/AjukanPermohonan";
 import DaftarPengajuanOPDBaru from "./contents/opd/lihat-daftar-pengajuan/LihatDaftarPengajuan";
 import VerifikasiPengajuan from "./contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
-import LihatDaftarPengajuanAdmin from "./contents/bpkad/lihat-daftar-pengajuan-admin/lihat-daftar-pengajuan-admin";
-import RegisterDigital from "./contents/bpkad/register-digital/register-digital";
+import LihatDaftarPengajuanAdmin from "./contents/bpkad/lihat-daftar-pengajuan-admin/LihatDaftarPengajuanAdmin";
+import RegisterDigital from "./contents/bpkad/register-digital/RegisterDigital";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -20,36 +20,24 @@ import {
   IconMail,
   IconBell,
   IconChevronDown,
-  IconUsers,
 } from "./icons";
 import { usePengajuanStore } from "@/store/pengajuan-store";
+import { useAuth } from "@/store/auth-store";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
-} from "@/types/types-v2";
+} from "@/types/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type UserRole = "OPD" | "BPKAD";
-
-// Nama resmi OPD yang login (sementara hardcode, nanti ganti dari data auth/session).
-const NAMA_OPD = "Dinas Perdagangan Koperasi dan UKM";
-
-// Label tampilan di UI — value internal role tetap "BPKAD" (dipakai di
-// URL param, logika menu, dll), tapi yang dilihat user cukup "Admin".
-const ROLE_LABEL: Record<UserRole, string> = {
-  OPD: "OPD",
-  BPKAD: "Admin",
-};
+type UserRole = "OPD" | "ADMIN";
 
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
-type BPKADMenuKey =
-  | "verifikasi-pengajuan"
-  | "lihat-daftar-pengajuan-admin"
-  | "register-digital";
+type AdminMenuKey =
+  "verifikasi-pengajuan" | "lihat-daftar-pengajuan-admin" | "register-digital";
 
-type MenuKey = OPDMenuKey | BPKADMenuKey;
+type MenuKey = OPDMenuKey | AdminMenuKey;
 
 // ── Menu configs per role ─────────────────────────────────────────────────────
 
@@ -118,6 +106,17 @@ const PAGE_META: Record<
     subtitle:
       "Daftar nominatif piutang yang telah diusulkan, dikelompokkan per OPD.",
   },
+};
+
+// Inisial pendek untuk avatar Header, per slug OPD (lebih jelas
+// daripada mengambil huruf pertama nama resmi — beberapa OPD sama-sama
+// diawali "Dinas ...").
+const OPD_BADGE_BY_SLUG: Record<string, string> = {
+  rsud: "RS",
+  dishub: "DH",
+  diskominfo: "DK",
+  disdagkopukm: "UKM",
+  setwan: "SW",
 };
 
 // ── Logo ─────────────────────────────────────────────────────────────────────
@@ -257,84 +256,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 };
 
-// ── Role Dropdown ─────────────────────────────────────────────────────────────
-
-interface RoleDropdownProps {
-  role: UserRole;
-  onChange: (role: UserRole) => void;
-}
-
-const RoleDropdown: React.FC<RoleDropdownProps> = ({ role, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const roles: UserRole[] = ["OPD", "BPKAD"];
-
-  const roleColors: Record<UserRole, string> = {
-    OPD: "bg-[#e8f0fb] text-[#1a4e8f]",
-    BPKAD: "bg-[#e1f5ee] text-[#0f6e56]",
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-xl border border-[#ebebeb] bg-white px-3 py-2 text-sm font-medium text-[#1a1a1a] transition-colors hover:bg-[#f7f8fa]"
-      >
-        <IconUsers />
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${roleColors[role]}`}
-        >
-          {ROLE_LABEL[role]}
-        </span>
-        <IconChevronDown />
-      </button>
-
-      {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-[#ebebeb] bg-white py-1 shadow-lg">
-          <p className="px-4 py-2 text-[10px] font-semibold tracking-widest text-[#b0bac5] uppercase">
-            Pilih User
-          </p>
-          {roles.map((r) => (
-            <button
-              key={r}
-              onClick={() => {
-                onChange(r);
-                setOpen(false);
-              }}
-              className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
-                role === r
-                  ? "bg-[#f0f4fb] font-medium text-[#1a4e8f]"
-                  : "text-[#4a5568] hover:bg-[#f7f8fa]"
-              }`}
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  role === r ? "bg-[#1a4e8f]" : "bg-[#d1d8e0]"
-                }`}
-              />
-              {ROLE_LABEL[r]}
-              {role === r && (
-                <span className="ml-auto text-[10px] text-[#1a4e8f]">✓</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // ── Profile Dropdown ──────────────────────────────────────────────────────────
 interface ProfileDropdownProps {
   name: string;
@@ -413,41 +334,36 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 // ── Header ───────────────────────────────────────────────────────────────────
 interface HeaderProps {
   role: UserRole;
-  onRoleChange: (role: UserRole) => void;
+  namaOPD: string | null;
+  opdSlug: string | null;
   onOpenMobileMenu: () => void;
   onLogout: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
   role,
-  onRoleChange,
+  namaOPD,
+  opdSlug,
   onOpenMobileMenu,
   onLogout,
 }) => {
-  const userData: Record<
-    UserRole,
-    {
-      name: string;
-      subtitle: string;
-      initials: string;
-      avatarGradient: string;
-    }
-  > = {
-    OPD: {
-      name: "Disdagkop UKM",
-      subtitle: NAMA_OPD,
-      initials: "D",
-      avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
-    },
-    BPKAD: {
-      name: "Admin",
-      subtitle: "Tim Admin",
-      initials: "AD",
-      avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
-    },
-  };
-
-  const currentUser = userData[role];
+  const currentUser =
+    role === "ADMIN"
+      ? {
+          name: "Admin",
+          subtitle: "Tim Admin",
+          initials: "AD",
+          avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+        }
+      : {
+          // namaOPD & opdSlug berasal dari sesi login (lihat useAuth()) —
+          // otomatis mengikuti akun yang sedang login, bukan lagi
+          // hardcode ke satu OPD tertentu.
+          name: namaOPD ?? "OPD",
+          subtitle: "Operator OPD",
+          initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
+          avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
+        };
 
   return (
     <header className="flex h-auto min-h-17 shrink-0 flex-wrap items-center gap-3 border-b border-[#f0f0f0] bg-white px-4 py-2.5 sm:px-6 lg:px-8">
@@ -479,9 +395,6 @@ const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
       <div className="flex-1" />
-
-      {/* Sementara ini disable dulu ya  */}
-      {/* <RoleDropdown role={role} onChange={onRoleChange} /> */}
 
       <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconMail />
@@ -561,7 +474,10 @@ const MainContent: React.FC<MainContentProps> = ({
           defaultNamaOPD={defaultNamaOPD}
         />
       ) : activeMenu === "lihat-daftar-pengajuan" ? (
-        <DaftarPengajuanOPDBaru data={semuaPengajuan} />
+        <DaftarPengajuanOPDBaru
+          data={semuaPengajuan}
+          namaOPDAktif={defaultNamaOPD}
+        />
       ) : activeMenu === "lihat-daftar-pengajuan-admin" ? (
         <LihatDaftarPengajuanAdmin semuaPengajuan={semuaPengajuan} />
       ) : activeMenu === "register-digital" ? (
@@ -581,44 +497,45 @@ const MainContent: React.FC<MainContentProps> = ({
   );
 };
 
-// ── URL <-> Role helpers ───────────────────────────────────────────────────────
-
-const ROLE_QUERY_PARAM = "user-role";
+// ── Menu default per role ──────────────────────────────────────────────────────
 
 const DEFAULT_MENU_BY_ROLE: Record<UserRole, MenuKey> = {
   OPD: "ajukan-permohonan",
-  BPKAD: "verifikasi-pengajuan",
-};
-
-/** Parse role dari query param, fallback ke "OPD" bila tidak ada / tidak valid. */
-const parseRoleFromParam = (value: string | null): UserRole => {
-  if (value?.toLowerCase() === "bpkad") return "BPKAD";
-  return "OPD";
+  ADMIN: "verifikasi-pengajuan",
 };
 
 // ── Page root ─────────────────────────────────────────────────────────────────
 
 const DashboardContent: React.FC = () => {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  // Role dijadikan derived state dari URL (?user-role=opd | bpkad), bukan
-  // state internal, supaya URL selalu jadi single source of truth.
-  const role = parseRoleFromParam(searchParams.get(ROLE_QUERY_PARAM));
+  const { user, isLoading: authLoading, logout } = useAuth();
+
+  // Guard: begitu pembacaan sesi tersimpan selesai (authLoading === false)
+  // dan ternyata tidak ada user, lempar ke halaman login (homepage —
+  // sesuaikan bila nanti ada route /login terpisah).
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/homepage");
+    }
+  }, [authLoading, user, router]);
+
+  // Role sekarang berasal dari sesi login, bukan query param — supaya
+  // tidak bisa dipalsukan lewat URL (?user-role=admin).
+  const role: UserRole = user?.role === "ADMIN" ? "ADMIN" : "OPD";
 
   const [activeMenu, setActiveMenu] = useState<MenuKey>(
     DEFAULT_MENU_BY_ROLE[role],
   );
 
   // Status drawer sidebar untuk layar < lg (mobile/tablet).
-  // Ditutup langsung di tempat kejadian (handleRoleChange, blok penyesuaian
-  // role di bawah, dan di dalam Sidebar saat navigasi menu) — bukan lewat
-  // useEffect, supaya tidak memicu cascading render.
+  // Ditutup langsung di tempat kejadian (blok penyesuaian role di bawah,
+  // dan di dalam Sidebar saat navigasi menu) — bukan lewat useEffect,
+  // supaya tidak memicu cascading render.
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Lacak role sebelumnya supaya bisa reset activeMenu saat role berubah
-  // (mis. lewat URL back/forward, link luar), TANPA pakai useEffect.
+  // (mis. login user lain di tab yang sama), TANPA pakai useEffect.
   // Pola ini "adjusting state during render" — direkomendasikan React
   // untuk kasus reset state akibat perubahan prop/derived value, karena
   // tidak memicu render tambahan yang sempat ter-commit ke layar.
@@ -637,13 +554,6 @@ const DashboardContent: React.FC = () => {
     tambahPengajuan,
     updatePengajuan,
   } = usePengajuanStore();
-
-  const handleRoleChange = (newRole: UserRole) => {
-    setMobileMenuOpen(false);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set(ROLE_QUERY_PARAM, newRole.toLowerCase());
-    router.push(`${pathname}?${params.toString()}`);
-  };
 
   const handleTambahPengajuan = (
     record: FormulirPenghapusanPiutangOPDRecord,
@@ -672,10 +582,21 @@ const DashboardContent: React.FC = () => {
   };
 
   const handleLogout = () => {
-    // TODO: sambungkan ke proses logout sesungguhnya (clear session/token,
-    // panggil API, dll) begitu autentikasi nyata sudah tersedia.
+    logout();
     router.push("/homepage");
   };
+
+  // Selama sesi tersimpan belum selesai dibaca, atau ternyata tidak ada
+  // user (redirect di useEffect di atas sedang berjalan), jangan render
+  // konten dashboard sama sekali — supaya tidak "kelihatan sekilas"
+  // sebelum lempar ke halaman login.
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#f7f8fa]">
+        <p className="text-sm text-[#7a8899]">Memuat sesi…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f7f8fa] font-sans">
@@ -689,7 +610,8 @@ const DashboardContent: React.FC = () => {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
           role={role}
-          onRoleChange={handleRoleChange}
+          namaOPD={user.namaOPD}
+          opdSlug={user.opdSlug}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onLogout={handleLogout}
         />
@@ -698,7 +620,7 @@ const DashboardContent: React.FC = () => {
           semuaPengajuan={semuaPengajuan}
           onTambahPengajuan={handleTambahPengajuan}
           onStatusUpdate={handleStatusUpdate}
-          defaultNamaOPD={NAMA_OPD}
+          defaultNamaOPD={user.namaOPD ?? ""}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@
 import {
   FormulirPenghapusanPiutangOPDRecord,
   UploadedFileRef,
-} from "@/types/types-v2";
+} from "@/types/types";
 
 // ──────────────────────────────── DUMMY PDF ────────────────────────────────
 function generateDummyPdfDataUri(): string {
@@ -134,54 +134,91 @@ const filePernyataanOPD: UploadedFileRef = {
   uploadedAt: "2025-01-07T08:50:00Z",
 };
 
+const filePersyaratanMacet: UploadedFileRef = {
+  id: "file-persyaratan-macet",
+  url: generateDummyPdfDataUri(),
+  namaFile: "keterangan-piutang-macet.pdf",
+  ukuranBytes: 51200,
+  uploadedAt: "2025-01-07T08:55:00Z",
+};
+
+const filePersyaratanUsia: UploadedFileRef = {
+  id: "file-persyaratan-usia",
+  url: generateDummyPdfDataUri(),
+  namaFile: "keterangan-usia-pencatatan.pdf",
+  ukuranBytes: 49152,
+  uploadedAt: "2025-01-07T09:00:00Z",
+};
+
 // ────────────────────────── NOMOR REGISTRASI ───────────────────────────────
 // Format: reg-{no urut antrian}/{kode instansi}/{singkatan instansi}/{bulan romawi}/{tahun}
 // Kode & singkatan instansi mengikuti daftar resmi BPKAD.
-const BULAN_ROMAWI = [
-  "I",
-  "II",
-  "III",
-  "IV",
-  "V",
-  "VI",
-  "VII",
-  "VIII",
-  "IX",
-  "X",
-  "XI",
-  "XII",
-];
-
-const KODE_INSTANSI: Record<string, { kode: number; singkatan: string }> = {
-  RSUD: { kode: 22, singkatan: "RSUD" },
-  "Dinas Perhubungan": { kode: 24, singkatan: "DISHUB" },
-  "Dinas Komunikasi dan Informatika": { kode: 46, singkatan: "DISKOMINFO" },
-  "Dinas Perdagangan Koperasi dan UKM": { kode: 51, singkatan: "DAGKOP" },
-  "Sekretariat Dewan": { kode: 59, singkatan: "SETWAN" },
-  "Disdagkop UKM": { kode: 63, singkatan: "DISDAGKOPUKM" },
-};
-
 function buildNomorRegistrasi(
   noUrut: number,
-  namaOPD: string,
+  _namaOPD: string,
   tanggalVerifikasi: string,
 ): string {
-  const instansi = KODE_INSTANSI[namaOPD];
-  const bulanIndex = new Date(tanggalVerifikasi).getMonth(); // 0-based
-  const tahun = new Date(tanggalVerifikasi).getFullYear();
-  return `reg-${noUrut}/${instansi.kode}/${instansi.singkatan}/${BULAN_ROMAWI[bulanIndex]}/${tahun}`;
+  // Format disamakan dengan formatNomorRegistrasi() di pengajuan-store.tsx:
+  // XXX/REG-PUSPITA/DISDAGKOPUKM/MM/YYYY -- instansi selalu DISDAGKOPUKM
+  // (hardcoded di kode asli), jadi namaOPD tidak lagi dipakai di sini.
+  const xxx = String(noUrut).padStart(3, "0");
+  const tanggal = new Date(tanggalVerifikasi);
+  const mm = String(tanggal.getMonth() + 1).padStart(2, "0");
+  const yyyy = tanggal.getFullYear();
+  return `${xxx}/REG-PUSPITA/DISDAGKOPUKM/${mm}/${yyyy}`;
+}
+
+/**
+ * Format nomor pengajuan resmi, disamakan dengan formatNomorPengajuan()
+ * di lib/pengajuan.ts: XXX/PENGAJUAN/DISDAGKOPUKM/MM/YYYY.
+ */
+// Singkatan resmi tiap OPD dipakai untuk format id pengajuan (lihat
+// buildIdPengajuan di bawah). "Disdagkop UKM" & "Dinas Perdagangan
+// Koperasi dan UKM" dianggap OPD yang sama (alias penamaan lama vs baru).
+const OPD_ABBR: Record<string, string> = {
+  RSUD: "RSUD",
+  "Dinas Perhubungan": "DISHUB",
+  "Dinas Komunikasi dan Informatika": "DISKOMINFO",
+  "Dinas Perdagangan Koperasi dan UKM": "DISDAGKOPUKM",
+  "Disdagkop UKM": "DISDAGKOPUKM",
+  "Sekretariat Dewan": "SETWAN",
+};
+
+/**
+ * Format id pengajuan: XXX/PENGAJUAN/{SINGKATAN-OPD}/MM/YYYY.
+ * noUrut dihitung per-OPD (setiap OPD punya nomor urut sendiri).
+ */
+function buildIdPengajuan(
+  noUrut: number,
+  namaOPD: string,
+  createdAt: string,
+): string {
+  const xxx = String(noUrut).padStart(3, "0");
+  const abbr = OPD_ABBR[namaOPD] ?? namaOPD.toUpperCase();
+  const tanggal = new Date(createdAt);
+  const mm = String(tanggal.getMonth() + 1).padStart(2, "0");
+  const yyyy = tanggal.getFullYear();
+  return `${xxx}/PENGAJUAN/${abbr}/${mm}/${yyyy}`;
+}
+
+function buildNomorPengajuan(noUrut: number, createdAt: string): string {
+  const xxx = String(noUrut).padStart(3, "0");
+  const tanggal = new Date(createdAt);
+  const mm = String(tanggal.getMonth() + 1).padStart(2, "0");
+  const yyyy = tanggal.getFullYear();
+  return `${xxx}/PENGAJUAN/DISDAGKOPUKM/${mm}/${yyyy}`;
 }
 
 // ─────────────────────────────── DATA MOCK ──────────────────────────────────
 export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
-  // 1. Semua riwayat penagihan lengkap (3 file)
   {
-    id: "FP-2025-001",
+    id: buildIdPengajuan(1, "RSUD", "2025-01-08T09:23:00Z"),
     opdId: "OPD-RSUD",
     namaOPD: "RSUD",
     createdBy: "user-rsud",
     status: "teregistrasi",
     createdAt: "2025-01-08T09:23:00Z",
+    nomorPengajuan: buildNomorPengajuan(1, "2025-01-08T09:23:00Z"),
     updatedAt: "2025-01-10T11:00:00Z",
     nomorRegistrasi: buildNomorRegistrasi(1, "RSUD", "2025-01-10T11:00:00Z"),
     // Jejak audit verifikasi BPKAD — seluruh poin checklist terpenuhi,
@@ -230,15 +267,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null, // harus null karena pakai riwayat tagihan
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "18500000",
+    nilaiRekapitulasiAngsuran: "3700000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "dokumen_tidak_memadai",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 2. Hanya 1 riwayat penagihan (tagihan ke-1)
   {
-    id: "FP-2025-002",
+    id: buildIdPengajuan(1, "Dinas Perhubungan", "2025-02-15T11:05:00Z"),
     opdId: "OPD-DISHUB",
     namaOPD: "Dinas Perhubungan",
     createdBy: "user-dishub",
     status: "revisi",
     createdAt: "2025-02-15T11:05:00Z",
+    nomorPengajuan: buildNomorPengajuan(2, "2025-02-15T11:05:00Z"),
     updatedAt: "2025-02-16T09:00:00Z",
     nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — poin yang false sengaja dicocokkan
@@ -269,7 +320,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "1",
     totalNilaiPiutang: "4200000",
     jenisPiutang: "Piutang Lainnya",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: true,
       dokumenResmi: true,
@@ -289,15 +340,33 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "4200000",
+    nilaiRekapitulasiAngsuran: "",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: null,
+    opsiTidakDapatDiserahkanPUPN: "jumlah_tidak_pasti",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 3. Dua riwayat penagihan (1 dan 2)
   {
-    id: "FP-2025-003",
+    id: buildIdPengajuan(
+      1,
+      "Dinas Komunikasi dan Informatika",
+      "2025-03-03T08:44:00Z",
+    ),
     opdId: "OPD-DISKOMINFO",
     namaOPD: "Dinas Komunikasi dan Informatika",
     createdBy: "user-diskominfo",
     status: "diajukan",
     createdAt: "2025-03-03T08:44:00Z",
+    nomorPengajuan: buildNomorPengajuan(3, "2025-03-03T08:44:00Z"),
     updatedAt: "2025-03-04T10:00:00Z",
     nomorRegistrasi: null,
     namaPenanggungJawab: "Rina Anggraini, S.Kom, M.M.",
@@ -328,15 +397,33 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "27500000",
+    nilaiRekapitulasiAngsuran: "5500000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "sengketa_pengadilan",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 4. Tidak ada riwayat penagihan, menggunakan Surat Pernyataan OPD
   {
-    id: "FP-2025-004",
+    id: buildIdPengajuan(
+      1,
+      "Dinas Perdagangan Koperasi dan UKM",
+      "2025-04-20T15:45:00Z",
+    ),
     opdId: "OPD-DAGKOPUKM",
     namaOPD: "Dinas Perdagangan Koperasi dan UKM",
     createdBy: "user-dagkopukm",
     status: "teregistrasi",
     createdAt: "2025-04-20T15:45:00Z",
+    nomorPengajuan: buildNomorPengajuan(4, "2025-04-20T15:45:00Z"),
     updatedAt: "2025-04-22T09:30:00Z",
     nomorRegistrasi: buildNomorRegistrasi(
       2,
@@ -369,7 +456,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "1",
     totalNilaiPiutang: "6800000",
     jenisPiutang: "Piutang Retribusi Daerah",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: true,
       dokumenResmi: true,
@@ -389,15 +476,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: filePernyataanOPD, // ada
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "6800000",
+    nilaiRekapitulasiAngsuran: "1360000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "ditolak_pupn",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 5. Tidak ada bukti penagihan sama sekali
   {
-    id: "FP-2025-005",
+    id: buildIdPengajuan(1, "Sekretariat Dewan", "2025-05-10T10:15:00Z"),
     opdId: "OPD-SETWAN",
     namaOPD: "Sekretariat Dewan",
     createdBy: "user-setwan",
     status: "revisi",
     createdAt: "2025-05-10T10:15:00Z",
+    nomorPengajuan: buildNomorPengajuan(5, "2025-05-10T10:15:00Z"),
     updatedAt: "2025-05-11T13:20:00Z",
     nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — hampir seluruh dokumen pendukung
@@ -451,15 +552,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "",
+    nilaiRekapitulasiAngsuran: "",
+    persyaratanPiutangMacet: null,
+    persyaratanUsiaPencatatan: null,
+    opsiTidakDapatDiserahkanPUPN: "dokumen_tidak_memadai",
+    buktiTidakMampuKartuKeluargaMiskin: null,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: null,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "tidak",
+    buktiUpayaOptimal: null,
   },
-  // 6. Disdagkop UKM — pengajuan baru, belum diverifikasi (status "diajukan")
   {
-    id: "FP-2025-006",
+    id: buildIdPengajuan(1, "Disdagkop UKM", "2025-06-05T09:10:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "diajukan",
     createdAt: "2025-06-05T09:10:00Z",
+    nomorPengajuan: buildNomorPengajuan(6, "2025-06-05T09:10:00Z"),
     updatedAt: "2025-06-05T09:10:00Z",
     nomorRegistrasi: null,
     namaPenanggungJawab: "Rudi Setiawan, S.E., M.M",
@@ -490,15 +605,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "9450000",
+    nilaiRekapitulasiAngsuran: "1890000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "jumlah_tidak_pasti",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 7. Disdagkop UKM — diajukan, dokumen lengkap (riwayat tagihan 3x + dasar piutang ada)
   {
-    id: "FP-2025-007",
+    id: buildIdPengajuan(2, "Disdagkop UKM", "2025-07-02T08:30:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "diajukan",
     createdAt: "2025-07-02T08:30:00Z",
+    nomorPengajuan: buildNomorPengajuan(7, "2025-07-02T08:30:00Z"),
     updatedAt: "2025-07-02T08:30:00Z",
     nomorRegistrasi: null,
     namaPenanggungJawab: "Rudi Setiawan, S.E., M.M.",
@@ -529,15 +658,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "15750000",
+    nilaiRekapitulasiAngsuran: "3150000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "sengketa_pengadilan",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 8. Disdagkop UKM — revisi, Neraca Awal & Rekapitulasi Angsuran belum dilampirkan
   {
-    id: "FP-2025-008",
+    id: buildIdPengajuan(3, "Disdagkop UKM", "2025-08-04T10:12:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "revisi",
     createdAt: "2025-08-04T10:12:00Z",
+    nomorPengajuan: buildNomorPengajuan(8, "2025-08-04T10:12:00Z"),
     updatedAt: "2025-08-06T09:40:00Z",
     nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — usia_pencatatan & angsuran_minim
@@ -567,7 +710,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "1",
     totalNilaiPiutang: "3600000",
     jenisPiutang: "Piutang Lain-lain PAD yang Sah",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: true,
       dokumenResmi: true,
@@ -587,15 +730,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "3600000",
+    nilaiRekapitulasiAngsuran: "",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: null,
+    opsiTidakDapatDiserahkanPUPN: "ditolak_pupn",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 9. Disdagkop UKM — teregistrasi, pakai Surat Pernyataan OPD (bukan riwayat tagihan)
   {
-    id: "FP-2025-009",
+    id: buildIdPengajuan(4, "Disdagkop UKM", "2025-09-01T13:00:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "teregistrasi",
     createdAt: "2025-09-01T13:00:00Z",
+    nomorPengajuan: buildNomorPengajuan(9, "2025-09-01T13:00:00Z"),
     updatedAt: "2025-09-03T11:15:00Z",
     nomorRegistrasi: buildNomorRegistrasi(
       3,
@@ -646,15 +803,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: filePernyataanOPD,
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "5300000",
+    nilaiRekapitulasiAngsuran: "1060000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "dokumen_tidak_memadai",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 10. Disdagkop UKM — diajukan, baru 2 dari 3 riwayat penagihan & dasar piutang tidak ada
   {
-    id: "FP-2025-010",
+    id: buildIdPengajuan(5, "Disdagkop UKM", "2025-09-20T09:05:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "diajukan",
     createdAt: "2025-09-20T09:05:00Z",
+    nomorPengajuan: buildNomorPengajuan(10, "2025-09-20T09:05:00Z"),
     updatedAt: "2025-09-20T09:05:00Z",
     nomorRegistrasi: null,
     namaPenanggungJawab: "Rudi Setiawan, S.E., M.M.",
@@ -665,7 +836,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "2",
     totalNilaiPiutang: "7150000",
     jenisPiutang: "Piutang Retribusi Daerah",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: true,
       dokumenResmi: true,
@@ -685,15 +856,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "7150000",
+    nilaiRekapitulasiAngsuran: "1430000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "jumlah_tidak_pasti",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 11. Disdagkop UKM — revisi, dasar piutang dipilih "ada" tapi file belum diunggah
   {
-    id: "FP-2025-011",
+    id: buildIdPengajuan(6, "Disdagkop UKM", "2025-10-06T14:20:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "revisi",
     createdAt: "2025-10-06T14:20:00Z",
+    nomorPengajuan: buildNomorPengajuan(11, "2025-10-06T14:20:00Z"),
     updatedAt: "2025-10-08T10:00:00Z",
     nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — nilai_sesuai belum terpenuhi karena
@@ -743,15 +928,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "21400000",
+    nilaiRekapitulasiAngsuran: "4280000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "sengketa_pengadilan",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 12. Disdagkop UKM — teregistrasi, dasar piutang tidak ada (tidak wajib)
   {
-    id: "FP-2025-012",
+    id: buildIdPengajuan(7, "Disdagkop UKM", "2025-10-15T08:40:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "teregistrasi",
     createdAt: "2025-10-15T08:40:00Z",
+    nomorPengajuan: buildNomorPengajuan(12, "2025-10-15T08:40:00Z"),
     updatedAt: "2025-10-17T14:30:00Z",
     nomorRegistrasi: buildNomorRegistrasi(
       4,
@@ -782,7 +981,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "5",
     totalNilaiPiutang: "32100000",
     jenisPiutang: "Piutang Lain-lain PAD yang Sah",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: true,
       dokumenResmi: true,
@@ -802,15 +1001,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "32100000",
+    nilaiRekapitulasiAngsuran: "6420000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "ditolak_pupn",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 13. Disdagkop UKM — diajukan, pakai Surat Pernyataan OPD
   {
-    id: "FP-2025-013",
+    id: buildIdPengajuan(8, "Disdagkop UKM", "2025-11-04T10:50:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "diajukan",
     createdAt: "2025-11-04T10:50:00Z",
+    nomorPengajuan: buildNomorPengajuan(13, "2025-11-04T10:50:00Z"),
     updatedAt: "2025-11-04T10:50:00Z",
     nomorRegistrasi: null,
     namaPenanggungJawab: "Rudi Setiawan, S.E., M.M",
@@ -841,15 +1054,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: filePernyataanOPD,
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "8200000",
+    nilaiRekapitulasiAngsuran: "1640000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "dokumen_tidak_memadai",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 14. Disdagkop UKM — revisi, pengajuan sangat tidak lengkap (mirip kasus SETWAN)
   {
-    id: "FP-2025-014",
+    id: buildIdPengajuan(9, "Disdagkop UKM", "2025-11-18T09:00:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "revisi",
     createdAt: "2025-11-18T09:00:00Z",
+    nomorPengajuan: buildNomorPengajuan(14, "2025-11-18T09:00:00Z"),
     updatedAt: "2025-11-19T15:45:00Z",
     nomorRegistrasi: null,
     // Jejak audit verifikasi BPKAD — hampir seluruh dokumen pendukung dan
@@ -879,7 +1106,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "1",
     totalNilaiPiutang: "2450000",
     jenisPiutang: "Piutang Retribusi Daerah",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: false,
       dokumenResmi: false,
@@ -902,15 +1129,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "",
+    nilaiRekapitulasiAngsuran: "",
+    persyaratanPiutangMacet: null,
+    persyaratanUsiaPencatatan: null,
+    opsiTidakDapatDiserahkanPUPN: "jumlah_tidak_pasti",
+    buktiTidakMampuKartuKeluargaMiskin: null,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: null,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "tidak",
+    buktiUpayaOptimal: null,
   },
-  // 15. Disdagkop UKM — teregistrasi, pengajuan terbesar (7 debitur)
   {
-    id: "FP-2025-015",
+    id: buildIdPengajuan(10, "Disdagkop UKM", "2025-12-01T11:20:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "teregistrasi",
     createdAt: "2025-12-01T11:20:00Z",
+    nomorPengajuan: buildNomorPengajuan(15, "2025-12-01T11:20:00Z"),
     updatedAt: "2025-12-03T09:50:00Z",
     nomorRegistrasi: buildNomorRegistrasi(
       5,
@@ -961,15 +1202,29 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "ada",
     dokumenDasarPiutang: fileDasarPiutang,
+    nilaiRekapitulasiSaldoPiutang: "45600000",
+    nilaiRekapitulasiAngsuran: "9120000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "sengketa_pengadilan",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
-  // 16. Disdagkop UKM — diajukan, pengajuan baru & lengkap, dasar piutang tidak ada
   {
-    id: "FP-2025-016",
+    id: buildIdPengajuan(11, "Disdagkop UKM", "2025-12-10T13:35:00Z"),
     opdId: "OPD-DISDAGKOPUKM",
     namaOPD: "Disdagkop UKM",
     createdBy: "user-disdagkopukm",
     status: "diajukan",
     createdAt: "2025-12-10T13:35:00Z",
+    nomorPengajuan: buildNomorPengajuan(16, "2025-12-10T13:35:00Z"),
     updatedAt: "2025-12-10T13:35:00Z",
     nomorRegistrasi: null,
     namaPenanggungJawab: "Rudi Setiawan, S.E., M.M",
@@ -980,7 +1235,7 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     jumlahDebitur: "3",
     totalNilaiPiutang: "13900000",
     jenisPiutang: "Piutang Retribusi Daerah",
-    jenisPenghapusan: "Penghapusan Mutlak",
+    jenisPenghapusan: "Penghapusan Bersyarat",
     pernyataan: {
       dataBenar: true,
       dokumenResmi: true,
@@ -1000,5 +1255,19 @@ export const MOCK_DATA: FormulirPenghapusanPiutangOPDRecord[] = [
     filePernyataanOPD: null,
     opsiDokumenDasarPiutang: "tidak_ada",
     dokumenDasarPiutang: null,
+    nilaiRekapitulasiSaldoPiutang: "13900000",
+    nilaiRekapitulasiAngsuran: "2780000",
+    persyaratanPiutangMacet: filePersyaratanMacet,
+    persyaratanUsiaPencatatan: filePersyaratanUsia,
+    opsiTidakDapatDiserahkanPUPN: "ditolak_pupn",
+    buktiTidakMampuKartuKeluargaMiskin: fileSuratTidakMampu,
+    buktiTidakMampuPutusanPailit: null,
+    buktiTidakMampuSuratKeteranganKelurahan: null,
+    buktiTidakMampuBantuanSosial: null,
+    buktiTidakMampuKunjunganPenagihan: fileTagihan1,
+    opsiKerjaSamaPihakKetiga: "tidak",
+    buktiKerjaSamaPihakKetiga: null,
+    opsiUpayaOptimal: "ada",
+    buktiUpayaOptimal: fileTagihan2,
   },
 ];

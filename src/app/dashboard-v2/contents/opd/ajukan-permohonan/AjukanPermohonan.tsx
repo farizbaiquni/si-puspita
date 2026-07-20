@@ -3,29 +3,21 @@
 import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import type {
+  FormulirPenghapusanPiutangOPD,
   FormulirPenghapusanPiutangOPDRecord,
-  JenisPenghapusan,
-  JenisPiutang,
-  OpsiDokumenDasarPiutang,
-  OpsiRiwayatPenagihan,
-  UploadedFileRef,
-} from "@/types/types-v2";
+  PernyataanOPD,
+} from "@/types/types";
 import {
   JENIS_PENGHAPUSAN_OPTIONS,
   JENIS_PIUTANG_OPTIONS,
   OPSI_RIWAYAT_PENAGIHAN_LABEL,
-} from "@/types/types-v2";
+  getOpdByNama,
+} from "@/types/types";
+import { createPengajuan } from "@/lib/pengajuan";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
-
-interface PernyataanOPD {
-  dataBenar: boolean;
-  dokumenResmi: boolean;
-  upayaPenagihan: boolean;
-  bersediaPerbaiki: boolean;
-}
 
 interface FormData {
   // Langkah 1 – Data Pengajuan
@@ -100,83 +92,6 @@ const formatRupiah = (value: string): string => {
 
 const parseRupiah = (value: string): string => {
   return value.replace(/[^0-9]/g, "");
-};
-
-/**
- * Konversi File mentah -> UploadedFileRef.
- * Catatan: di sini belum ada proses upload sungguhan ke storage (S3 /
- * Supabase Storage / dll). URL dibuat via createObjectURL agar dokumen
- * tetap bisa dibuka/di-preview oleh BPKAD di panel verifikasi selama sesi
- * browser ini berjalan. Saat backend upload sudah tersedia, cukup ganti
- * bagian `url` di bawah dengan URL hasil upload sesungguhnya.
- */
-const toUploadedFileRef = (file: File): UploadedFileRef => ({
-  id: `FILE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  url: URL.createObjectURL(file),
-  namaFile: file.name,
-  ukuranBytes: file.size,
-  uploadedAt: new Date().toISOString(),
-});
-
-const toUploadedFileRefOrNull = (file: File | null): UploadedFileRef | null =>
-  file ? toUploadedFileRef(file) : null;
-
-/**
- * Bangun FormulirPenghapusanPiutangOPDRecord dari state form wizard.
- * id/opdId/createdBy di sini masih placeholder (belum ada backend/auth
- * sungguhan) — gampang diganti begitu ada API submit yang sesungguhnya.
- */
-const buildPengajuanRecord = (
-  form: FormData,
-): FormulirPenghapusanPiutangOPDRecord => {
-  const now = new Date().toISOString();
-  const id = `REG-${Date.now()}`;
-
-  return {
-    id,
-    opdId: "OPD-DISHUB",
-    createdBy: "opd-dishub",
-    namaOPD: form.namaOPD,
-    status: "diajukan",
-    createdAt: now,
-    updatedAt: now,
-    nomorRegistrasi: null,
-    namaPenanggungJawab: form.namaPenanggungJawab,
-    jabatan: form.jabatan,
-    nomorSurat: form.nomorSurat,
-    tanggalSurat: form.tanggalSurat,
-    fileSurat: toUploadedFileRefOrNull(form.fileSurat),
-    jumlahDebitur: form.jumlahDebitur,
-    totalNilaiPiutang: form.totalNilaiPiutang,
-    jenisPiutang: form.jenisPiutang as JenisPiutang,
-    jenisPenghapusan: form.jenisPenghapusan as JenisPenghapusan,
-
-    // Dokumen nominatif — sekarang field datar, bukan objek nested
-    suratPengantarUsulan: toUploadedFileRefOrNull(form.suratPengantarUsulan),
-    daftarNominatifPiutang: toUploadedFileRefOrNull(
-      form.daftarNominatifPiutang,
-    ),
-    rekapitulasiSaldoPiutang: toUploadedFileRefOrNull(
-      form.rekapitulasiSaldoPiutang,
-    ),
-    neracaAwalPencatatanPiutang: toUploadedFileRefOrNull(
-      form.neracaAwalPencatatanPiutang,
-    ),
-    dokumenPendukungSuratTidakMampuBayar: toUploadedFileRefOrNull(
-      form.dokumenPendukungSuratTidakMampuBayar,
-    ),
-    rekapitulasiAngsuran: toUploadedFileRefOrNull(form.rekapitulasiAngsuran),
-    opsiRiwayatPenagihan: form.opsiRiwayatPenagihan as OpsiRiwayatPenagihan,
-    riwayatPenagihan1: toUploadedFileRefOrNull(form.riwayatPenagihan1),
-    riwayatPenagihan2: toUploadedFileRefOrNull(form.riwayatPenagihan2),
-    riwayatPenagihan3: toUploadedFileRefOrNull(form.riwayatPenagihan3),
-    filePernyataanOPD: toUploadedFileRefOrNull(form.filePernyataanOPD),
-    opsiDokumenDasarPiutang:
-      form.opsiDokumenDasarPiutang as OpsiDokumenDasarPiutang,
-    dokumenDasarPiutang: toUploadedFileRefOrNull(form.dokumenDasarPiutang),
-
-    pernyataan: form.pernyataan,
-  };
 };
 
 /* ------------------------------------------------------------------ */
@@ -823,12 +738,19 @@ const FileUploadCard = ({
 /*  Komponen Utama                                                     */
 /* ------------------------------------------------------------------ */
 export default function AjukanPermohonanWizard({
-  onSubmitPengajuan,
+  onSubmitPengajuan: _onSubmitPengajuan,
   allowFreeNavigation = false,
   defaultNamaOPD = "",
   onRequireLogin,
 }: {
-  /** Dipanggil setelah submit berhasil — parent yang menambahkan ke daftar/state */
+  /**
+   * @deprecated Sejak submit ditulis langsung ke Firestore lewat
+   * createPengajuan() (lib/pengajuan.ts), callback ini tidak lagi
+   * dipanggil — daftar pengajuan sekarang dibaca real-time dari Firestore
+   * (lihat rencana onSnapshot di LihatDaftarPengajuan.tsx), bukan
+   * diteruskan manual dari sini. Dibiarkan opsional di prop supaya
+   * pemanggil lama tidak error kalau masih mengirim prop ini.
+   */
   onSubmitPengajuan?: (record: FormulirPenghapusanPiutangOPDRecord) => void;
   /**
    * Default `false` (mode dashboard/OPD sudah login): tiap langkah wajib
@@ -881,7 +803,17 @@ export default function AjukanPermohonanWizard({
   // sesungguhnya baru diproses lewat dashboard setelah OPD login.
   const [showLoginRequiredAlert, setShowLoginRequiredAlert] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Pesan error kalau upload dokumen / tulis ke Firestore gagal (mis.
+  // koneksi putus, kuota Cloudinary habis, dsb) — ditampilkan di modal
+  // konfirmasi supaya user tahu harus coba lagi, bukan cuma console.error.
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  // Nomor pengajuan resmi (format XXX/PENGAJUAN/DISDAGKOPUKM/MM/YYYY) hasil
+  // createPengajuan() — ditampilkan di layar sukses supaya OPD punya
+  // nomor referensi buat ditanyakan/dilacak.
+  const [nomorPengajuanBerhasil, setNomorPengajuanBerhasil] = useState<
+    string | null
+  >(null);
   const [docPreview, setDocPreview] = useState<{
     url: string;
     title: string;
@@ -1511,6 +1443,7 @@ export default function AjukanPermohonanWizard({
       }
       setShowLoginRequiredAlert(true);
     } else {
+      setSubmitError(null);
       setShowConfirm(true);
     }
   };
@@ -1521,15 +1454,32 @@ export default function AjukanPermohonanWizard({
   const handleSubmit = async () => {
     if (!validateCurrentStep()) return;
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      const record = buildPengajuanRecord(form);
-      console.log("Data terkirim:", record);
-      onSubmitPengajuan?.(record);
+      // createdBy sementara diturunkan dari nama OPD yang mengisi form
+      // (belum ada sesi login sungguhan) — begitu autentikasi selesai,
+      // ganti ke uid dari Firebase Auth di sini.
+      const createdBy = getOpdByNama(form.namaOPD)?.slug ?? "";
+
+      // Cast aman: FormData di file ini field-per-field sama persis
+      // dengan FormulirPenghapusanPiutangOPD di types.ts (union type
+      // seperti JenisPiutang di sini masih bertipe `string`, sudah
+      // divalidasi oleh validateCurrentStep sebelum submit).
+      const hasil = await createPengajuan(
+        form as unknown as FormulirPenghapusanPiutangOPD,
+        createdBy,
+      );
+
+      setNomorPengajuanBerhasil(hasil.nomorPengajuan);
       setSubmitted(true);
       setShowConfirm(false);
     } catch (err) {
       console.error(err);
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "Gagal mengirim pengajuan. Silakan coba lagi.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -2506,9 +2456,20 @@ export default function AjukanPermohonanWizard({
           <p className="mb-4 text-sm text-gray-600">
             Data dan dokumen telah terkirim.
           </p>
+          {nomorPengajuanBerhasil && (
+            <div className="mx-auto mb-4 inline-block rounded-md border border-[#a7f3d0] bg-[#ecfdf5] px-4 py-2">
+              <p className="text-xs font-semibold tracking-wide text-[#065f46] uppercase">
+                Nomor Pengajuan
+              </p>
+              <p className="font-mono text-base font-bold text-[#065f46]">
+                {nomorPengajuanBerhasil}
+              </p>
+            </div>
+          )}
           <button
             onClick={() => {
               setSubmitted(false);
+              setNomorPengajuanBerhasil(null);
               resetForm();
               setCurrentStep(0);
               setPreviewOpsiRiwayatPenagihan("");
@@ -2657,6 +2618,11 @@ export default function AjukanPermohonanWizard({
               <p className="mb-4 text-sm text-gray-600">
                 Apakah data dan dokumen sudah benar?
               </p>
+              {submitError && (
+                <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {submitError}
+                </p>
+              )}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   onClick={() => setShowConfirm(false)}

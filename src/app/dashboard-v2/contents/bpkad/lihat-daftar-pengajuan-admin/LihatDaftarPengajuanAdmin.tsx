@@ -7,11 +7,11 @@ import type {
   JenisPiutang,
   StatusFormulir,
   UploadedFileRef,
-} from "@/types/types-v2";
+} from "@/types/types";
 import {
   OPSI_DOKUMEN_DASAR_PIUTANG_LABEL,
   OPSI_RIWAYAT_PENAGIHAN_LABEL,
-} from "@/types/types-v2";
+} from "@/types/types";
 import { usePengajuanStore } from "@/store/pengajuan-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
