@@ -20,7 +20,12 @@ export const DAFTAR_OPD: readonly OpdInfo[] = [
   { id: 49, slug: "dishub", nama: "Dinas Perhubungan" },
   { id: 50, slug: "diskominfo", nama: "Dinas Komunikasi dan Informatika" },
   { id: 56, slug: "disdagkopukm", nama: "Dinas Perdagangan Koperasi dan UKM" },
-  { id: 57, slug: "setwan", nama: "Sekretariat Dewan" },
+  { id: 57, slug: "9setwan", nama: "Sekretariat Dewan" },
+  {
+    id: 51,
+    slug: "dpmptsp",
+    nama: "Dinas Penanaman Modal dan Perizinan Terpadu Satu Pintu",
+  },
 ] as const;
 
 export function getOpdBySlug(slug: string): OpdInfo | undefined {

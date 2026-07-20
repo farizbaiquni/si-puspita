@@ -56,7 +56,7 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
     username: "dpmptsp",
     password: "dpmptsp_si_puspita",
     role: "OPD",
-    opdSlug: "DPMPTSP",
+    opdSlug: "dpmptsp",
   },
 ] as const;
 

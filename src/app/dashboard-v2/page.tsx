@@ -117,6 +117,7 @@ const OPD_BADGE_BY_SLUG: Record<string, string> = {
   diskominfo: "DK",
   disdagkopukm: "UKM",
   setwan: "SW",
+  dpmptsp: "DP",
 };
 
 // Singkatan resmi OPD (dipakai sebagai nama utama di Header/ProfileDropdown),
@@ -127,6 +128,7 @@ const OPD_SINGKATAN_BY_SLUG: Record<string, string> = {
   diskominfo: "Diskominfo",
   disdagkopukm: "Disdagkopukm",
   setwan: "Setwan",
+  dpmptsp: "DPMPTSP",
 };
 
 // ── Logo ─────────────────────────────────────────────────────────────────────
@@ -357,6 +359,7 @@ const Header: React.FC<HeaderProps> = ({
   onOpenMobileMenu,
   onLogout,
 }) => {
+  console.log(opdSlug);
   const currentUser =
     role === "ADMIN"
       ? {
