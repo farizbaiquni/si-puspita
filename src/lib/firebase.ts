@@ -3,13 +3,13 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyC_QFXzDb4-HIYuingUrMYz3HucoN5jDAM",
+  authDomain: "si-puspita-b7c29.firebaseapp.com",
+  projectId: "si-puspita-b7c29",
+  storageBucket: "si-puspita-b7c29.firebasestorage.app",
+  messagingSenderId: "248594488095",
+  appId: "1:248594488095:web:fdb52b9a3ee5f90825ae2a",
+  measurementId: "G-TG7B2VRHGW",
 };
 
 // getApps().length dicek supaya tidak inisialisasi app Firebase dua kali

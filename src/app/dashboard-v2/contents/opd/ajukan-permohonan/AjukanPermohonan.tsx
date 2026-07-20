@@ -195,7 +195,7 @@ const steps: StepConfig[] = [
         name: "jabatan",
         label: "Jabatan (Kepala OPD)",
         type: "text",
-        placeholder: "Contoh: Kepala Dinas Perdagangan Koperasi dan UKM",
+        placeholder: "Contoh: Kepala Dinas...",
         required: true,
       },
       {

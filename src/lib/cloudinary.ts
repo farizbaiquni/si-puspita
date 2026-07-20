@@ -1,7 +1,7 @@
 import type { UploadedFileRef } from "@/types/types";
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+const CLOUD_NAME = "ncoljm8y";
+const UPLOAD_PRESET = "si_puspita_unsigned";
 
 /**
  * Upload satu File ke Cloudinary lewat unsigned upload preset (tidak
