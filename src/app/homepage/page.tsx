@@ -2042,9 +2042,9 @@ export default function SiPuspitaLandingPage() {
                   <button
                     type="button"
                     onClick={() => setPanduanOpen(true)}
-                    className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
+                    className="group inline-flex items-center justify-center gap-2 rounded-full border border-dashed border-amber-400/60 bg-amber-50/60 px-5 py-2.5 text-[13.5px] font-semibold text-amber-700 transition-all hover:border-amber-400 hover:bg-amber-50 hover:shadow-md hover:shadow-amber-200/40 active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[14px]"
                   >
-                    <BookOpen className="h-4 w-4" />
+                    <BookOpen className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
                     Panduan Operasional
                   </button>
                 </div>
