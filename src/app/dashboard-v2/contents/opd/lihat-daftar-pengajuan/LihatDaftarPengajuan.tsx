@@ -257,10 +257,6 @@ const IdentifierChip: React.FC<{
   const rawValue = isRegistered ? (nomorRegistrasi ?? null) : nomorPengajuan;
   const label = isRegistered ? "No. Registrasi" : "No. Pengajuan";
   const canCopy = !!rawValue;
-  // Nomor pengajuan & nomor registrasi sekarang sama-sama format resmi
-  // yang pendek dan bermakna (XXX/PENGAJUAN|REG-PUSPITA/DISDAGKOPUKM/MM/YYYY),
-  // jadi tidak perlu dipotong tengah lagi seperti dulu waktu masih pakai
-  // ID Firestore acak.
   const displayValue = rawValue ?? "Belum terbit";
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -466,15 +462,146 @@ const HasilVerifikasiSection: React.FC<{
   );
 };
 
+// ──────────────────── LABEL: ALASAN TIDAK DAPAT DISERAHKAN KE PUPN ─────────
+const PUPN_ALASAN_LABEL: Record<string, string> = {
+  dokumen_tidak_memadai:
+    "Tidak memiliki dokumen pendukung yang memadai sehingga pihak yang bertanggung jawab tidak dapat dipastikan",
+  jumlah_tidak_pasti:
+    "Jumlah piutangnya tidak dapat dipastikan karena dokumen sumber atau bukti pendukung tidak lengkap atau tidak jelas",
+  sengketa_pengadilan: "Masih dalam sengketa di pengadilan",
+  ditolak_pupn: "Telah diserahkan kepada PUPN tetapi dikembalikan atau ditolak",
+};
+
+// ──────────────────── INFO ROW (label/value, dipakai di grid ringkasan) ────
+const InfoRow: React.FC<{
+  icon?: React.ReactNode;
+  uraian: string;
+  value: React.ReactNode;
+}> = ({ icon, uraian, value }) => (
+  <div className="flex items-start gap-2.5 rounded-md border border-[#e2e8f2] bg-white px-3 py-2.5">
+    {icon && <span className="mt-0.5 shrink-0 text-[#1a4e8f]">{icon}</span>}
+    <div className="min-w-0">
+      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+        {uraian}
+      </div>
+      <div className="mt-0.5 text-[13px] leading-snug font-semibold break-words text-[#0f172a]">
+        {value || "-"}
+      </div>
+    </div>
+  </div>
+);
+
+// ──────────────────── DOCUMENT CARD (dipakai di semua daftar dokumen) ──────
+const DocumentCard: React.FC<{
+  label: string;
+  file: UploadedFileRef | null | undefined;
+  keterangan?: string;
+  onPreview: (file: UploadedFileRef, title: string) => void;
+}> = ({ label, file, keterangan, onPreview }) => {
+  const tersedia = !!file;
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-md border px-3 py-2.5 ${
+        tersedia ? "border-[#e2e8f2] bg-white" : "border-red-100 bg-red-50/40"
+      }`}
+    >
+      <div
+        className={`flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-md ${
+          tersedia ? "bg-[#eff6ff] text-[#1a4e8f]" : "bg-red-50 text-red-300"
+        }`}
+      >
+        <IconFile />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p
+          className="truncate text-[12.5px] font-semibold text-[#1a1a2e]"
+          title={label}
+        >
+          {label}
+        </p>
+        {tersedia ? (
+          <p
+            className="truncate text-[11px] text-[#7a8899]"
+            title={file!.namaFile}
+          >
+            {file!.namaFile}
+            {typeof file!.ukuranBytes === "number" && (
+              <> · {(file!.ukuranBytes / 1024 / 1024).toFixed(2)} MB</>
+            )}
+          </p>
+        ) : (
+          <p className="text-[11px] font-medium text-[#c0392b]">
+            {keterangan ?? "Tidak ada"}
+          </p>
+        )}
+      </div>
+      {tersedia && (
+        <button
+          type="button"
+          onClick={() => onPreview(file!, `${label} (${file!.namaFile})`)}
+          className="flex shrink-0 items-center gap-1 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1.5 text-[11px] font-semibold text-[#1a4e8f] shadow-sm transition-all hover:bg-[#dbeafe] hover:shadow-md"
+        >
+          <IconEye />
+          <span className="hidden sm:inline">Preview</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ──────────────────── LEGEND BOX (kelompok dokumen dg judul bingkai) ───────
+const LegendBox: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <div className="relative rounded-md border border-[#dbe4f0] bg-[#fafbfd] px-3 pt-4 pb-3">
+    <span className="absolute -top-2.5 left-3 rounded bg-white px-1.5 text-[10.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
+      {title}
+    </span>
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">{children}</div>
+  </div>
+);
+
 // ──────────────────────── MODAL DETAIL ──────────────────────────
 const ModalDetail: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   onClose: () => void;
 }> = ({ record, onClose }) => {
   const nom = record;
-  const [preview, setPreview] = useState<{ url: string; title: string } | null>(
-    null,
-  );
+  const [preview, setPreview] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
+  const [copiedNomor, setCopiedNomor] = useState(false);
+
+  const refIdentitas = useRef<HTMLDivElement>(null);
+  const refDokumen = useRef<HTMLDivElement>(null);
+  const refSubstantif = useRef<HTMLDivElement>(null);
+  const refVerifikasi = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const isRegistered = record.status === "teregistrasi";
+  const nomorAktif = isRegistered
+    ? record.nomorRegistrasi
+    : record.nomorPengajuan;
+  const labelNomor = isRegistered ? "No. Registrasi" : "No. Pengajuan";
+
+  const handleCopyNomor = async () => {
+    if (!nomorAktif) return;
+    try {
+      await navigator.clipboard.writeText(nomorAktif);
+      setCopiedNomor(true);
+      window.setTimeout(() => setCopiedNomor(false), 1500);
+    } catch {
+      // Clipboard API tidak tersedia — abaikan secara diam-diam.
+    }
+  };
+
+  const openPreview = (file: UploadedFileRef, title: string) =>
+    setPreview({ url: file.url, title });
 
   const identitasRows = [
     { icon: <IconUser />, uraian: "OPD Pengusul", value: record.namaOPD },
@@ -502,7 +629,7 @@ const ModalDetail: React.FC<{
     {
       icon: <IconUsers />,
       uraian: "Jumlah Debitur",
-      value: record.jumlahDebitur,
+      value: `${record.jumlahDebitur} orang`,
     },
     {
       icon: <IconCash />,
@@ -514,14 +641,13 @@ const ModalDetail: React.FC<{
       uraian: "Jenis Penghapusan",
       value: record.jenisPenghapusan,
     },
-    {
-      icon: <IconFile />,
-      uraian: "File Surat Pengantar",
-      value: record.fileSurat ? "Tersedia" : "Tidak ada",
-    },
   ];
 
   const dokumenChecklist = [
+    {
+      label: "Bukti Piutang Macet (SKRD/SK/Surat Perjanjian)",
+      file: nom.persyaratanPiutangMacet,
+    },
     { label: "Surat Pengantar Usulan", file: nom.suratPengantarUsulan },
     {
       label: "Daftar Nominatif Usulan Piutang SKPD",
@@ -535,43 +661,45 @@ const ModalDetail: React.FC<{
         nom.opsiDokumenDasarPiutang === "tidak_ada" ? "Tidak ada" : undefined,
     },
     {
-      label: "Rekapitulasi saldo piutang (Rp)",
-      file: nom.rekapitulasiSaldoPiutang,
+      label: "Rekapitulasi Saldo Piutang (Rp)",
+      file: nom.daftarNominatifPiutang,
     },
     {
-      label: "Neraca awal pencatatan piutang",
-      file: nom.neracaAwalPencatatanPiutang,
+      label: "Neraca Awal Terjadinya Piutang",
+      file: nom.persyaratanUsiaPencatatan,
     },
-    { label: "Rekapitulasi angsuran (Rp)", file: nom.rekapitulasiAngsuran },
     {
-      label: "Dokumen pendukung lainnya (Surat tidak mampu bayar)",
+      label: "Rekapitulasi Angsuran (Rp)",
+      file: nom.daftarNominatifPiutang,
+    },
+    {
+      label: "Dokumen Pendukung (Surat Tidak Mampu Bayar)",
       file: nom.dokumenPendukungSuratTidakMampuBayar,
     },
-    // Riwayat penagihan (1) – muncul selalu, file hanya ada jika opsi "riwayat"
+  ];
+
+  const riwayatPenagihanDokumen = [
     {
-      label: "Riwayat penagihan (1)",
+      label: "Riwayat Penagihan (1)",
       file:
         nom.opsiRiwayatPenagihan === "riwayat_tagihan"
           ? nom.riwayatPenagihan1
           : null,
     },
-    // Riwayat penagihan (2)
     {
-      label: "Riwayat penagihan (2)",
+      label: "Riwayat Penagihan (2)",
       file:
         nom.opsiRiwayatPenagihan === "riwayat_tagihan"
           ? nom.riwayatPenagihan2
           : null,
     },
-    // Riwayat penagihan (3)
     {
-      label: "Riwayat penagihan (3)",
+      label: "Riwayat Penagihan (3)",
       file:
         nom.opsiRiwayatPenagihan === "riwayat_tagihan"
           ? nom.riwayatPenagihan3
           : null,
     },
-    // Surat Pernyataan OPD – muncul selalu, file hanya ada jika opsi "pernyataan"
     {
       label: "Surat Pernyataan OPD",
       file:
@@ -579,6 +707,49 @@ const ModalDetail: React.FC<{
           ? nom.filePernyataanOPD
           : null,
     },
+  ];
+
+  const buktiTidakMampuTerisi = [
+    {
+      label: "Kartu Keluarga Miskin",
+      file: nom.buktiTidakMampuKartuKeluargaMiskin,
+    },
+    { label: "Putusan Pailit", file: nom.buktiTidakMampuPutusanPailit },
+    {
+      label: "Surat Keterangan Kelurahan / Instansi Berwenang",
+      file: nom.buktiTidakMampuSuratKeteranganKelurahan,
+    },
+    {
+      label: "Bukti Penerima Bantuan Sosial (BPNT/BST/PKH)",
+      file: nom.buktiTidakMampuBantuanSosial,
+    },
+    {
+      label: "Bukti Kunjungan Penagihan",
+      file: nom.buktiTidakMampuKunjunganPenagihan,
+    },
+  ];
+
+  const substantifDokumen = [
+    ...(nom.opsiKerjaSamaPihakKetiga === "ya"
+      ? [
+          {
+            label: "Bukti Kerja Sama Pihak Ketiga",
+            file: nom.buktiKerjaSamaPihakKetiga,
+          },
+        ]
+      : []),
+    ...(nom.opsiUpayaOptimal === "ada"
+      ? [{ label: "Bukti Upaya Optimal", file: nom.buktiUpayaOptimal }]
+      : []),
+  ];
+
+  const navItems = [
+    { label: "Identitas Usulan", ref: refIdentitas },
+    ...(record.status !== "diajukan"
+      ? [{ label: "Hasil Verifikasi", ref: refVerifikasi }]
+      : []),
+    { label: "Dokumen Administrasi", ref: refDokumen },
+    { label: "Persyaratan Substantif", ref: refSubstantif },
   ];
 
   return (
@@ -612,6 +783,20 @@ const ModalDetail: React.FC<{
                 <p className="truncate text-sm text-blue-100">
                   {record.namaOPD}
                 </p>
+                {nomorAktif && (
+                  <button
+                    type="button"
+                    onClick={handleCopyNomor}
+                    title="Klik untuk salin nomor"
+                    className="group mt-1.5 inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-[11px] font-medium text-blue-50 transition-colors hover:bg-white/20"
+                  >
+                    <span className="shrink-0 opacity-75">{labelNomor}</span>
+                    <span className="truncate font-mono">{nomorAktif}</span>
+                    <span className="shrink-0 opacity-70 group-hover:opacity-100">
+                      {copiedNomor ? <IconCheck /> : <IconCopy />}
+                    </span>
+                  </button>
+                )}
               </div>
               <button
                 onClick={onClose}
@@ -623,142 +808,119 @@ const ModalDetail: React.FC<{
             </div>
           </div>
 
-          {/* Body dengan scroll */}
-          <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {/* Hasil Verifikasi BPKAD — tampil beda untuk revisi vs teregistrasi */}
-            <HasilVerifikasiSection record={record} />
+          {/* Navigasi cepat antar-bagian — disesuaikan urutan */}
+          <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[#e2e8f2] bg-[#f7f8fa] px-4 py-2 sm:px-6">
+            {navItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => scrollToSection(item.ref)}
+                className="shrink-0 cursor-pointer rounded-full border border-[#e2e8f2] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[#5a6474] transition-colors hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
-            {/* Tabel 1: Identitas Usulan */}
-            <div className="mb-6">
+          {/* Body dengan scroll - URUTAN BARU */}
+          <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+            {/* 1. Identitas Usulan */}
+            <div ref={refIdentitas} className="mb-6 scroll-mt-3">
               <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
                 Identitas Usulan
               </h3>
-              <div className="overflow-x-auto rounded-md border border-[#e2e8f2] bg-white">
-                <table className="w-full min-w-105 border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#f1f5f9] text-[#475569]">
-                      <th className="w-2/5 px-4 py-2.5 text-left font-semibold tracking-wider uppercase">
-                        Uraian
-                      </th>
-                      <th className="px-4 py-2.5 text-left font-semibold tracking-wider uppercase">
-                        Keterangan
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e2e8f2]">
-                    {identitasRows.map((item, i) => (
-                      <tr
-                        key={i}
-                        className={`transition-colors hover:bg-[#f8fafc] ${i % 2 === 0 ? "bg-white" : "bg-[#fafbfc]"}`}
-                      >
-                        <td className="flex items-center gap-2 px-4 py-2.5 font-medium text-[#334155]">
-                          {item.icon}
-                          {item.uraian}
-                        </td>
-                        <td className="px-4 py-2.5 font-semibold text-[#0f172a]">
-                          {item.value}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {identitasRows.map((item, i) => (
+                  <InfoRow
+                    key={i}
+                    icon={item.icon}
+                    uraian={item.uraian}
+                    value={item.value}
+                  />
+                ))}
               </div>
             </div>
 
-            {/* Tabel 2: Persyaratan Administrasi */}
-            <div>
-              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
-                Persyaratan Administrasi
-              </h3>
-              <div className="overflow-x-auto rounded-md border border-[#e2e8f2] bg-white">
-                <table className="w-full min-w-105 border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#f1f5f9] text-[#475569]">
-                      <th className="w-2/5 px-4 py-2.5 text-left font-semibold tracking-wider uppercase">
-                        Nama Dokumen
-                      </th>
-                      <th className="w-1/5 px-4 py-2.5 text-center font-semibold tracking-wider uppercase">
-                        Status
-                      </th>
-                      <th className="px-4 py-2.5 text-center font-semibold tracking-wider uppercase">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e2e8f2]">
-                    {dokumenChecklist.map((doc, idx) => {
-                      const tersedia = !!doc.file;
-                      return (
-                        <tr
-                          key={idx}
-                          className={`transition-colors hover:bg-[#f8fafc] ${idx % 2 === 0 ? "bg-white" : "bg-[#fafbfc]"}`}
-                        >
-                          <td className="px-4 py-2.5 font-medium text-[#0f172a]">
-                            {doc.label}
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            {tersedia ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[11px] font-semibold text-[#065f46]">
-                                <svg
-                                  className="h-3 w-3"
-                                  fill="none"
-                                  viewBox="0 0 14 14"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <path
-                                    d="M3 7l3 3 5-5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                                Tersedia
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#fef2f2] px-2 py-0.5 text-[11px] font-semibold text-[#991b1b]">
-                                <svg
-                                  className="h-3 w-3"
-                                  fill="none"
-                                  viewBox="0 0 14 14"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <path
-                                    d="M4 4l6 6M10 4l-6 6"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                                {doc.keterangan ?? "Tidak ada"}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            {tersedia ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPreview({
-                                    url: doc.file!.url,
-                                    title: `${doc.label} (${doc.file!.namaFile})`,
-                                  })
-                                }
-                                className="inline-flex items-center gap-1 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1.5 text-[11px] font-semibold text-[#1a4e8f] shadow-sm transition-all hover:bg-[#dbeafe] hover:shadow-md"
-                              >
-                                <IconEye />
-                                Preview
-                              </button>
-                            ) : (
-                              <span className="text-[11px] text-[#cbd5e1]">
-                                —
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* 2. Hasil Verifikasi BPKAD — DIPINDAHKAN KE ATAS, DI BAWAH IDENTITAS */}
+            {record.status !== "diajukan" && (
+              <div ref={refVerifikasi} className="scroll-mt-3">
+                <HasilVerifikasiSection record={record} />
               </div>
+            )}
+
+            {/* 3. Dokumen Administrasi */}
+            <div ref={refDokumen} className="mb-6 scroll-mt-3">
+              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+                Dokumen Administrasi
+              </h3>
+              <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {dokumenChecklist.map((doc, idx) => (
+                  <DocumentCard
+                    key={idx}
+                    label={doc.label}
+                    file={doc.file}
+                    keterangan={doc.keterangan}
+                    onPreview={openPreview}
+                  />
+                ))}
+              </div>
+              <LegendBox title="Bukti Surat Riwayat Penagihan">
+                {riwayatPenagihanDokumen.map((doc, idx) => (
+                  <DocumentCard
+                    key={idx}
+                    label={doc.label}
+                    file={doc.file}
+                    onPreview={openPreview}
+                  />
+                ))}
+              </LegendBox>
+            </div>
+
+            {/* 4. Checklist Persyaratan Substantif */}
+            <div ref={refSubstantif} className="mb-6 scroll-mt-3">
+              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+                Checklist Persyaratan Substantif
+              </h3>
+              <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <InfoRow
+                  uraian="Alasan Tidak Dapat Diserahkan ke PUPN"
+                  value={
+                    PUPN_ALASAN_LABEL[nom.opsiTidakDapatDiserahkanPUPN] ?? "-"
+                  }
+                />
+                <InfoRow
+                  uraian="Kerja Sama Penagihan Pihak Ketiga"
+                  value={nom.opsiKerjaSamaPihakKetiga === "ya" ? "Ya" : "Tidak"}
+                />
+                <InfoRow
+                  uraian="Upaya Optimal Sesuai Ketentuan"
+                  value={nom.opsiUpayaOptimal === "ada" ? "Ada" : "Tidak"}
+                />
+              </div>
+              <div className="mb-3">
+                <LegendBox title="Tidak Mempunyai Kemampuan untuk Menyelesaikan Utang">
+                  {buktiTidakMampuTerisi.map((doc, idx) => (
+                    <DocumentCard
+                      key={idx}
+                      label={doc.label}
+                      file={doc.file}
+                      onPreview={openPreview}
+                    />
+                  ))}
+                </LegendBox>
+              </div>
+              {substantifDokumen.length > 0 && (
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {substantifDokumen.map((doc, idx) => (
+                    <DocumentCard
+                      key={idx}
+                      label={doc.label}
+                      file={doc.file}
+                      onPreview={openPreview}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -796,8 +958,8 @@ const ModalDetail: React.FC<{
 };
 
 // ──────────────────── SLOT FILE (upload ulang) DI FORM EDIT ────────────────
-// Menampilkan file yang sudah ada (existingFile) atau file baru yang baru
-// dipilih user (newFile) — dan tombol untuk mengganti/membatalkan penggantian.
+// ... (tidak ada perubahan pada EditFileSlot dan ModalEditRevisi, tetap sama) ...
+
 const EditFileSlot: React.FC<{
   label: string;
   existingFile: UploadedFileRef | null;
@@ -878,9 +1040,7 @@ const EditFileSlot: React.FC<{
 };
 
 // ──────────────────────── MODAL EDIT (KHUSUS STATUS REVISI) ────────────────
-// Memungkinkan OPD memperbaiki input teks & mengunggah ulang PDF sesuai
-// keterangan revisi dari BPKAD, lalu mengajukan ulang (status kembali ke
-// "diajukan" supaya diverifikasi lagi oleh BPKAD).
+// ... (kode ModalEditRevisi tetap sama, tidak diubah) ...
 const ModalEditRevisi: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   onClose: () => void;
@@ -904,7 +1064,6 @@ const ModalEditRevisi: React.FC<{
     record.jenisPenghapusan,
   );
 
-  // File baru per field — null berarti "belum diganti, tetap pakai file lama".
   const [fileBaru, setFileBaru] = useState<
     Partial<Record<string, File | null>>
   >({});
@@ -933,7 +1092,7 @@ const ModalEditRevisi: React.FC<{
         totalNilaiPiutang,
         jenisPiutang,
         jenisPenghapusan,
-        status: "diajukan", // diajukan ulang — menunggu verifikasi BPKAD lagi
+        status: "diajukan",
         updatedAt: new Date().toISOString(),
       };
 
@@ -990,7 +1149,7 @@ const ModalEditRevisi: React.FC<{
           </button>
         </div>
 
-        {/* Catatan revisi BPKAD — pengingat singkat di atas form */}
+        {/* Catatan revisi BPKAD */}
         {record.catatanVerifikasi && (
           <div className="shrink-0 border-b border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[12.5px] text-[#7a1f1f] sm:px-6">
             <span className="font-bold">Catatan BPKAD: </span>
@@ -1017,6 +1176,7 @@ const ModalEditRevisi: React.FC<{
                   className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
+              {/* ... input lainnya ... */}
               <div className="space-y-1">
                 <label className="block text-[12.5px] font-semibold text-[#3a4454]">
                   Jabatan
@@ -1140,6 +1300,7 @@ const ModalEditRevisi: React.FC<{
                 newFile={fileBaru.daftarNominatifPiutang ?? null}
                 onChangeFile={(f) => setFile("daftarNominatifPiutang", f)}
               />
+              {/* ... slot lainnya ... */}
               <EditFileSlot
                 label="Rekapitulasi Saldo Piutang"
                 existingFile={record.rekapitulasiSaldoPiutang}
@@ -1325,30 +1486,12 @@ export default function DaftarPengajuanOPDBaru({
   namaOPDAktif,
 }: {
   data?: FormulirPenghapusanPiutangOPDRecord[];
-  /**
-   * Nama OPD yang sedang login — dipakai untuk memfilter daftar supaya
-   * OPD hanya melihat pengajuannya sendiri. Diteruskan dari page.tsx
-   * (saat ini masih dari konstanta NAMA_OPD, nanti ganti ke nama OPD
-   * dari sesi user begitu autentikasi nyata sudah tersedia). Fallback
-   * ke nama resmi "Dinas Perdagangan Koperasi dan UKM" (dari DAFTAR_OPD)
-   * hanya untuk jaga-jaga bila komponen dipakai
-   * tanpa prop ini (mis. storybook/testing).
-   */
   namaOPDAktif?: string;
 }) {
   const NAMA_OPD_AKTIF =
     namaOPDAktif ?? getOpdBySlug("disdagkopukm")?.nama ?? "";
 
-  // Sumber data utama sekarang Firestore (real-time via onSnapshot di
-  // PengajuanProvider), bukan lagi MOCK_DATA. `dataProp` tetap didukung
-  // untuk kasus testing/storybook yang mau mem-supply data manual.
   const { data: dataStore, isLoading } = usePengajuanStore();
-
-  // Overrides hasil "Simpan & Ajukan Ulang" dari modal edit revisi — di-merge
-  // ke record aslinya supaya perubahan langsung terlihat di daftar.
-  // Catatan: begitu handleSimpan di modal edit memanggil updatePengajuan()
-  // (Firestore) alih-alih hanya state lokal, mekanisme overrides ini bisa
-  // dihapus karena onSnapshot sudah otomatis membawa perubahannya.
   const [overrides, setOverrides] = useState<
     Record<string, Partial<FormulirPenghapusanPiutangOPDRecord>>
   >({});
@@ -1379,7 +1522,6 @@ export default function DaftarPengajuanOPDBaru({
     setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...updates } }));
   };
 
-  // ── Derived stats ──
   const stats = useMemo(() => {
     const total = data.length;
     const diajukan = data.filter((r) => r.status === "diajukan").length;
@@ -1388,10 +1530,8 @@ export default function DaftarPengajuanOPDBaru({
     return { total, diajukan, revisi, teregistrasi };
   }, [data]);
 
-  // ── Filtered + sorted ──
   const filtered = useMemo(() => {
     let result = [...data];
-
     if (filter.search) {
       const q = filter.search.toLowerCase();
       result = result.filter(
@@ -1403,11 +1543,9 @@ export default function DaftarPengajuanOPDBaru({
           r.nomorSurat.toLowerCase().includes(q),
       );
     }
-
     if (filter.status !== "SEMUA") {
       result = result.filter((r) => r.status === filter.status);
     }
-
     result.sort((a, b) => {
       let cmp = 0;
       if (sortKey === "tanggal") {
@@ -1419,11 +1557,9 @@ export default function DaftarPengajuanOPDBaru({
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-
     return result;
   }, [data, filter, sortKey, sortDir]);
 
-  // ── Dikelompokkan per status, urutan tetap: teregistrasi → revisi → diajukan ──
   const grouped = useMemo(() => {
     return STATUS_ORDER.map((status) => ({
       status,
@@ -1431,7 +1567,6 @@ export default function DaftarPengajuanOPDBaru({
     })).filter((g) => g.items.length > 0);
   }, [filtered]);
 
-  // ── Toggle sort key ──
   const toggleSortKey = (key: "tanggal" | "total") => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -1441,7 +1576,6 @@ export default function DaftarPengajuanOPDBaru({
     }
   };
 
-  // ── Render ──
   if (isLoading && !dataProp) {
     return (
       <div className="flex items-center justify-center py-16 text-sm text-[#7a8899]">
@@ -1613,7 +1747,7 @@ export default function DaftarPengajuanOPDBaru({
         </div>
       </div>
 
-      {/* Daftar pengajuan: kartu di layar sempit, tabel di tablet/desktop */}
+      {/* Daftar pengajuan */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-[#e2e8f2] bg-white p-[56px_24px] text-[#7a8899]">
           <div className="text-[#1a4e8f] opacity-35">
@@ -1642,7 +1776,7 @@ export default function DaftarPengajuanOPDBaru({
         </div>
       ) : (
         <>
-          {/* Tampilan kartu — layar sempit (HP/tablet kecil) */}
+          {/* Tampilan mobile */}
           <div className="space-y-4 md:hidden">
             {(() => {
               let counter = 0;
@@ -1669,7 +1803,7 @@ export default function DaftarPengajuanOPDBaru({
             })()}
           </div>
 
-          {/* Tampilan tabel — tablet ke atas, dengan scroll horizontal sebagai jaring pengaman */}
+          {/* Tampilan desktop */}
           <div className="hidden overflow-x-auto rounded-md border border-[#e2e8f2] bg-white md:block">
             <table className="w-full min-w-180 border-collapse text-[13px]">
               <thead>

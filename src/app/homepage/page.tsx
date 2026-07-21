@@ -21,6 +21,7 @@ import {
   Link2,
   Zap,
   CheckCircle2,
+  BookOpen,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -1549,6 +1550,7 @@ export default function SiPuspitaLandingPage() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [lastModalItem, setLastModalItem] = useState<KelopakItem | null>(null);
+  const [panduanOpen, setPanduanOpen] = useState(false);
 
   // Dropdown profil di navbar (desktop) saat sudah login.
   const [profileOpen, setProfileOpen] = useState(false);
@@ -2037,6 +2039,14 @@ export default function SiPuspitaLandingPage() {
                     Verifikasi Admin
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPanduanOpen(true)}
+                    className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#0f2d5e]/15 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-[#0f2d5e] transition-all hover:border-[#0f2d5e]/30 hover:bg-[#0f2d5e]/3 sm:px-6 sm:py-3 sm:text-[14px]"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Panduan Operasional
+                  </button>
                 </div>
 
                 {/* Tagline chip */}
@@ -2515,6 +2525,51 @@ export default function SiPuspitaLandingPage() {
               >
                 Login Sekarang
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════ MODAL: PANDUAN OPERASIONAL (FLIPBOOK) ══════════════════ */}
+      {panduanOpen && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center p-2 sm:p-4"
+          style={{
+            backgroundColor: "rgba(8,13,28,0.65)",
+            backdropFilter: "blur(6px)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPanduanOpen(false);
+          }}
+        >
+          <div className="relative flex h-[97vh] w-[98vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#0f2d5e] to-[#153a75] px-4 py-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10">
+                  <BookOpen className="h-3.5 w-3.5 text-yellow-400" />
+                </div>
+                <h3 className="text-[12.5px] font-semibold tracking-wide text-white">
+                  Panduan Operasional{" "}
+                  <span className="text-yellow-400">Si Puspita</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setPanduanOpen(false)}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:cursor-pointer hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Body: flipbook embed */}
+            <div className="relative flex-1 bg-gray-100">
+              <iframe
+                src="https://heyzine.com/flip-book/e095667c8c.html#page/18"
+                className="absolute inset-0 h-full w-full border-0"
+                allow="fullscreen"
+                allowFullScreen
+              />
             </div>
           </div>
         </div>

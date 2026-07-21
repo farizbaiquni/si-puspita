@@ -572,7 +572,7 @@ const FileUploadCard = ({
             </div>
             <div className="min-w-0 flex-1">
               <p
-                className="truncate text-sm font-medium text-gray-800"
+                className="text-sm font-medium break-all text-gray-800"
                 title={file.name}
               >
                 {file.name}
@@ -976,6 +976,25 @@ export default function AjukanPermohonanWizard({
           delete next[key];
           return next;
         });
+
+        // Selain dicentang, dokumennya sendiri (file PDF) juga wajib
+        // diunggah — sebelumnya tidak ada pengecekan ini sama sekali,
+        // sehingga form bisa lolos ke langkah berikutnya (dan akhirnya
+        // submit) walau field File-nya masih null.
+        markTouched(key + "File");
+        if (!form[fieldName]) {
+          setErrors((prev) => ({
+            ...prev,
+            [key + "File"]: "Dokumen wajib diunggah",
+          }));
+          valid = false;
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next[key + "File"];
+            return next;
+          });
+        }
       }
     });
 
@@ -1616,6 +1635,15 @@ export default function AjukanPermohonanWizard({
     const amountErr = amountKey ? errors[amountKey] : undefined;
     const amountTouched = amountKey ? touched[amountKey] : false;
 
+    // Dokumen pendukung pernyataan ini — `fieldName` dipakai ganda: sebagai
+    // key confirmedDocs (status centang) SEKALIGUS sebagai nama field File
+    // di FormData (mis. "rekapitulasiSaldoPiutang"), jadi bisa langsung
+    // dipakai ke handleFilePendukung/resetFile seperti field file lainnya.
+    const fileFieldKey = fieldName as keyof FormData;
+    const fileValue = form[fileFieldKey] as File | null;
+    const fileErr = errors[key + "File"];
+    const fileTouched = touched[key + "File"];
+
     const viewUrl = viewField
       ? (previewPendukung[viewField as string] ?? null)
       : null;
@@ -1655,16 +1683,25 @@ export default function AjukanPermohonanWizard({
                     delete nextErrors[key];
                     return nextErrors;
                   });
-                } else if (amountField) {
-                  // Batal dicentang -> kosongkan nominal yang sudah diisi
-                  updateField(amountField, "");
-                  if (amountKey) {
-                    setErrors((prev) => {
-                      const nextErrors = { ...prev };
-                      delete nextErrors[amountKey];
-                      return nextErrors;
-                    });
+                } else {
+                  // Batal dicentang -> kosongkan nominal (jika ada) dan
+                  // dokumen yang sudah diunggah untuk pernyataan ini.
+                  if (amountField) {
+                    updateField(amountField, "");
+                    if (amountKey) {
+                      setErrors((prev) => {
+                        const nextErrors = { ...prev };
+                        delete nextErrors[amountKey];
+                        return nextErrors;
+                      });
+                    }
                   }
+                  resetFile(fileFieldKey);
+                  setErrors((prev) => {
+                    const nextErrors = { ...prev };
+                    delete nextErrors[key + "File"];
+                    return nextErrors;
+                  });
                 }
               }}
               aria-pressed={checked}
@@ -1735,6 +1772,65 @@ export default function AjukanPermohonanWizard({
             />
             {amountTouched && amountErr && (
               <p className="text-sm text-red-600">{amountErr}</p>
+            )}
+          </div>
+        )}
+
+        {/* Unggah dokumen pendukung pernyataan ini — sebelumnya TIDAK ADA
+            sama sekali, sehingga field File terkait (mis.
+            rekapitulasiSaldoPiutang) selalu tetap null walau checkbox
+            sudah dicentang dan nominal sudah diisi. Ini yang menyebabkan
+            dokumen/nilai terkait tidak pernah benar-benar tersimpan
+            sebagai file di database. */}
+        {checked && (
+          <div className="mt-2 space-y-1.5 rounded-md border border-gray-200 bg-gray-50 p-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Unggah Dokumen {label.replace(/^\d+\.\s*/, "")}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            {fileValue ? (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
+                <span className="min-w-0 truncate text-sm text-gray-800">
+                  {fileValue.name}
+                </span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <label className="cursor-pointer text-xs font-medium text-blue-700 hover:underline">
+                    Ganti
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={handleFilePendukung(fileFieldKey)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => resetFile(fileFieldKey)}
+                    className="text-xs font-medium text-red-600 hover:underline"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label
+                className={`block w-full cursor-pointer rounded-md border border-dashed px-3 py-2.5 text-center text-sm transition-colors ${
+                  fileTouched && fileErr
+                    ? "border-red-300 bg-red-50 text-red-600"
+                    : "border-gray-300 bg-white text-gray-500 hover:border-blue-300 hover:bg-blue-50"
+                }`}
+              >
+                Klik untuk pilih file PDF (maks. 10 MB)
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleFilePendukung(fileFieldKey)}
+                />
+              </label>
+            )}
+            {fileTouched && fileErr && (
+              <p className="text-sm text-red-600">{fileErr}</p>
             )}
           </div>
         )}
