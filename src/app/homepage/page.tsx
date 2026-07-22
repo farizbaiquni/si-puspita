@@ -1976,7 +1976,7 @@ export default function SiPuspitaLandingPage() {
           <div className="relative mx-auto w-full max-w-7xl px-5 py-14 sm:px-8 sm:py-18 lg:px-10 lg:py-24">
             <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:gap-12">
               {/* ── Kiri: teks utama ── */}
-              <div className="order-2 min-w-0 flex-1 lg:order-1">
+              <div className="min-w-0 flex-1">
                 {/* Heading — warna SiPuspita TIDAK diubah */}
                 <div className="mb-7">
                   <SiPuspitaHeading showSlogan={true} />
@@ -2096,7 +2096,7 @@ export default function SiPuspitaLandingPage() {
               {/* ── Kanan: bunga interaktif ── */}
               {/* Spacer placeholder — menjaga ukuran layout saat bunga jadi fixed */}
               <div
-                className="order-1 flex shrink-0 flex-col items-center lg:order-2"
+                className="flex shrink-0 flex-col items-center"
                 style={{
                   opacity: isModalOpen && !isModalClosing ? 0 : 1,
                   transform:
@@ -2565,7 +2565,7 @@ export default function SiPuspitaLandingPage() {
             {/* Body: flipbook embed */}
             <div className="relative flex-1 bg-gray-100">
               <iframe
-                src="https://heyzine.com/flip-book/e095667c8c.html#page/18"
+                src="https://heyzine.com/flip-book/e095667c8c.html"
                 className="absolute inset-0 h-full w-full border-0"
                 allow="fullscreen"
                 allowFullScreen

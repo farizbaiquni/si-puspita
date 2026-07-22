@@ -462,24 +462,52 @@ const HasilVerifikasiSection: React.FC<{
   );
 };
 
-// ──────────────────── LABEL: ALASAN TIDAK DAPAT DISERAHKAN KE PUPN ─────────
-const PUPN_ALASAN_LABEL: Record<string, string> = {
-  dokumen_tidak_memadai:
-    "Tidak memiliki dokumen pendukung yang memadai sehingga pihak yang bertanggung jawab tidak dapat dipastikan",
-  jumlah_tidak_pasti:
-    "Jumlah piutangnya tidak dapat dipastikan karena dokumen sumber atau bukti pendukung tidak lengkap atau tidak jelas",
-  sengketa_pengadilan: "Masih dalam sengketa di pengadilan",
-  ditolak_pupn: "Telah diserahkan kepada PUPN tetapi dikembalikan atau ditolak",
+// ──────────────────── GROUP CAPTION (penanda kelompok: teks vs berkas) ─────
+// Label kecil di atas tiap grid supaya langsung terlihat apakah isinya data
+// isian formulir (teks) atau berkas PDF yang diunggah — tanpa perlu
+// menebak dari tampilan kartunya saja.
+const GroupCaption: React.FC<{ variant: "teks" | "berkas" }> = ({
+  variant,
+}) => {
+  const isBerkas = variant === "berkas";
+  return (
+    <div className="mb-2 flex items-center gap-1.5">
+      <span
+        className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded ${
+          isBerkas
+            ? "bg-[#eff6ff] text-[#1a4e8f]"
+            : "bg-slate-100 text-slate-500"
+        }`}
+      >
+        {isBerkas ? <IconFile /> : <IconDocument />}
+      </span>
+      <span
+        className={`text-[10px] font-bold tracking-wider uppercase ${
+          isBerkas ? "text-[#1a4e8f]" : "text-slate-500"
+        }`}
+      >
+        {isBerkas ? "Berkas PDF Terunggah" : "Data Isian Formulir"}
+      </span>
+      <span className="h-px flex-1 bg-[#e8edf4]" />
+    </div>
+  );
 };
 
 // ──────────────────── INFO ROW (label/value, dipakai di grid ringkasan) ────
+// Gaya netral (abu-abu, tanpa aksen biru) — sengaja dibuat kontras dengan
+// DocumentCard di bawah supaya "data teks" dan "berkas PDF" tidak tertukar
+// secara visual sekilas pandang.
 const InfoRow: React.FC<{
   icon?: React.ReactNode;
   uraian: string;
   value: React.ReactNode;
 }> = ({ icon, uraian, value }) => (
-  <div className="flex items-start gap-2.5 rounded-md border border-[#e2e8f2] bg-white px-3 py-2.5">
-    {icon && <span className="mt-0.5 shrink-0 text-[#1a4e8f]">{icon}</span>}
+  <div className="flex items-start gap-2.5 rounded-md border border-[#eef1f6] bg-[#f8fafc] px-3 py-2.5">
+    {icon && (
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white text-[#64748b] ring-1 ring-[#e8edf4]">
+        {icon}
+      </span>
+    )}
     <div className="min-w-0">
       <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
         {uraian}
@@ -492,6 +520,8 @@ const InfoRow: React.FC<{
 );
 
 // ──────────────────── DOCUMENT CARD (dipakai di semua daftar dokumen) ──────
+// Gaya "attachment": aksen garis biru di kiri + badge "PDF" eksplisit,
+// supaya langsung terbaca sebagai berkas terunggah, bukan data teks biasa.
 const DocumentCard: React.FC<{
   label: string;
   file: UploadedFileRef | null | undefined;
@@ -501,8 +531,10 @@ const DocumentCard: React.FC<{
   const tersedia = !!file;
   return (
     <div
-      className={`flex items-center gap-3 rounded-md border px-3 py-2.5 ${
-        tersedia ? "border-[#e2e8f2] bg-white" : "border-red-100 bg-red-50/40"
+      className={`flex items-center gap-3 rounded-md border border-l-[3px] bg-white px-3 py-2.5 shadow-xs ${
+        tersedia
+          ? "border-[#e2e8f2] border-l-[#1a4e8f]"
+          : "border-red-100 border-l-red-300 bg-red-50/40"
       }`}
     >
       <div
@@ -513,12 +545,19 @@ const DocumentCard: React.FC<{
         <IconFile />
       </div>
       <div className="min-w-0 flex-1">
-        <p
-          className="truncate text-[12.5px] font-semibold text-[#1a1a2e]"
-          title={label}
-        >
-          {label}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p
+            className="truncate text-[12.5px] font-semibold text-[#1a1a2e]"
+            title={label}
+          >
+            {label}
+          </p>
+          {tersedia && (
+            <span className="shrink-0 rounded-[3px] bg-[#1a4e8f] px-1 py-[1px] text-[9px] font-bold tracking-wide text-white">
+              PDF
+            </span>
+          )}
+        </div>
         {tersedia ? (
           <p
             className="truncate text-[11px] text-[#7a8899]"
@@ -637,6 +676,11 @@ const ModalDetail: React.FC<{
       value: formatRupiah(record.totalNilaiPiutang),
     },
     {
+      icon: <IconCash />,
+      uraian: "Rekapitulasi Angsuran (Rp)",
+      value: formatRupiah(nom.nilaiRekapitulasiAngsuran),
+    },
+    {
       icon: <IconTrash />,
       uraian: "Jenis Penghapusan",
       value: record.jenisPenghapusan,
@@ -709,7 +753,7 @@ const ModalDetail: React.FC<{
     },
   ];
 
-  const buktiTidakMampuTerisi = [
+  const buktiTidakMampuDokumen = [
     {
       label: "Kartu Keluarga Miskin",
       file: nom.buktiTidakMampuKartuKeluargaMiskin,
@@ -729,15 +773,18 @@ const ModalDetail: React.FC<{
     },
   ];
 
+  const kerjaSamaPihakKetigaDokumen = {
+    label:
+      "Telah dilakukan kerja sama penagihan dengan melibatkan pihak ketiga (khusus untuk nominal di atas Rp1 Miliar)",
+    file:
+      nom.opsiKerjaSamaPihakKetiga === "ya"
+        ? nom.buktiKerjaSamaPihakKetiga
+        : null,
+    keterangan:
+      nom.opsiKerjaSamaPihakKetiga === "ya" ? undefined : "Tidak dilakukan",
+  };
+
   const substantifDokumen = [
-    ...(nom.opsiKerjaSamaPihakKetiga === "ya"
-      ? [
-          {
-            label: "Bukti Kerja Sama Pihak Ketiga",
-            file: nom.buktiKerjaSamaPihakKetiga,
-          },
-        ]
-      : []),
     ...(nom.opsiUpayaOptimal === "ada"
       ? [{ label: "Bukti Upaya Optimal", file: nom.buktiUpayaOptimal }]
       : []),
@@ -853,6 +900,7 @@ const ModalDetail: React.FC<{
               <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
                 Dokumen Administrasi
               </h3>
+              <GroupCaption variant="berkas" />
               <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {dokumenChecklist.map((doc, idx) => (
                   <DocumentCard
@@ -881,36 +929,15 @@ const ModalDetail: React.FC<{
               <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
                 Checklist Persyaratan Substantif
               </h3>
-              <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                <InfoRow
-                  uraian="Alasan Tidak Dapat Diserahkan ke PUPN"
-                  value={
-                    PUPN_ALASAN_LABEL[nom.opsiTidakDapatDiserahkanPUPN] ?? "-"
-                  }
-                />
-                <InfoRow
-                  uraian="Kerja Sama Penagihan Pihak Ketiga"
-                  value={nom.opsiKerjaSamaPihakKetiga === "ya" ? "Ya" : "Tidak"}
-                />
-                <InfoRow
-                  uraian="Upaya Optimal Sesuai Ketentuan"
-                  value={nom.opsiUpayaOptimal === "ada" ? "Ada" : "Tidak"}
-                />
-              </div>
               <div className="mb-3">
-                <LegendBox title="Tidak Mempunyai Kemampuan untuk Menyelesaikan Utang">
-                  {buktiTidakMampuTerisi.map((doc, idx) => (
-                    <DocumentCard
-                      key={idx}
-                      label={doc.label}
-                      file={doc.file}
-                      onPreview={openPreview}
-                    />
-                  ))}
-                </LegendBox>
-              </div>
-              {substantifDokumen.length > 0 && (
+                <GroupCaption variant="berkas" />
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <DocumentCard
+                    label={kerjaSamaPihakKetigaDokumen.label}
+                    file={kerjaSamaPihakKetigaDokumen.file}
+                    keterangan={kerjaSamaPihakKetigaDokumen.keterangan}
+                    onPreview={openPreview}
+                  />
                   {substantifDokumen.map((doc, idx) => (
                     <DocumentCard
                       key={idx}
@@ -920,7 +947,19 @@ const ModalDetail: React.FC<{
                     />
                   ))}
                 </div>
-              )}
+              </div>
+              <div className="mb-3">
+                <LegendBox title="Tidak Mempunyai Kemampuan untuk Menyelesaikan Utang">
+                  {buktiTidakMampuDokumen.map((doc, idx) => (
+                    <DocumentCard
+                      key={idx}
+                      label={doc.label}
+                      file={doc.file}
+                      onPreview={openPreview}
+                    />
+                  ))}
+                </LegendBox>
+              </div>
             </div>
           </div>
         </div>
