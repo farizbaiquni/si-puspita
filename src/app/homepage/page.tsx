@@ -1555,6 +1555,7 @@ export default function SiPuspitaLandingPage() {
   // Dropdown profil di navbar (desktop) saat sudah login.
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const bungaSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -1784,6 +1785,25 @@ export default function SiPuspitaLandingPage() {
       }, 600);
     }
   }, [isModalOpen, isModalClosing]);
+
+  // Auto-scroll ke bunga interaktif saat halaman pertama kali dibuka di
+  // mobile/tablet kecil, supaya bunga langsung terlihat di tengah layar
+  // tanpa perlu scroll manual. Hanya dijalankan sekali saat mount, dan
+  // hanya di lebar layar < 768px (breakpoint md ke bawah).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768) return;
+
+    const timer = setTimeout(() => {
+      bungaSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 350);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="overflow-x-hidden bg-white font-sans text-gray-900">
@@ -2108,7 +2128,10 @@ export default function SiPuspitaLandingPage() {
                 }}
               >
                 {/* Piringan navy — panggung untuk bunga interaktif di atas latar putih */}
-                <div className="relative flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72 md:h-76 md:w-76 lg:h-80 lg:w-80">
+                <div
+                  ref={bungaSectionRef}
+                  className="relative flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72 md:h-76 md:w-76 lg:h-80 lg:w-80"
+                >
                   <div className="absolute inset-0 rounded-full bg-[#0f2d5e] shadow-[0_25px_70px_-20px_rgba(15,45,94,0.5)]" />
                   <div className="pointer-events-none absolute inset-6 rounded-full border border-white/10 sm:inset-7.5" />
                   <span className="absolute top-0 left-0 h-4 w-4 border-t-[1.5px] border-l-[1.5px] border-[#e8c84a]/60 sm:h-5 sm:w-5" />
