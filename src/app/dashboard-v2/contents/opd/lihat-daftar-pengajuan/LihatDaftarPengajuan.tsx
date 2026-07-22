@@ -592,8 +592,11 @@ const DocumentCard: React.FC<{
 const LegendBox: React.FC<{
   title: string;
   children: React.ReactNode;
-}> = ({ title, children }) => (
-  <div className="relative rounded-md border border-[#dbe4f0] bg-[#fafbfd] px-3 pt-4 pb-3">
+  className?: string;
+}> = ({ title, children, className = "" }) => (
+  <div
+    className={`relative rounded-md border border-[#dbe4f0] bg-[#fafbfd] px-3 pt-4 pb-3 ${className}`}
+  >
     <span className="absolute -top-2.5 left-3 rounded bg-white px-1.5 text-[10.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
       {title}
     </span>
@@ -717,8 +720,14 @@ const ModalDetail: React.FC<{
       file: nom.daftarNominatifPiutang,
     },
     {
-      label: "Dokumen Pendukung (Surat Tidak Mampu Bayar)",
-      file: nom.dokumenPendukungSuratTidakMampuBayar,
+      label:
+        "Telah dilakukan kerja sama penagihan dengan melibatkan pihak ketiga (khusus untuk nominal di atas Rp1 Miliar)",
+      file:
+        nom.opsiKerjaSamaPihakKetiga === "ya"
+          ? nom.buktiKerjaSamaPihakKetiga
+          : null,
+      keterangan:
+        nom.opsiKerjaSamaPihakKetiga === "ya" ? undefined : "Tidak dilakukan",
     },
   ];
 
@@ -773,17 +782,6 @@ const ModalDetail: React.FC<{
     },
   ];
 
-  const kerjaSamaPihakKetigaDokumen = {
-    label:
-      "Telah dilakukan kerja sama penagihan dengan melibatkan pihak ketiga (khusus untuk nominal di atas Rp1 Miliar)",
-    file:
-      nom.opsiKerjaSamaPihakKetiga === "ya"
-        ? nom.buktiKerjaSamaPihakKetiga
-        : null,
-    keterangan:
-      nom.opsiKerjaSamaPihakKetiga === "ya" ? undefined : "Tidak dilakukan",
-  };
-
   const substantifDokumen = [
     ...(nom.opsiUpayaOptimal === "ada"
       ? [{ label: "Bukti Upaya Optimal", file: nom.buktiUpayaOptimal }]
@@ -791,12 +789,14 @@ const ModalDetail: React.FC<{
   ];
 
   const navItems = [
-    { label: "Identitas Usulan", ref: refIdentitas },
     ...(record.status !== "diajukan"
-      ? [{ label: "Hasil Verifikasi", ref: refVerifikasi }]
+      ? [
+          {
+            label: "Hasil Verifikasi",
+            onClick: () => scrollToSection(refVerifikasi),
+          },
+        ]
       : []),
-    { label: "Dokumen Administrasi", ref: refDokumen },
-    { label: "Persyaratan Substantif", ref: refSubstantif },
   ];
 
   return (
@@ -856,18 +856,20 @@ const ModalDetail: React.FC<{
           </div>
 
           {/* Navigasi cepat antar-bagian — disesuaikan urutan */}
-          <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[#e2e8f2] bg-[#f7f8fa] px-4 py-2 sm:px-6">
-            {navItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => scrollToSection(item.ref)}
-                className="shrink-0 cursor-pointer rounded-full border border-[#e2e8f2] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[#5a6474] transition-colors hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          {navItems.length > 0 && (
+            <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[#e2e8f2] bg-[#f7f8fa] px-4 py-2 sm:px-6">
+              {navItems.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className="shrink-0 cursor-pointer rounded-full border border-[#e2e8f2] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[#5a6474] transition-colors hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Body dengan scroll - URUTAN BARU */}
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
@@ -912,7 +914,7 @@ const ModalDetail: React.FC<{
                   />
                 ))}
               </div>
-              <LegendBox title="Bukti Surat Riwayat Penagihan">
+              <LegendBox title="Bukti Surat Riwayat Penagihan" className="mt-4">
                 {riwayatPenagihanDokumen.map((doc, idx) => (
                   <DocumentCard
                     key={idx}
@@ -926,28 +928,21 @@ const ModalDetail: React.FC<{
 
             {/* 4. Checklist Persyaratan Substantif */}
             <div ref={refSubstantif} className="mb-6 scroll-mt-3">
-              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
-                Checklist Persyaratan Substantif
-              </h3>
-              <div className="mb-3">
-                <GroupCaption variant="berkas" />
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <DocumentCard
-                    label={kerjaSamaPihakKetigaDokumen.label}
-                    file={kerjaSamaPihakKetigaDokumen.file}
-                    keterangan={kerjaSamaPihakKetigaDokumen.keterangan}
-                    onPreview={openPreview}
-                  />
-                  {substantifDokumen.map((doc, idx) => (
-                    <DocumentCard
-                      key={idx}
-                      label={doc.label}
-                      file={doc.file}
-                      onPreview={openPreview}
-                    />
-                  ))}
+              {substantifDokumen.length > 0 && (
+                <div className="mb-3">
+                  <GroupCaption variant="berkas" />
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {substantifDokumen.map((doc, idx) => (
+                      <DocumentCard
+                        key={idx}
+                        label={doc.label}
+                        file={doc.file}
+                        onPreview={openPreview}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="mb-3">
                 <LegendBox title="Tidak Mempunyai Kemampuan untuk Menyelesaikan Utang">
                   {buktiTidakMampuDokumen.map((doc, idx) => (
