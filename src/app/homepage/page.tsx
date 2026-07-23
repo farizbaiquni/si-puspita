@@ -1976,7 +1976,8 @@ export default function SiPuspitaLandingPage() {
           <div className="relative mx-auto w-full max-w-7xl px-5 py-14 sm:px-8 sm:py-18 lg:px-10 lg:py-24">
             <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:gap-12">
               {/* ── Kiri: teks utama ── */}
-              <div className="min-w-0 flex-1">
+              {/* Mobile (<sm): tampil KEDUA, setelah bunga. Tablet ke atas (sm+): tampil pertama seperti semula */}
+              <div className="order-2 min-w-0 flex-1 sm:order-1">
                 {/* Heading — warna SiPuspita TIDAK diubah */}
                 <div className="mb-7">
                   <SiPuspitaHeading showSlogan={true} />
@@ -2095,8 +2096,9 @@ export default function SiPuspitaLandingPage() {
 
               {/* ── Kanan: bunga interaktif ── */}
               {/* Spacer placeholder — menjaga ukuran layout saat bunga jadi fixed */}
+              {/* Mobile (<sm): tampil PERTAMA (setelah header). Tablet ke atas (sm+): tampil kedua/kanan seperti semula */}
               <div
-                className="flex shrink-0 flex-col items-center"
+                className="order-1 flex shrink-0 flex-col items-center sm:order-2"
                 style={{
                   opacity: isModalOpen && !isModalClosing ? 0 : 1,
                   transform:
