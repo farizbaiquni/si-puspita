@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useMemo, useRef, type ChangeEvent } from "react";
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+  type ChangeEvent,
+} from "react";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
@@ -512,7 +518,7 @@ const InfoRow: React.FC<{
       <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
         {uraian}
       </div>
-      <div className="mt-0.5 text-[13px] leading-snug font-semibold break-words text-[#0f172a]">
+      <div className="mt-0.5 text-[13px] leading-snug font-semibold wrap-break-word text-[#0f172a]">
         {value || "-"}
       </div>
     </div>
@@ -553,7 +559,7 @@ const DocumentCard: React.FC<{
             {label}
           </p>
           {tersedia && (
-            <span className="shrink-0 rounded-[3px] bg-[#1a4e8f] px-1 py-[1px] text-[9px] font-bold tracking-wide text-white">
+            <span className="shrink-0 rounded-[3px] bg-[#1a4e8f] px-1 py-px text-[9px] font-bold tracking-wide text-white">
               PDF
             </span>
           )}
@@ -621,9 +627,23 @@ const ModalDetail: React.FC<{
   const refSubstantif = useRef<HTMLDivElement>(null);
   const refVerifikasi = useRef<HTMLDivElement>(null);
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  // Handler stabil — refs baru dibaca (.current) saat tombol benar-benar
+  // diklik, bukan saat render. Data yang dirender (navItems) hanya berisi
+  // id string, tidak menyimpan objek ref sama sekali.
+  const handleNavClick = useCallback(
+    (id: "verifikasi" | "dokumen" | "substantif" | "identitas") => {
+      const targetRef =
+        id === "verifikasi"
+          ? refVerifikasi
+          : id === "dokumen"
+            ? refDokumen
+            : id === "substantif"
+              ? refSubstantif
+              : refIdentitas;
+      targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [],
+  );
 
   const isRegistered = record.status === "teregistrasi";
   const nomorAktif = isRegistered
@@ -792,8 +812,8 @@ const ModalDetail: React.FC<{
     ...(record.status !== "diajukan"
       ? [
           {
+            id: "verifikasi" as const,
             label: "Hasil Verifikasi",
-            onClick: () => scrollToSection(refVerifikasi),
           },
         ]
       : []),
@@ -860,9 +880,9 @@ const ModalDetail: React.FC<{
             <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[#e2e8f2] bg-[#f7f8fa] px-4 py-2 sm:px-6">
               {navItems.map((item) => (
                 <button
-                  key={item.label}
+                  key={item.id}
                   type="button"
-                  onClick={item.onClick}
+                  onClick={() => handleNavClick(item.id)}
                   className="shrink-0 cursor-pointer rounded-full border border-[#e2e8f2] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[#5a6474] transition-colors hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
                 >
                   {item.label}

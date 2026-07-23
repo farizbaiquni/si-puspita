@@ -572,7 +572,7 @@ const FileUploadCard = ({
             </div>
             <div className="min-w-0 flex-1">
               <p
-                className="text-sm font-medium break-all text-gray-800"
+                className="truncate text-sm font-medium text-gray-800"
                 title={file.name}
               >
                 {file.name}
@@ -964,6 +964,15 @@ export default function AjukanPermohonanWizard({
       "dokumenPendukungSuratTidakMampuBayar",
       "rekapitulasiAngsuran",
     ];
+    // Item 4, 6, 7, 8 tidak punya menu upload sendiri — dokumennya sudah
+    // diwakilkan oleh dokumen lain (mis. item 2), jadi tidak perlu validasi
+    // file untuk field-field ini.
+    const checkboxFieldsWithoutFileRequirement: (keyof FormData)[] = [
+      "rekapitulasiSaldoPiutang",
+      "neracaAwalPencatatanPiutang",
+      "rekapitulasiAngsuran",
+      "dokumenPendukungSuratTidakMampuBayar",
+    ];
     checkboxFields.forEach((fieldName) => {
       const key = fieldName as string;
       markTouched(key);
@@ -976,6 +985,10 @@ export default function AjukanPermohonanWizard({
           delete next[key];
           return next;
         });
+
+        if (checkboxFieldsWithoutFileRequirement.includes(fieldName)) {
+          return;
+        }
 
         // Selain dicentang, dokumennya sendiri (file PDF) juga wajib
         // diunggah — sebelumnya tidak ada pengecekan ini sama sekali,
@@ -1157,6 +1170,23 @@ export default function AjukanPermohonanWizard({
         return next;
       });
     }
+
+    // 7b. Jika salah satu opsi sudah dicentang (kotak centang gated) tetapi
+    // dokumennya belum diunggah, tampilkan juga peringatan khusus di kartu
+    // opsi tersebut — bukan hanya peringatan umum "minimal salah satu" di atas.
+    buktiTidakMampuKeys.forEach((key) => {
+      markTouched(key);
+      if (confirmedDocs[key] && !form[key]) {
+        setErrors((prev) => ({ ...prev, [key]: "Dokumen wajib diunggah" }));
+        valid = false;
+      } else {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
+    });
 
     // 8. Kerja sama penagihan dengan pihak ketiga (khusus nominal > Rp 1 Milyar)
     markTouched("opsiKerjaSamaPihakKetiga");
@@ -1624,6 +1654,7 @@ export default function AjukanPermohonanWizard({
     infoText?: string[],
     infoTitle: string = "Usia pencatatan piutang telah memenuhi ketentuan:",
     viewField?: keyof FormData,
+    hideUpload: boolean = false,
   ) => {
     const key = fieldName as string;
     const checked = !!confirmedDocs[key];
@@ -1781,8 +1812,11 @@ export default function AjukanPermohonanWizard({
             rekapitulasiSaldoPiutang) selalu tetap null walau checkbox
             sudah dicentang dan nominal sudah diisi. Ini yang menyebabkan
             dokumen/nilai terkait tidak pernah benar-benar tersimpan
-            sebagai file di database. */}
-        {checked && (
+            sebagai file di database.
+            Catatan: untuk item 4 (Rekapitulasi saldo piutang) upload ini
+            sengaja disembunyikan (hideUpload) karena dokumennya sudah
+            diwakilkan oleh item 2 (Daftar Nominatif Usulan Piutang SKPD). */}
+        {checked && !hideUpload && (
           <div className="mt-2 space-y-1.5 rounded-md border border-gray-200 bg-gray-50 p-3">
             <label className="block text-sm font-medium text-gray-700">
               Unggah Dokumen {label.replace(/^\d+\.\s*/, "")}{" "}
@@ -1930,11 +1964,17 @@ export default function AjukanPermohonanWizard({
           </div>
         </div>
 
-        {/* 4. Rekapitulasi saldo piutang (Rp) */}
+        {/* 4. Rekapitulasi saldo piutang (Rp)
+            Tidak ada menu upload dokumen tersendiri — sudah diwakilkan oleh
+            dokumen "2. Daftar Nominatif Usulan Piutang SKPD" di atas. */}
         {renderCheckboxQuestion(
           "rekapitulasiSaldoPiutang",
           "4. Rekapitulasi saldo piutang (Rp)",
           "nilaiRekapitulasiSaldoPiutang",
+          undefined,
+          undefined,
+          undefined,
+          true,
         )}
 
         {/* Riwayat Penagihan / Pernyataan OPD — tampilan saja, dipilih ulang
@@ -1993,7 +2033,7 @@ export default function AjukanPermohonanWizard({
           </div>
         </div>
 
-        {/* 6. Neraca awal pencatatan piutang */}
+        {/* 6. Neraca awal pencatatan piutang — tidak ada menu upload sendiri */}
         {renderCheckboxQuestion(
           "neracaAwalPencatatanPiutang",
           "6. Neraca awal pencatatan piutang",
@@ -2003,16 +2043,24 @@ export default function AjukanPermohonanWizard({
             "Di atas 7 th untuk nominal Rp 8 jt sd. 50 jt per penanggung",
             "Di atas 10 th untuk nominal > Rp 50 jt per penanggung",
           ],
+          undefined,
+          undefined,
+          true,
         )}
 
-        {/* 7. Rekapitulasi angsuran (Rp) */}
+        {/* 7. Rekapitulasi angsuran (Rp) — tidak ada menu upload sendiri */}
         {renderCheckboxQuestion(
           "rekapitulasiAngsuran",
           "7. Rekapitulasi angsuran (Rp)",
           "nilaiRekapitulasiAngsuran",
+          undefined,
+          undefined,
+          undefined,
+          true,
         )}
 
-        {/* 8. Dokumen pendukung lainnya (Surat tidak mampu bayar) */}
+        {/* 8. Dokumen pendukung lainnya (Surat tidak mampu bayar) — tidak ada
+            menu upload sendiri */}
         {renderCheckboxQuestion(
           "dokumenPendukungSuratTidakMampuBayar",
           "8. Dokumen pendukung lainnya (Surat tidak mampu bayar)",
@@ -2025,6 +2073,8 @@ export default function AjukanPermohonanWizard({
             "Bukti kunjungan penagihan oleh petugas di lingkungan instansi Pejabat Pengelola Keuangan Daerah dalam bentuk surat kunjungan atau berita acara atau bukti lain yang menyimpulkan bahwa Penanggung Utang tidak mempunyai kemampuan untuk menyelesaikan utang atau tidak diketahui lagi tempat tinggalnya",
           ],
           "Dibuktikan dengan salah satu atau lebih dokumen berupa:",
+          undefined,
+          true,
         )}
       </div>
     );
@@ -2111,10 +2161,15 @@ export default function AjukanPermohonanWizard({
 
     return (
       <div className="space-y-6">
-        {/* 1. Tidak ada barang jaminan */}
+        {/* 1. Tidak ada barang jaminan — tidak ada menu upload sendiri */}
         {renderCheckboxQuestion(
           "persyaratanTidakAdaBarangJaminan",
           "1. Tidak ada barang jaminan/barang jaminan tidak bernilai ekonomis",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
         )}
 
         {/* 2. Piutang telah berstatus macet */}
@@ -2193,7 +2248,9 @@ export default function AjukanPermohonanWizard({
           </div>
         </div>
 
-        {/* 5. Nilai piutang telah sesuai ketentuan */}
+        {/* 5. Nilai piutang telah sesuai ketentuan — tidak ada menu upload
+            sendiri, sudah diwakilkan oleh Daftar Nominatif Usulan Piutang
+            SKPD (bisa dilihat lewat tombol "Lihat") */}
         {renderCheckboxQuestion(
           "persyaratanNilaiPiutangSesuai",
           "5. Nilai piutang telah sesuai ketentuan (data Daftar Nominatif Usulan Piutang SKPD)",
@@ -2201,9 +2258,12 @@ export default function AjukanPermohonanWizard({
           undefined,
           undefined,
           "daftarNominatifPiutang",
+          true,
         )}
 
-        {/* 6. Tidak terdapat angsuran/angsuran < 10% dari total kewajiban */}
+        {/* 6. Tidak terdapat angsuran/angsuran < 10% dari total kewajiban —
+            tidak ada menu upload sendiri, sudah diwakilkan oleh Daftar
+            Nominatif Usulan Piutang SKPD (bisa dilihat lewat tombol "Lihat") */}
         {renderCheckboxQuestion(
           "persyaratanTidakAdaAngsuran",
           "6. Tidak terdapat angsuran/angsuran < 10% dari total kewajiban (data Daftar Nominatif Usulan Piutang SKPD)",
@@ -2211,6 +2271,7 @@ export default function AjukanPermohonanWizard({
           undefined,
           undefined,
           "daftarNominatifPiutang",
+          true,
         )}
 
         {/* 7. Tidak mempunyai kemampuan untuk menyelesaikan utang */}
@@ -2536,10 +2597,16 @@ export default function AjukanPermohonanWizard({
           </div>
         </div>
 
-        {/* 11. Hasil penagihan tidak berhasil */}
+        {/* 11. Hasil penagihan tidak berhasil
+            Tidak ada menu upload dokumen tersendiri untuk item ini. */}
         {renderCheckboxQuestion(
           "persyaratanHasilPenagihanTidakBerhasil",
           "11. Hasil penagihan tidak berhasil",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
         )}
       </div>
     );

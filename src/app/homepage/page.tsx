@@ -2546,7 +2546,7 @@ export default function SiPuspitaLandingPage() {
         >
           <div className="relative flex h-[97vh] w-[98vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#0f2d5e] to-[#153a75] px-4 py-2">
+            <div className="flex shrink-0 items-center justify-between bg-linear-to-r from-[#0f2d5e] to-[#153a75] px-4 py-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10">
                   <BookOpen className="h-3.5 w-3.5 text-yellow-400" />
