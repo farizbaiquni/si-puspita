@@ -518,7 +518,7 @@ const PanelVerifikasi: React.FC<{
 
   return (
     <div className="mx-auto w-full max-w-400">
-      {previewDoc && (
+      {previewDoc?.file && (
         <ModalPreviewPDF
           namaFile={previewDoc.file.namaFile}
           url={previewDoc.file.url}
