@@ -62,7 +62,8 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
 interface DokumenEntry {
   key: string;
   label: string;
-  file: UploadedFileRef;
+  /** null = dokumen ini tidak/belum diupload OPD */
+  file: UploadedFileRef | null;
 }
 
 const NOMINATIF_DOC_LABELS: {
@@ -95,6 +96,48 @@ const NOMINATIF_DOC_LABELS: {
     key: "dokumenPendukungSuratTidakMampuBayar",
     label: "Dokumen pendukung lainnya",
   },
+
+  // ── Checklist Persyaratan Substantif (Langkah 3, ref. PMK 137/2022) ──
+  // Field-field ini sebelumnya belum masuk daftar, padahal sudah diupload
+  // OPD dan ada di FormulirPenghapusanPiutangOPDRecord (lihat types.ts).
+  {
+    key: "persyaratanPiutangMacet",
+    label: "Bukti Pemenuhan Syarat Piutang Macet / Sulit Ditagih",
+  },
+  {
+    key: "persyaratanUsiaPencatatan",
+    label: "Bukti Pemenuhan Syarat Usia Pencatatan Piutang",
+  },
+  // Bukti "Tidak Mampu Bayar" — opsional, hanya salah satu yang terisi
+  // sesuai opsiTidakDapatDiserahkanPUPN yang dipilih OPD.
+  {
+    key: "buktiTidakMampuKartuKeluargaMiskin",
+    label: "Bukti Tidak Mampu Bayar — Kartu Keluarga Miskin",
+  },
+  {
+    key: "buktiTidakMampuPutusanPailit",
+    label: "Bukti Tidak Mampu Bayar — Putusan Pailit",
+  },
+  {
+    key: "buktiTidakMampuSuratKeteranganKelurahan",
+    label: "Bukti Tidak Mampu Bayar — Surat Keterangan Kelurahan",
+  },
+  {
+    key: "buktiTidakMampuBantuanSosial",
+    label: "Bukti Tidak Mampu Bayar — Penerima Bantuan Sosial",
+  },
+  {
+    key: "buktiTidakMampuKunjunganPenagihan",
+    label: "Bukti Tidak Mampu Bayar — Hasil Kunjungan Penagihan",
+  },
+  {
+    key: "buktiKerjaSamaPihakKetiga",
+    label: "Bukti Kerja Sama Pihak Ketiga",
+  },
+  {
+    key: "buktiUpayaOptimal",
+    label: "Bukti Upaya Optimal Penagihan",
+  },
 ];
 
 function buildDokumenList(
@@ -102,19 +145,23 @@ function buildDokumenList(
 ): DokumenEntry[] {
   const list: DokumenEntry[] = [];
 
-  if (pengajuan.fileSurat) {
-    list.push({
-      key: "fileSurat",
-      label: "Surat Pengantar / Usulan (Formulir)",
-      file: pengajuan.fileSurat,
-    });
-  }
+  list.push({
+    key: "fileSurat",
+    label: "Surat Pengantar / Usulan (Formulir)",
+    file: pengajuan.fileSurat ?? null,
+  });
 
+  // Semua field dokumen ikut ditampilkan meski null, supaya verifikator
+  // bisa langsung lihat dokumen mana yang belum dilampirkan OPD — bukan
+  // cuma diam-diam hilang dari daftar (lihat DokumenItem untuk tampilan
+  // status "Tidak diupload").
   NOMINATIF_DOC_LABELS.forEach(({ key, label }) => {
     const value = pengajuan[key];
-    if (value && typeof value === "object" && "url" in value) {
-      list.push({ key, label, file: value as UploadedFileRef });
-    }
+    const file =
+      value && typeof value === "object" && "url" in value
+        ? (value as UploadedFileRef)
+        : null;
+    list.push({ key, label, file });
   });
 
   return list;
@@ -380,27 +427,53 @@ const DokumenItem: React.FC<{
   dok: DokumenEntry;
   onPreview: () => void;
 }> = ({ index, dok, onPreview }) => {
+  const belumUpload = !dok.file;
+
   return (
-    <div className="flex items-center gap-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2.5">
+    <div
+      className={`flex items-center gap-3 rounded-sm border px-3 py-2.5 ${
+        belumUpload
+          ? "border-dashed border-[#e2e8f2] bg-[#fbfbfc]"
+          : "border-[#e2e8f2] bg-[#f7f8fa]"
+      }`}
+    >
       <div className="text-xs text-gray-500">{index + 1}</div>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
-        <IconPdf />
+      <div
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm ${
+          belumUpload ? "bg-[#eef0f3]" : "bg-[#fdecea]"
+        }`}
+      >
+        {belumUpload ? (
+          <span className="text-[#b0bac5]">
+            <IconPdf />
+          </span>
+        ) : (
+          <IconPdf />
+        )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
+        <div
+          className={`mb-0.5 text-[11px] leading-snug font-semibold ${
+            belumUpload ? "text-[#8a96a3]" : "text-[#1a4e8f]"
+          }`}
+        >
           {dok.label}
         </div>
-        <div className="text-[11px] text-[#7a8899]">
-          {formatUkuran(dok.file.ukuranBytes)}
+        <div
+          className={`text-[11px] ${belumUpload ? "text-[#c0392b] italic" : "text-[#7a8899]"}`}
+        >
+          {belumUpload ? "Tidak diupload" : formatUkuran(dok.file!.ukuranBytes)}
         </div>
       </div>
-      <button
-        onClick={onPreview}
-        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:cursor-pointer hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
-      >
-        <IconEye />
-        Lihat PDF
-      </button>
+      {!belumUpload && (
+        <button
+          onClick={onPreview}
+          className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:cursor-pointer hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+        >
+          <IconEye />
+          Lihat PDF
+        </button>
+      )}
     </div>
   );
 };
@@ -568,7 +641,8 @@ const PanelVerifikasi: React.FC<{
           {/* Dokumen pendukung */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-              Dokumen Pendukung ({dokumen.length})
+              Dokumen Pendukung ({dokumen.filter((d) => d.file).length}/
+              {dokumen.length} terupload)
             </div>
             {dokumen.length === 0 ? (
               <div className="rounded-sm border border-dashed border-[#e2e8f2] py-6 text-center text-[13px] text-[#7a8899]">
