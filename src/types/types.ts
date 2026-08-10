@@ -162,7 +162,6 @@ export interface FormulirPenghapusanPiutangOPD {
   buktiKerjaSamaPihakKetiga: File | null;
   opsiUpayaOptimal: OpsiAdaTidak | "";
   buktiUpayaOptimal: File | null;
-
   pernyataan: PernyataanOPD;
 }
 

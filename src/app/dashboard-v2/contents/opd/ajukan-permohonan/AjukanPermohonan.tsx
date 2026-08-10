@@ -1030,23 +1030,20 @@ export default function AjukanPermohonanWizard({
       }
     }
 
-    // Nominal rekapitulasi angsuran (item 7) — wajib diisi jika checkbox dicentang
+    // Nominal rekapitulasi angsuran (item 7) — TIDAK wajib diisi. Kalau
+    // checkbox dicentang tapi nominal dikosongkan (mis. user langsung klik
+    // "Berikutnya" tanpa sempat blur dari input), otomatis diisi "0"
+    // alih-alih memblokir dengan error validasi.
     if (confirmedDocs["rekapitulasiAngsuran"]) {
       markTouched("nilaiRekapitulasiAngsuran");
-      const nominalAngsuran = form.nilaiRekapitulasiAngsuran;
-      if (!nominalAngsuran || parseInt(nominalAngsuran, 10) <= 0) {
-        setErrors((prev) => ({
-          ...prev,
-          nilaiRekapitulasiAngsuran: "Nominal wajib diisi",
-        }));
-        valid = false;
-      } else {
-        setErrors((prev) => {
-          const next = { ...prev };
-          delete next.nilaiRekapitulasiAngsuran;
-          return next;
-        });
+      if (!form.nilaiRekapitulasiAngsuran) {
+        updateField("nilaiRekapitulasiAngsuran", "0");
       }
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.nilaiRekapitulasiAngsuran;
+        return next;
+      });
     }
 
     // Catatan: validasi "opsiRiwayatPenagihan" SENGAJA tidak dilakukan di
@@ -1655,6 +1652,10 @@ export default function AjukanPermohonanWizard({
     infoTitle: string = "Usia pencatatan piutang telah memenuhi ketentuan:",
     viewField?: keyof FormData,
     hideUpload: boolean = false,
+    // Jika true, nominal TIDAK wajib diisi — kalau dikosongkan (blur atau
+    // submit), otomatis dianggap "0" alih-alih memunculkan error validasi.
+    // Dipakai khusus untuk nilaiRekapitulasiAngsuran (item 7).
+    defaultZeroAmount: boolean = false,
   ) => {
     const key = fieldName as string;
     const checked = !!confirmedDocs[key];
@@ -1782,7 +1783,7 @@ export default function AjukanPermohonanWizard({
               className="block text-sm font-medium text-gray-700"
             >
               Nominal {label.replace(/^\d+\.\s*/, "")}{" "}
-              <span className="text-red-500">*</span>
+              {!defaultZeroAmount && <span className="text-red-500">*</span>}
             </label>
             <input
               id={amountKey}
@@ -1793,7 +1794,14 @@ export default function AjukanPermohonanWizard({
               onChange={(e) =>
                 updateField(amountField, parseRupiah(e.target.value))
               }
-              onBlur={() => markTouched(amountKey as string)}
+              onBlur={() => {
+                markTouched(amountKey as string);
+                // Dikosongkan lalu ditinggal (blur) -> otomatis isi "0"
+                // supaya user tidak wajib mengisi manual.
+                if (defaultZeroAmount && !amountValue) {
+                  updateField(amountField, "0");
+                }
+              }}
               placeholder="Rp0"
               className={`w-full rounded-md border px-3 py-2.5 text-sm scheme-light transition outline-none placeholder:text-gray-500 ${
                 amountTouched && amountErr
@@ -2056,6 +2064,7 @@ export default function AjukanPermohonanWizard({
           undefined,
           undefined,
           undefined,
+          true,
           true,
         )}
 
