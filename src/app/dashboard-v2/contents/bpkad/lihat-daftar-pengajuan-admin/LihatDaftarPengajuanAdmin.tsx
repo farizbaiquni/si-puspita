@@ -798,7 +798,7 @@ function LihatDaftarPengajuanAdmin({
       const priorityDiff =
         STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status];
       if (priorityDiff !== 0) return priorityDiff;
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [semuaPengajuan, dataStore]);
 
@@ -1021,6 +1021,7 @@ function LihatDaftarPengajuanAdmin({
                       "Piutang & Nominal",
                       "Status",
                       "Tgl Surat",
+                      "Tgl Input Pengajuan",
                       "Aksi",
                     ].map((label, idx) => (
                       <th
@@ -1039,7 +1040,7 @@ function LihatDaftarPengajuanAdmin({
                     <tbody key={group.status}>
                       {/* Header grup — bisa diklik untuk collapse/expand */}
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f4fb]">
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={7} className="p-0">
                           <button
                             onClick={() => toggleGroup(group.status)}
                             className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-[#e8f0fb]"
@@ -1070,7 +1071,7 @@ function LihatDaftarPengajuanAdmin({
                         (group.items.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="py-5 text-center text-xs text-[#b0bac5]"
                             >
                               Tidak ada pengajuan.
@@ -1128,8 +1129,13 @@ function LihatDaftarPengajuanAdmin({
                                 </td>
 
                                 {/* Tgl Surat */}
-                                <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#7a8899]">
+                                <td className="p-[12px_14px] text-center text-xs whitespace-nowrap text-[#7a8899]">
                                   {formatTanggal(p.tanggalSurat)}
+                                </td>
+
+                                {/* Tgl Input Pengajuan — kapan pengajuan dibuat di sistem (createdAt), beda dari Tgl Surat yang diisi OPD manual */}
+                                <td className="p-[12px_14px] text-center text-xs whitespace-nowrap text-[#7a8899]">
+                                  {formatTanggal(p.createdAt)}
                                 </td>
 
                                 {/* Tombol Aksi — read-only, selalu "Lihat Detail" */}
