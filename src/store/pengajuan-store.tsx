@@ -21,6 +21,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -38,6 +39,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getOpdByNama } from "@/types/types";
 import type { FormulirPenghapusanPiutangOPDRecord } from "@/types/types";
 
 type Data = FormulirPenghapusanPiutangOPDRecord[];
@@ -45,17 +47,23 @@ type Data = FormulirPenghapusanPiutangOPDRecord[];
 const PENGAJUAN_COLLECTION = "pengajuan";
 
 /**
- * Format nomor registrasi resmi: XXX/REG-PUSPITA/DISDAGKOPUKM/MM/YYYY
- * Contoh: 015/REG-PUSPITA/DISDAGKOPUKM/07/2026
+ * Format nomor registrasi resmi: XXX/REG/<KODE_OPD>/MM/YYYY
+ * Contoh: 006/REG/DISHUB/08/2026
+ *
+ * kodeOpd WAJIB diisi pemanggil (diturunkan dari OPD pemilik pengajuan
+ * yang sedang diregistrasi — lihat registrasiPengajuan), sama seperti
+ * pola formatNomorPengajuan di lib/pengajuan.ts. Sebelumnya kode OPD
+ * hardcode "DISDAGKOPUKM" untuk semua OPD — sekarang sudah dinamis.
  */
 function formatNomorRegistrasi(
   urutan: number,
+  kodeOpd: string,
   tanggal: Date = new Date(),
 ): string {
   const xxx = String(urutan).padStart(3, "0");
   const mm = String(tanggal.getMonth() + 1).padStart(2, "0");
   const yyyy = tanggal.getFullYear();
-  return `${xxx}/REG-PUSPITA/DISDAGKOPUKM/${mm}/${yyyy}`;
+  return `${xxx}/REG/${kodeOpd}/${mm}/${yyyy}`;
 }
 
 interface PengajuanStoreValue {
@@ -160,7 +168,10 @@ export function PengajuanProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const getPengajuanById = (id: string) => data.find((d) => d.id === id);
+  const getPengajuanById = useCallback(
+    (id: string) => data.find((d) => d.id === id),
+    [data],
+  );
 
   const registrasiPengajuan = async (
     id: string,
@@ -175,10 +186,23 @@ export function PengajuanProvider({ children }: { children: ReactNode }) {
     const pengajuanRef = doc(db, PENGAJUAN_COLLECTION, id);
 
     return runTransaction(db, async (tx) => {
+      // tx.get() WAJIB dipanggil sebelum tx.set/tx.update mana pun dalam
+      // transaction yang sama — jadi urutan baca di bawah ini (pengajuan
+      // dulu, baru counter) tidak boleh dibalik.
+      const pengajuanSnap = await tx.get(pengajuanRef);
+      const pengajuanData = pengajuanSnap.data() as
+        FormulirPenghapusanPiutangOPDRecord | undefined;
+      const opd = pengajuanData
+        ? getOpdByNama(pengajuanData.namaOPD)
+        : undefined;
+      // Fallback ke opdId kalau namaOPD tidak cocok dengan DAFTAR_OPD
+      // (seharusnya tidak pernah terjadi selama data pengajuan valid).
+      const kodeOpd = (opd?.slug ?? pengajuanData?.opdId ?? "").toUpperCase();
+
       const counterSnap = await tx.get(counterRef);
       const urutan = (counterSnap.data()?.urutanTerakhir ?? 0) + 1;
       const sekarang = new Date();
-      const nomorRegistrasi = formatNomorRegistrasi(urutan, sekarang);
+      const nomorRegistrasi = formatNomorRegistrasi(urutan, kodeOpd, sekarang);
 
       tx.set(counterRef, { urutanTerakhir: urutan }, { merge: true });
       tx.update(pengajuanRef, {
@@ -203,7 +227,7 @@ export function PengajuanProvider({ children }: { children: ReactNode }) {
       getPengajuanById,
       registrasiPengajuan,
     }),
-    [data, isLoading, error],
+    [data, isLoading, error, getPengajuanById],
   );
 
   return (
