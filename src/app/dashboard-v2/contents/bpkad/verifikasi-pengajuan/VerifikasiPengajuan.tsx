@@ -49,6 +49,17 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
   return j ? map[j] : "-";
 }
 
+/** Inisial 1-2 huruf dari nama, untuk avatar bulat Penanggung Jawab OPD. */
+function ambilInisial(nama: string): string {
+  const kata = nama.trim().split(/\s+/).filter(Boolean);
+  if (kata.length === 0) return "?";
+  const inisial = kata
+    .slice(0, 2)
+    .map((k) => k.replace(/[^A-Za-z]/g, "")[0] ?? "")
+    .join("");
+  return (inisial || "?").toUpperCase();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Nomor Registrasi sekarang di-generate oleh registrasiPengajuan() di
 // pengajuan-store.tsx (Firestore transaction, format
@@ -66,105 +77,199 @@ interface DokumenEntry {
   file: UploadedFileRef | null;
 }
 
-const NOMINATIF_DOC_LABELS: {
-  key: keyof FormulirPenghapusanPiutangOPDRecord;
-  label: string;
-}[] = [
-  { key: "suratPengantarUsulan", label: "Surat Pengantar Usulan dari OPD" },
-  {
-    key: "daftarNominatifPiutang",
-    label: "Daftar Nominatif Usulan Piutang SKPD",
-  },
-  {
-    key: "dokumenDasarPiutang",
-    label: "Dokumen yang menjadi dasar timbulnya piutang",
-  },
-  { key: "riwayatPenagihan1", label: "Riwayat Penagihan Ke-1" },
-  { key: "riwayatPenagihan2", label: "Riwayat Penagihan Ke-2" },
-  { key: "riwayatPenagihan3", label: "Riwayat Penagihan Ke-3" },
-  {
-    key: "filePernyataanOPD",
-    label: "Surat Pernyataan OPD (Tanpa Riwayat Penagihan)",
-  },
-  { key: "rekapitulasiSaldoPiutang", label: "Rekapitulasi Saldo Piutang" },
-  { key: "rekapitulasiAngsuran", label: "Rekapitulasi Angsuran" },
-  {
-    key: "neracaAwalPencatatanPiutang",
-    label: "Neraca Awal Pencatatan Piutang",
-  },
-  {
-    key: "dokumenPendukungSuratTidakMampuBayar",
-    label: "Dokumen pendukung lainnya",
-  },
+/**
+ * Struktur tampilan daftar dokumen pendukung — beda dari DokumenEntry
+ * (yang cuma satu file), ini mengatur URUTAN dan PENGELOMPOKAN sesuai
+ * checklist persyaratan substantif resmi (1-8):
+ *  - "single": item bernomor dengan satu file (mis. 1, 2, 3, 4, 7, 8)
+ *  - "group": item bernomor TANPA file sendiri (cuma judul syarat),
+ *    dengan beberapa sub-dokumen di bawahnya (mis. 5, 6) — dirender
+ *    menjorok ke kanan tanpa nomor sendiri per DokumenItem.tsx.
+ */
+type DokumenTampilanEntry =
+  | {
+      type: "single";
+      nomor: number;
+      wajib: boolean;
+      keterangan?: string;
+      entry: DokumenEntry;
+    }
+  | {
+      type: "group";
+      nomor: number;
+      wajib: boolean;
+      label: string;
+      keterangan?: string;
+      anak: DokumenEntry[];
+    };
 
-  // ── Checklist Persyaratan Substantif (Langkah 3, ref. PMK 137/2022) ──
-  // Field-field ini sebelumnya belum masuk daftar, padahal sudah diupload
-  // OPD dan ada di FormulirPenghapusanPiutangOPDRecord (lihat types.ts).
-  {
-    key: "persyaratanPiutangMacet",
-    label: "Bukti Pemenuhan Syarat Piutang Macet / Sulit Ditagih",
-  },
-  {
-    key: "persyaratanUsiaPencatatan",
-    label: "Bukti Pemenuhan Syarat Usia Pencatatan Piutang",
-  },
-  // Bukti "Tidak Mampu Bayar" — opsional, hanya salah satu yang terisi
-  // sesuai opsiTidakDapatDiserahkanPUPN yang dipilih OPD.
-  {
-    key: "buktiTidakMampuKartuKeluargaMiskin",
-    label: "Bukti Tidak Mampu Bayar — Kartu Keluarga Miskin",
-  },
-  {
-    key: "buktiTidakMampuPutusanPailit",
-    label: "Bukti Tidak Mampu Bayar — Putusan Pailit",
-  },
-  {
-    key: "buktiTidakMampuSuratKeteranganKelurahan",
-    label: "Bukti Tidak Mampu Bayar — Surat Keterangan Kelurahan",
-  },
-  {
-    key: "buktiTidakMampuBantuanSosial",
-    label: "Bukti Tidak Mampu Bayar — Penerima Bantuan Sosial",
-  },
-  {
-    key: "buktiTidakMampuKunjunganPenagihan",
-    label: "Bukti Tidak Mampu Bayar — Hasil Kunjungan Penagihan",
-  },
-  {
-    key: "buktiKerjaSamaPihakKetiga",
-    label: "Bukti Kerja Sama Pihak Ketiga",
-  },
-  {
-    key: "buktiUpayaOptimal",
-    label: "Bukti Upaya Optimal Penagihan",
-  },
-];
-
-function buildDokumenList(
+/** Ambil UploadedFileRef dari field record (atau null kalau belum diupload). */
+function ambilFile(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
+  key: keyof FormulirPenghapusanPiutangOPDRecord,
+): UploadedFileRef | null {
+  const value = pengajuan[key];
+  return value && typeof value === "object" && "url" in value
+    ? (value as UploadedFileRef)
+    : null;
+}
+
+/**
+ * Bangun daftar tampilan dokumen pendukung sesuai urutan checklist
+ * persyaratan substantif resmi:
+ *  1. Surat Pengantar Usulan *
+ *  2. Daftar Nominatif Usulan Piutang SKPD *
+ *  3. Piutang telah berstatus macet dengan usia piutang > 3 tahun *
+ *  4. Usia pencatatan piutang telah memenuhi ketentuan
+ *  5. Tidak mempunyai kemampuan untuk menyelesaikan utang * (grup, min. 1)
+ *  6. Surat tagihan telah diterbitkan * (grup)
+ *  7. Telah dilakukan upaya optimal sesuai ketentuan (opsional)
+ *  8. Telah dilakukan kerja sama penagihan pihak ketiga (> Rp 1 Milyar)
+ * Dokumen lain di luar 8 item ini (surat formulir, rekapitulasi, dst)
+ * ditambahkan sesudahnya sebagai lanjutan nomor, bukan disisipkan di
+ * tengah — supaya urutan 1-8 di atas tidak berubah.
+ */
+function buildDokumenTampilan(
+  pengajuan: FormulirPenghapusanPiutangOPDRecord,
+): DokumenTampilanEntry[] {
+  const tampilan: DokumenTampilanEntry[] = [
+    {
+      type: "single",
+      nomor: 1,
+      wajib: true,
+      entry: {
+        key: "suratPengantarUsulan",
+        label: "Surat Pengantar Usulan",
+        file: ambilFile(pengajuan, "suratPengantarUsulan"),
+      },
+    },
+    {
+      type: "single",
+      nomor: 2,
+      wajib: true,
+      entry: {
+        key: "daftarNominatifPiutang",
+        label: "Daftar Nominatif Usulan Piutang SKPD",
+        file: ambilFile(pengajuan, "daftarNominatifPiutang"),
+      },
+    },
+    {
+      type: "single",
+      nomor: 3,
+      wajib: true,
+      keterangan: "upload SKRD/SK/Surat Perjanjian",
+      entry: {
+        key: "persyaratanPiutangMacet",
+        label: "Piutang telah berstatus macet dengan usia piutang > 3 tahun",
+        file: ambilFile(pengajuan, "persyaratanPiutangMacet"),
+      },
+    },
+    {
+      type: "single",
+      nomor: 4,
+      wajib: false,
+      keterangan: "upload neraca awal terjadinya piutang",
+      entry: {
+        key: "persyaratanUsiaPencatatan",
+        label: "Usia pencatatan piutang telah memenuhi ketentuan",
+        file: ambilFile(pengajuan, "persyaratanUsiaPencatatan"),
+      },
+    },
+    {
+      type: "group",
+      nomor: 5,
+      wajib: true,
+      label: "Tidak mempunyai kemampuan untuk menyelesaikan utang",
+      keterangan: "minimal satu harus dipenuhi dibawah ini",
+      anak: [
+        {
+          key: "buktiTidakMampuKartuKeluargaMiskin",
+          label: "Kartu Keluarga Miskin",
+          file: ambilFile(pengajuan, "buktiTidakMampuKartuKeluargaMiskin"),
+        },
+        {
+          key: "buktiTidakMampuPutusanPailit",
+          label: "Putusan Pailit",
+          file: ambilFile(pengajuan, "buktiTidakMampuPutusanPailit"),
+        },
+        {
+          key: "buktiTidakMampuSuratKeteranganKelurahan",
+          label: "Surat Keterangan Kelurahan / Instansi Berwenang",
+          file: ambilFile(pengajuan, "buktiTidakMampuSuratKeteranganKelurahan"),
+        },
+        {
+          key: "buktiTidakMampuBantuanSosial",
+          label: "Bukti Penerima Bantuan Sosial (BPNT / BST / PKH)",
+          file: ambilFile(pengajuan, "buktiTidakMampuBantuanSosial"),
+        },
+        {
+          key: "buktiTidakMampuKunjunganPenagihan",
+          label: "Bukti Kunjungan Penagihan",
+          file: ambilFile(pengajuan, "buktiTidakMampuKunjunganPenagihan"),
+        },
+      ],
+    },
+    {
+      type: "group",
+      nomor: 6,
+      wajib: true,
+      label: "Surat tagihan telah diterbitkan",
+      anak: [
+        {
+          key: "riwayatPenagihan1",
+          label: "Bukti riwayat tagihan ke-1",
+          file: ambilFile(pengajuan, "riwayatPenagihan1"),
+        },
+        {
+          key: "riwayatPenagihan2",
+          label: "Bukti riwayat tagihan ke-2",
+          file: ambilFile(pengajuan, "riwayatPenagihan2"),
+        },
+        {
+          key: "riwayatPenagihan3",
+          label: "Bukti riwayat tagihan ke-3",
+          file: ambilFile(pengajuan, "riwayatPenagihan3"),
+        },
+        {
+          key: "filePernyataanOPD",
+          label: "Bukti pernyataan OPD",
+          file: ambilFile(pengajuan, "filePernyataanOPD"),
+        },
+      ],
+    },
+    {
+      type: "single",
+      nomor: 7,
+      wajib: false,
+      keterangan: "opsional",
+      entry: {
+        key: "buktiUpayaOptimal",
+        label: "Telah dilakukan upaya optimal sesuai ketentuan",
+        file: ambilFile(pengajuan, "buktiUpayaOptimal"),
+      },
+    },
+    {
+      type: "single",
+      nomor: 8,
+      wajib: false,
+      keterangan: "khusus untuk nominal di atas Rp 1 Milyar",
+      entry: {
+        key: "buktiKerjaSamaPihakKetiga",
+        label:
+          "Telah dilakukan kerja sama penagihan dengan melibatkan pihak ketiga",
+        file: ambilFile(pengajuan, "buktiKerjaSamaPihakKetiga"),
+      },
+    },
+  ];
+
+  return tampilan;
+}
+
+/** Ratakan struktur tampilan jadi daftar file datar — dipakai untuk hitung X/Y terupload dan state preview modal. */
+function flattenDokumenTampilan(
+  tampilan: DokumenTampilanEntry[],
 ): DokumenEntry[] {
-  const list: DokumenEntry[] = [];
-
-  list.push({
-    key: "fileSurat",
-    label: "Surat Pengantar / Usulan (Formulir)",
-    file: pengajuan.fileSurat ?? null,
-  });
-
-  // Semua field dokumen ikut ditampilkan meski null, supaya verifikator
-  // bisa langsung lihat dokumen mana yang belum dilampirkan OPD — bukan
-  // cuma diam-diam hilang dari daftar (lihat DokumenItem untuk tampilan
-  // status "Tidak diupload").
-  NOMINATIF_DOC_LABELS.forEach(({ key, label }) => {
-    const value = pengajuan[key];
-    const file =
-      value && typeof value === "object" && "url" in value
-        ? (value as UploadedFileRef)
-        : null;
-    list.push({ key, label, file });
-  });
-
-  return list;
+  return tampilan.flatMap((t) => (t.type === "single" ? [t.entry] : t.anak));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -345,9 +450,174 @@ const IconArrowLeft = () => (
   </svg>
 );
 
+const IconBuilding = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <path d="M3 12.5V2.5a1 1 0 011-1h6a1 1 0 011 1v10" strokeLinecap="round" />
+    <path
+      d="M1.5 12.5h11M5 5h1M8 5h1M5 7.5h1M8 7.5h1M5 10h1M8 10h1"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const IconCalendar = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <rect x="1.5" y="2.5" width="11" height="10" rx="1.5" />
+    <path d="M1.5 5.5h11M4 1v2.5M10 1v2.5" strokeLinecap="round" />
+  </svg>
+);
+
+const IconTag = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <path
+      d="M7.5 1.5H3a1.5 1.5 0 00-1.5 1.5v4.5L7.5 13.5a1 1 0 001.4 0l4.1-4.1a1 1 0 000-1.4L7.5 1.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="4.75" cy="4.75" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const IconUsersGroup = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <circle cx="5.25" cy="4.25" r="2" />
+    <path
+      d="M1 12c0-2.35 1.9-4.25 4.25-4.25S9.5 9.65 9.5 12"
+      strokeLinecap="round"
+    />
+    <path
+      d="M9 4.25a2 2 0 110 4M11 7.75c1.4.5 2.5 1.9 2.5 4.25"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const IconCoins = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <ellipse cx="5" cy="4" rx="3.5" ry="2" />
+    <path
+      d="M1.5 4v3c0 1.1 1.57 2 3.5 2s3.5-.9 3.5-2V4"
+      strokeLinecap="round"
+    />
+    <path
+      d="M1.5 7v3c0 1.1 1.57 2 3.5 2 1.4 0 2.62-.47 3.17-1.15"
+      strokeLinecap="round"
+    />
+    <ellipse cx="9.5" cy="8" rx="3" ry="1.7" />
+  </svg>
+);
+
+const IconCopy = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <rect x="5" y="5" width="8" height="8" rx="1.3" />
+    <path
+      d="M3.5 9H2.3A1.3 1.3 0 011 7.7V2.3A1.3 1.3 0 012.3 1h5.4A1.3 1.3 0 019 2.3v1.2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Modal Preview PDF
+// CopyButton — tombol salin nomor (Nomor Pengajuan / Surat / Registrasi)
+// dengan feedback singkat "Disalin" supaya verifikator gampang copy nomor
+// tanpa harus select-drag manual.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const CopyButton: React.FC<{ value: string }> = ({ value }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API bisa gagal (mis. browser lama / non-HTTPS) — diamkan
+      // saja, tombol cuma tidak kasih feedback "Disalin".
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      aria-label="Salin"
+      title="Salin"
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors hover:cursor-pointer ${
+        copied
+          ? "text-[#0f9b6e]"
+          : "text-[#b0bac5] hover:bg-[#f0f4fb] hover:text-[#1a4e8f]"
+      }`}
+    >
+      {copied ? <IconCheck /> : <IconCopy />}
+    </button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FieldItem — pasangan ikon + label + value, dipakai di header card & kartu
+// Penanggung Jawab OPD supaya tiap field lebih gampang di-scan sekilas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FieldItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}> = ({ icon, label, value }) => (
+  <div className="flex items-start gap-2.5">
+    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#f0f4fb] text-[#1a4e8f]">
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+        {label}
+      </div>
+      <div className="truncate text-sm text-[#1a1a2e]">{value}</div>
+    </div>
+  </div>
+);
 
 const ModalPreviewPDF: React.FC<{
   namaFile: string;
@@ -423,10 +693,13 @@ const ModalPreviewPDF: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DokumenItem: React.FC<{
-  index: number;
+  /** Nomor urut tampilan (1, 2, 3, ...). null untuk sub-item — tampil dash "-" alih-alih nomor. */
+  nomor: number | null;
   dok: DokumenEntry;
   onPreview: () => void;
-}> = ({ index, dok, onPreview }) => {
+  wajib?: boolean;
+  keterangan?: string;
+}> = ({ nomor, dok, onPreview, wajib, keterangan }) => {
   const belumUpload = !dok.file;
 
   return (
@@ -437,7 +710,9 @@ const DokumenItem: React.FC<{
           : "border-[#e2e8f2] bg-[#f7f8fa]"
       }`}
     >
-      <div className="text-xs text-gray-500">{index + 1}</div>
+      <div className="w-5 shrink-0 text-sm text-gray-500">
+        {nomor !== null ? `${nomor}.` : "–"}
+      </div>
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm ${
           belumUpload ? "bg-[#eef0f3]" : "bg-[#fdecea]"
@@ -453,14 +728,20 @@ const DokumenItem: React.FC<{
       </div>
       <div className="min-w-0 flex-1">
         <div
-          className={`mb-0.5 text-[11px] leading-snug font-semibold ${
+          className={`mb-0.5 text-sm leading-snug font-semibold ${
             belumUpload ? "text-[#8a96a3]" : "text-[#1a4e8f]"
           }`}
         >
           {dok.label}
+          {wajib && <span className="text-red-500"> *</span>}
+          {keterangan && (
+            <span className="ml-1 font-normal text-[#8a96a3]">
+              (<span className="italic">{keterangan}</span>)
+            </span>
+          )}
         </div>
         <div
-          className={`text-[11px] ${belumUpload ? "text-[#c0392b] italic" : "text-[#7a8899]"}`}
+          className={`text-xs ${belumUpload ? "text-[#c0392b] italic" : "text-[#7a8899]"}`}
         >
           {belumUpload ? "Tidak diupload" : formatUkuran(dok.file!.ukuranBytes)}
         </div>
@@ -498,7 +779,14 @@ const PanelVerifikasi: React.FC<{
   const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
   const [error, setError] = useState("");
 
-  const dokumen = useMemo(() => buildDokumenList(pengajuan), [pengajuan]);
+  const dokumenTampilan = useMemo(
+    () => buildDokumenTampilan(pengajuan),
+    [pengajuan],
+  );
+  const dokumen = useMemo(
+    () => flattenDokumenTampilan(dokumenTampilan),
+    [dokumenTampilan],
+  );
 
   const handleSubmit = () => {
     if (submitting) return;
@@ -539,28 +827,39 @@ const PanelVerifikasi: React.FC<{
         {/* ── Kolom kiri: info pengajuan & dokumen ── */}
         <div className="space-y-4 lg:col-span-2">
           {/* Header card */}
-          <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
-                  Nomor Pengajuan
+          <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
+            {/* Strip identitas: nomor pengajuan/surat/registrasi + badge status */}
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#eef1f5] bg-[#f9fafc] px-5 py-4">
+              <div className="flex flex-wrap gap-x-8 gap-y-3">
+                <div>
+                  <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
+                    Nomor Pengajuan
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[15px] font-bold text-[#1a4e8f]">
+                      {pengajuan.nomorPengajuan}
+                    </span>
+                    <CopyButton value={pengajuan.nomorPengajuan} />
+                  </div>
                 </div>
-                <div className="font-mono text-sm font-bold text-[#1a4e8f]">
-                  {pengajuan.nomorPengajuan}
-                </div>
-                <div className="mt-1.5 mb-0.5 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
-                  Nomor Surat
-                </div>
-                <div className="text-lg font-bold text-[#1a1a2e]">
-                  {pengajuan.nomorSurat || "-"}
+                <div>
+                  <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
+                    Nomor Surat
+                  </div>
+                  <div className="text-[15px] font-bold text-[#1a1a2e]">
+                    {pengajuan.nomorSurat || "-"}
+                  </div>
                 </div>
                 {pengajuan.nomorRegistrasi && (
-                  <div className="mt-1.5">
-                    <div className="mb-0.5 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
+                  <div>
+                    <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
                       Nomor Registrasi
                     </div>
-                    <div className="font-mono text-sm font-bold text-[#0f9b6e]">
-                      {pengajuan.nomorRegistrasi}
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[15px] font-bold text-[#0f9b6e]">
+                        {pengajuan.nomorRegistrasi}
+                      </span>
+                      <CopyButton value={pengajuan.nomorRegistrasi} />
                     </div>
                   </div>
                 )}
@@ -571,70 +870,87 @@ const PanelVerifikasi: React.FC<{
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-3">
-              {[
-                { label: "Nama OPD", value: pengajuan.namaOPD },
-                {
-                  label: "Tanggal Surat",
-                  value: formatTanggal(pengajuan.tanggalSurat),
-                },
-                {
-                  label: "Jenis Piutang",
-                  value: labelJenisPiutang(pengajuan.jenisPiutang),
-                },
-                { label: "Jumlah Debitur", value: pengajuan.jumlahDebitur },
-                {
-                  label: "Total Nilai Piutang",
-                  value: (
-                    <span className="font-bold text-[#1a4e8f]">
-                      {formatRupiah(pengajuan.totalNilaiPiutang)}
-                    </span>
-                  ),
-                },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                    {label}
-                  </div>
-                  <div className="text-[13px] text-[#1a1a2e]">{value}</div>
-                </div>
-              ))}
+            {/* Ringkasan field — ikon per item supaya lebih gampang di-scan */}
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
+              <FieldItem
+                icon={<IconBuilding />}
+                label="Nama OPD"
+                value={pengajuan.namaOPD}
+              />
+              <FieldItem
+                icon={<IconCalendar />}
+                label="Tanggal Surat"
+                value={formatTanggal(pengajuan.tanggalSurat)}
+              />
+              <FieldItem
+                icon={<IconTag />}
+                label="Jenis Piutang"
+                value={labelJenisPiutang(pengajuan.jenisPiutang)}
+              />
+              <FieldItem
+                icon={<IconUsersGroup />}
+                label="Jumlah Debitur"
+                value={pengajuan.jumlahDebitur}
+              />
+              <FieldItem
+                icon={<IconCoins />}
+                label="Total Nilai Piutang"
+                value={
+                  <span className="font-bold text-[#1a4e8f]">
+                    {formatRupiah(pengajuan.totalNilaiPiutang)}
+                  </span>
+                }
+              />
             </div>
           </div>
 
           {/* Data Penanggung Jawab OPD */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-            <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+            <div className="mb-4 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Penanggung Jawab OPD
             </div>
+
+            {/* Profil ringkas: avatar inisial + nama + jabatan */}
+            <div className="mb-4 flex items-center gap-3 border-b border-[#f0f0f0] pb-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#1a4e8f] to-[#123a6e] text-sm font-bold text-white">
+                {ambilInisial(pengajuan.namaPenanggungJawab)}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[15px] font-bold text-[#1a1a2e]">
+                  {pengajuan.namaPenanggungJawab || "-"}
+                </div>
+                <div className="truncate text-[13px] text-[#7a8899]">
+                  {pengajuan.jabatan || "-"}
+                </div>
+              </div>
+            </div>
+
+            {/* Opsi yang dipilih OPD — pill supaya gampang dibedakan sekilas dari teks biasa */}
             <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
-              {[
-                { label: "Nama", value: pengajuan.namaPenanggungJawab },
-                { label: "Jabatan", value: pengajuan.jabatan },
-                {
-                  label: "Opsi Riwayat Penagihan",
-                  value: pengajuan.opsiRiwayatPenagihan
+              <div>
+                <div className="mb-1.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+                  Opsi Riwayat Penagihan
+                </div>
+                <span className="inline-flex items-center rounded-full border border-[#dbe6f7] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1a4e8f]">
+                  {pengajuan.opsiRiwayatPenagihan
                     ? OPSI_RIWAYAT_PENAGIHAN_LABEL[
                         pengajuan.opsiRiwayatPenagihan
                       ]
-                    : "-",
-                },
-                {
-                  label: "Opsi Dokumen Dasar Piutang",
-                  value: pengajuan.opsiDokumenDasarPiutang
+                    : "-"}
+                </span>
+              </div>
+              <div>
+                <div className="mb-1.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
+                  Opsi Dokumen Dasar Piutang
+                </div>
+                <span className="inline-flex items-center rounded-full border border-[#dbe6f7] bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1a4e8f]">
+                  {pengajuan.opsiDokumenDasarPiutang
                     ? OPSI_DOKUMEN_DASAR_PIUTANG_LABEL[
                         pengajuan.opsiDokumenDasarPiutang
                       ]
-                    : "-",
-                },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                    {label}
-                  </div>
-                  <div className="text-[13px] text-[#1a1a2e]">{value}</div>
-                </div>
-              ))}
+                    : "-"}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -650,14 +966,47 @@ const PanelVerifikasi: React.FC<{
               </div>
             ) : (
               <div className="space-y-2">
-                {dokumen.map((dok, index) => (
-                  <DokumenItem
-                    index={index}
-                    key={dok.key}
-                    dok={dok}
-                    onPreview={() => setPreviewDoc(dok)}
-                  />
-                ))}
+                {dokumenTampilan.map((d) =>
+                  d.type === "single" ? (
+                    <DokumenItem
+                      key={d.entry.key}
+                      nomor={d.nomor}
+                      dok={d.entry}
+                      wajib={d.wajib}
+                      keterangan={d.keterangan}
+                      onPreview={() => setPreviewDoc(d.entry)}
+                    />
+                  ) : (
+                    <div key={`grup-${d.nomor}`} className="space-y-2">
+                      {/* Judul syarat (item 5 & 6) — tanpa file sendiri, cuma label + sub-dokumen di bawahnya */}
+                      <div className="flex items-baseline gap-2 px-1 pt-1">
+                        <span className="text-sm font-normal text-gray-500">
+                          {d.nomor}.
+                        </span>
+                        <div className="text-sm leading-snug font-normal text-[#1a1a2e]">
+                          {d.label}
+                          {d.wajib && <span className="text-red-500"> *</span>}
+                          {d.keterangan && (
+                            <span className="ml-1 text-xs font-normal text-[#7a8899]">
+                              (<span className="italic">{d.keterangan}</span>)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Sub-dokumen — menjorok ke kanan, tanpa nomor sendiri */}
+                      <div className="ml-6 space-y-2 border-l-2 border-[#e2e8f2] pl-3">
+                        {d.anak.map((entry) => (
+                          <DokumenItem
+                            key={entry.key}
+                            nomor={null}
+                            dok={entry}
+                            onPreview={() => setPreviewDoc(entry)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ),
+                )}
               </div>
             )}
           </div>

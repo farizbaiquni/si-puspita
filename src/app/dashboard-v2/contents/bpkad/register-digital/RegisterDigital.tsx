@@ -794,6 +794,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
       hasil = hasil.filter(
         (p) =>
           p.id.toLowerCase().includes(q) ||
+          p.nomorPengajuan.toLowerCase().includes(q) ||
           p.nomorSurat.toLowerCase().includes(q) ||
           (p.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
           p.namaOPD.toLowerCase().includes(q) ||
@@ -1093,9 +1094,9 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                                   <StatusBadge status={p.status} />
                                 </td>
 
-                                {/* Nomor Pengajuan (ID) */}
+                                {/* Nomor Pengajuan */}
                                 <td className="p-[12px_14px] font-mono text-xs whitespace-nowrap text-[#7a8899]">
-                                  {p.id}
+                                  {p.nomorPengajuan}
                                 </td>
 
                                 {/* No Register */}

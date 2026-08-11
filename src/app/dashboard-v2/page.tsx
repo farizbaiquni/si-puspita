@@ -22,11 +22,17 @@ import {
   IconChevronDown,
 } from "./icons";
 import { usePengajuanStore } from "@/store/pengajuan-store";
+import {
+  useNotifikasiOPD,
+  kirimNotifikasiVerifikasi,
+} from "@/store/notifikasi-store";
 import { useAuth } from "@/store/auth-store";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
+  NotifikasiOPD,
   StatusFormulir,
 } from "@/types/types";
+import { getOpdBySlug } from "@/types/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -343,6 +349,139 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   );
 };
 
+// ── Notifikasi ───────────────────────────────────────────────────────────────
+
+/** Format selisih waktu jadi teks singkat: "Baru saja", "5 menit lalu", dst. */
+function formatWaktuRelatif(iso: string): string {
+  const detik = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (detik < 60) return "Baru saja";
+  const menit = Math.floor(detik / 60);
+  if (menit < 60) return `${menit} menit lalu`;
+  const jam = Math.floor(menit / 60);
+  if (jam < 24) return `${jam} jam lalu`;
+  const hari = Math.floor(jam / 24);
+  if (hari < 7) return `${hari} hari lalu`;
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Warna aksen kecil di kiri tiap notifikasi, mengikuti status hasil
+// verifikasi — supaya OPD bisa langsung membedakan sekilas tanpa
+// membaca teksnya.
+const NOTIFIKASI_STATUS_COLOR: Record<string, string> = {
+  teregistrasi: "bg-emerald-500",
+  revisi: "bg-amber-500",
+  diajukan: "bg-[#1a4e8f]",
+};
+
+interface NotificationDropdownProps {
+  data: NotifikasiOPD[];
+  unreadCount: number;
+  isLoading: boolean;
+  onTandaiDibaca: (id: string) => void;
+  onTandaiSemuaDibaca: () => void;
+}
+
+const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
+  data,
+  unreadCount,
+  isLoading,
+  onTandaiDibaca,
+  onTandaiSemuaDibaca,
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notifikasi"
+        className="relative hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex"
+      >
+        <IconBell />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#ebebeb] bg-white shadow-lg">
+          <div className="flex items-center justify-between border-b border-[#f0f0f0] px-4 py-3">
+            <p className="text-sm font-semibold text-slate-800">Notifikasi</p>
+            {unreadCount > 0 && (
+              <button
+                onClick={onTandaiSemuaDibaca}
+                className="text-xs font-medium text-[#1a4e8f] hover:underline"
+              >
+                Tandai semua dibaca
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-96 overflow-y-auto">
+            {isLoading ? (
+              <p className="px-4 py-6 text-center text-sm text-[#b0bac5]">
+                Memuat notifikasi…
+              </p>
+            ) : data.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-[#b0bac5]">
+                Belum ada notifikasi.
+              </p>
+            ) : (
+              data.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => !n.dibaca && onTandaiDibaca(n.id)}
+                  className={`flex w-full items-start gap-2.5 border-b border-[#f5f5f5] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f7f8fa] ${
+                    n.dibaca ? "" : "bg-[#f0f4fb]/60"
+                  }`}
+                >
+                  <span
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                      n.dibaca
+                        ? "bg-transparent"
+                        : (NOTIFIKASI_STATUS_COLOR[n.status] ?? "bg-[#1a4e8f]")
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`truncate text-sm ${n.dibaca ? "font-medium text-slate-700" : "font-semibold text-slate-900"}`}
+                    >
+                      {n.judul}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                      {n.pesan}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#b0bac5]">
+                      {formatWaktuRelatif(n.createdAt)}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Header ───────────────────────────────────────────────────────────────────
 interface HeaderProps {
   role: UserRole;
@@ -350,6 +489,14 @@ interface HeaderProps {
   opdSlug: string | null;
   onOpenMobileMenu: () => void;
   onLogout: () => void;
+  /** Hanya terisi untuk role OPD — lihat useNotifikasiOPD() di page root. */
+  notifikasi?: {
+    data: NotifikasiOPD[];
+    unreadCount: number;
+    isLoading: boolean;
+    onTandaiDibaca: (id: string) => void;
+    onTandaiSemuaDibaca: () => void;
+  };
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -358,6 +505,7 @@ const Header: React.FC<HeaderProps> = ({
   opdSlug,
   onOpenMobileMenu,
   onLogout,
+  notifikasi,
 }) => {
   console.log(opdSlug);
   const currentUser =
@@ -414,9 +562,19 @@ const Header: React.FC<HeaderProps> = ({
       <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconMail />
       </button>
-      <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
-        <IconBell />
-      </button>
+      {notifikasi ? (
+        <NotificationDropdown
+          data={notifikasi.data}
+          unreadCount={notifikasi.unreadCount}
+          isLoading={notifikasi.isLoading}
+          onTandaiDibaca={notifikasi.onTandaiDibaca}
+          onTandaiSemuaDibaca={notifikasi.onTandaiSemuaDibaca}
+        />
+      ) : (
+        <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
+          <IconBell />
+        </button>
+      )}
       <div className="hidden h-8 w-px bg-[#ebebeb] sm:block" />
       <ProfileDropdown
         name={currentUser.name}
@@ -568,7 +726,17 @@ const DashboardContent: React.FC = () => {
     data: semuaPengajuan,
     tambahPengajuan,
     updatePengajuan,
+    getPengajuanById,
   } = usePengajuanStore();
+
+  // opdId (bukan opdSlug) — mengikuti field opdId di
+  // FormulirPenghapusanPiutangOPDRecord, supaya query notifikasi di bawah
+  // cocok dengan opdId yang tersimpan di setiap pengajuan.
+  const opdId =
+    role === "OPD" && user?.opdSlug
+      ? String(getOpdBySlug(user.opdSlug)?.id ?? "")
+      : undefined;
+  const notifikasiOpd = useNotifikasiOPD(opdId || undefined);
 
   const handleTambahPengajuan = (
     record: FormulirPenghapusanPiutangOPDRecord,
@@ -594,6 +762,14 @@ const DashboardContent: React.FC = () => {
       // supaya tersimpan di store dan muncul di ModalLacak homepage.
       ...(nomorRegistrasi ? { nomorRegistrasi } : {}),
     });
+
+    // Kirim notifikasi ke OPD pemilik pengajuan ini — muncul di ikon
+    // lonceng Header mereka (real-time kalau sedang online, atau saat
+    // login berikutnya kalau tidak).
+    const pengajuan = getPengajuanById(id);
+    if (pengajuan) {
+      kirimNotifikasiVerifikasi(pengajuan, status, catatan);
+    }
   };
 
   const handleLogout = () => {
@@ -629,6 +805,17 @@ const DashboardContent: React.FC = () => {
           opdSlug={user.opdSlug}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onLogout={handleLogout}
+          notifikasi={
+            role === "OPD"
+              ? {
+                  data: notifikasiOpd.data,
+                  unreadCount: notifikasiOpd.unreadCount,
+                  isLoading: notifikasiOpd.isLoading,
+                  onTandaiDibaca: notifikasiOpd.tandaiDibaca,
+                  onTandaiSemuaDibaca: notifikasiOpd.tandaiSemuaDibaca,
+                }
+              : undefined
+          }
         />
         <MainContent
           activeMenu={activeMenu}

@@ -109,6 +109,26 @@ export interface PernyataanOPD {
   bersediaPerbaiki: boolean;
 }
 
+/* ==================== 1b. Notifikasi OPD ==================== */
+/*  Satu dokumen = satu notifikasi hasil verifikasi Admin, ditujukan ke   */
+/*  OPD pemilik pengajuan (opdId). Disimpan di collection Firestore       */
+/*  terpisah ("notifikasiOPD") supaya:                                    */
+/*   - tetap ada / persist walau OPD sedang offline saat diverifikasi,    */
+/*   - status "dibaca" bisa dilacak per notifikasi,                       */
+/*   - query-nya ringan (cukup where opdId == ..., tidak perlu baca       */
+/*     seluruh collection "pengajuan").                                   */
+export interface NotifikasiOPD {
+  id: string;
+  opdId: string;
+  pengajuanId: string;
+  nomorPengajuan: string;
+  status: StatusFormulir;
+  judul: string;
+  pesan: string;
+  dibaca: boolean;
+  createdAt: string; // ISO date
+}
+
 /* ==================== 2. Form types (client state) ==================== */
 /*  Field dokumen bertipe `File | null` — objek file mentah dari input.  */
 /*  Dokumen nominatif (daftar penanggung piutang) ada di sini sebagai    */
