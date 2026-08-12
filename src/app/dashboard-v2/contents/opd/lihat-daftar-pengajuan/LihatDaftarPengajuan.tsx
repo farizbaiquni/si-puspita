@@ -17,7 +17,8 @@ import {
   JENIS_PIUTANG_OPTIONS,
   getOpdBySlug,
 } from "@/types/types";
-import { usePengajuanStore } from "@/store/pengajuan-store";
+import { usePengajuanStore, useRiwayatRevisi } from "@/store/pengajuan-store";
+import { ajukanUlangPengajuan } from "@/lib/pengajuan";
 import {
   IconSearch,
   IconFilter,
@@ -611,6 +612,127 @@ const LegendBox: React.FC<{
 );
 
 // ──────────────────────── MODAL DETAIL ──────────────────────────
+// Label tampilan untuk key field yang muncul di snapshot riwayat revisi
+// (dataSebelum). Field yang tidak ada di map ini ditampilkan apa adanya
+// (fallback ke key mentahnya) — supaya field dokumen atau field baru yang
+// belum sempat dilabeli tidak bikin bagian ini error.
+const LABEL_FIELD_REVISI: Partial<Record<string, string>> = {
+  namaPenanggungJawab: "Nama Penanggung Jawab",
+  jabatan: "Jabatan",
+  nomorSurat: "Nomor Surat",
+  tanggalSurat: "Tanggal Surat",
+  jumlahDebitur: "Jumlah Debitur",
+  totalNilaiPiutang: "Total Nilai Piutang",
+  jenisPiutang: "Jenis Piutang",
+  jenisPenghapusan: "Jenis Penghapusan",
+};
+
+function formatNilaiRevisi(key: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "object" && "namaFile" in (value as object)) {
+    return `📎 ${(value as { namaFile: string }).namaFile}`;
+  }
+  if (key === "totalNilaiPiutang" && typeof value === "string") {
+    return formatRupiah(value);
+  }
+  if (key === "tanggalSurat" && typeof value === "string") {
+    return formatTanggal(value);
+  }
+  return String(value);
+}
+
+// Menampilkan histori data SEBELUM tiap kali OPD "Edit & Ajukan Ulang" —
+// dibaca real-time dari subcollection Firestore
+// "pengajuan/{id}/riwayatRevisi" (lihat ajukanUlangPengajuan() di
+// lib/pengajuan.ts). Data lama tidak pernah tertimpa: setiap revisi cuma
+// menambah satu dokumen baru di sini, bukan mengubah yang sebelumnya.
+const RiwayatRevisiSection: React.FC<{ pengajuanId: string }> = ({
+  pengajuanId,
+}) => {
+  const { riwayat, isLoading } = useRiwayatRevisi(pengajuanId);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  if (isLoading) {
+    return (
+      <div className="mb-6 text-xs text-[#7a8899]">Memuat riwayat revisi…</div>
+    );
+  }
+  if (riwayat.length === 0) return null;
+
+  return (
+    <div className="mb-6 scroll-mt-3">
+      <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+        Riwayat Revisi ({riwayat.length}x)
+      </h3>
+      <div className="space-y-2">
+        {riwayat.map((r) => {
+          const isOpen = Boolean(expanded[r.id]);
+          const fieldEntries = Object.entries(r.dataSebelum).filter(
+            ([key]) =>
+              ![
+                "status",
+                "catatanVerifikasi",
+                "tanggalVerifikasi",
+                "verifikatorId",
+              ].includes(key),
+          );
+          return (
+            <div
+              key={r.id}
+              className="rounded-md border border-[#e2e8f2] bg-[#fafbfc]"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setExpanded((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                }
+                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2.5 text-left"
+              >
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-semibold text-[#1a1a2e]">
+                    Revisi ke-{r.revisiKe} · {formatTanggalWaktu(r.createdAt)}
+                  </div>
+                  {r.catatanVerifikasi && (
+                    <div className="mt-0.5 truncate text-[11.5px] text-[#7a8899]">
+                      Menjawab catatan: {r.catatanVerifikasi}
+                    </div>
+                  )}
+                </div>
+                <span className="shrink-0 text-[11px] font-semibold text-[#1a4e8f]">
+                  {isOpen ? "Tutup" : "Lihat data lama"}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="space-y-1.5 border-t border-[#e2e8f2] px-3 py-2.5">
+                  {fieldEntries.length === 0 ? (
+                    <p className="text-[11.5px] text-[#7a8899]">
+                      Tidak ada field yang berubah pada revisi ini.
+                    </p>
+                  ) : (
+                    fieldEntries.map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex flex-col gap-0.5 text-[12px] sm:flex-row sm:justify-between"
+                      >
+                        <span className="text-[#7a8899]">
+                          {LABEL_FIELD_REVISI[key] ?? key}
+                        </span>
+                        <span className="font-medium text-[#1a1a2e] sm:text-right">
+                          {formatNilaiRevisi(key, value)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const ModalDetail: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   onClose: () => void;
@@ -917,6 +1039,11 @@ const ModalDetail: React.FC<{
               </div>
             )}
 
+            {/* 2b. Riwayat Revisi — hanya muncul kalau pernah direvisi. */}
+            {Boolean(record.jumlahRevisi) && (
+              <RiwayatRevisiSection pengajuanId={record.id} />
+            )}
+
             {/* 3. Dokumen Administrasi */}
             <div ref={refDokumen} className="mb-6 scroll-mt-3">
               <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
@@ -1011,16 +1138,30 @@ const ModalDetail: React.FC<{
   );
 };
 
-// ──────────────────── SLOT FILE (upload ulang) DI FORM EDIT ────────────────
-// ... (tidak ada perubahan pada EditFileSlot dan ModalEditRevisi, tetap sama) ...
+// ──────────────────── SLOT FILE (upload ulang / hapus) DI FORM EDIT ────────
+// Mendukung 3 aksi per dokumen: Ganti (pilih file baru), Hapus (hapus file
+// lama tanpa ganti — dipakai kalau dokumen ternyata tidak relevan/salah
+// unggah), dan Batalkan (balik ke keadaan semula sebelum diedit).
 
 const EditFileSlot: React.FC<{
   label: string;
   existingFile: UploadedFileRef | null;
   newFile: File | null;
+  dihapus?: boolean;
   onChangeFile: (file: File | null) => void;
+  onHapus?: () => void;
+  onBatalkanHapus?: () => void;
   required?: boolean;
-}> = ({ label, existingFile, newFile, onChangeFile, required = true }) => {
+}> = ({
+  label,
+  existingFile,
+  newFile,
+  dihapus = false,
+  onChangeFile,
+  onHapus,
+  onBatalkanHapus,
+  required = true,
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1030,7 +1171,8 @@ const EditFileSlot: React.FC<{
   };
 
   const tampilanNama = newFile ? newFile.name : existingFile?.namaFile;
-  const adaFile = Boolean(newFile || existingFile);
+  const adaFileLama = Boolean(existingFile);
+  const adaFile = Boolean(newFile) || (adaFileLama && !dihapus);
 
   return (
     <div className="space-y-1">
@@ -1042,9 +1184,11 @@ const EditFileSlot: React.FC<{
         className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 ${
           newFile
             ? "border-[#a0bdec] bg-[#eff6ff]"
-            : adaFile
-              ? "border-[#e2e8f2] bg-[#f7f8fa]"
-              : "border-red-200 bg-red-50"
+            : dihapus
+              ? "border-red-200 bg-red-50"
+              : adaFile
+                ? "border-[#e2e8f2] bg-[#f7f8fa]"
+                : "border-red-200 bg-red-50"
         }`}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -1052,12 +1196,23 @@ const EditFileSlot: React.FC<{
             <IconFile />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[12.5px] font-medium text-[#1a1a2e]">
-              {tampilanNama || "Belum ada file"}
+            <p
+              className={`truncate text-[12.5px] font-medium ${
+                dihapus ? "text-red-500 line-through" : "text-[#1a1a2e]"
+              }`}
+            >
+              {dihapus
+                ? existingFile?.namaFile
+                : tampilanNama || "Belum ada file"}
             </p>
             {newFile && (
               <p className="text-[10.5px] font-semibold text-[#1a4e8f]">
                 File baru — akan menggantikan file lama
+              </p>
+            )}
+            {dihapus && (
+              <p className="text-[10.5px] font-semibold text-red-500">
+                Akan dihapus, tidak digantikan file baru
               </p>
             )}
           </div>
@@ -1070,14 +1225,16 @@ const EditFileSlot: React.FC<{
             className="hidden"
             onChange={handlePick}
           />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="flex items-center gap-1 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#1a4e8f] hover:bg-[#e8f0fb]"
-          >
-            <IconUpload />
-            {adaFile ? "Ganti" : "Unggah"}
-          </button>
+          {!dihapus && (
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="flex items-center gap-1 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#1a4e8f] hover:bg-[#e8f0fb]"
+            >
+              <IconUpload />
+              {adaFile ? "Ganti" : "Unggah"}
+            </button>
+          )}
           {newFile && (
             <button
               type="button"
@@ -1087,6 +1244,28 @@ const EditFileSlot: React.FC<{
               Batal
             </button>
           )}
+          {/* Hapus file lama (tanpa ganti) — cuma muncul kalau ada file lama,
+              belum pilih file baru, dan belum ditandai hapus. Tidak muncul
+              kalau dokumen wajib (required) supaya OPD tidak bisa
+              mengosongkan dokumen yang harus ada. */}
+          {!required && adaFileLama && !newFile && !dihapus && onHapus && (
+            <button
+              type="button"
+              onClick={onHapus}
+              className="rounded-sm border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50"
+            >
+              Hapus
+            </button>
+          )}
+          {dihapus && onBatalkanHapus && (
+            <button
+              type="button"
+              onClick={onBatalkanHapus}
+              className="rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#5a6474] hover:bg-[#f7f8fa]"
+            >
+              Batalkan Hapus
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1094,7 +1273,74 @@ const EditFileSlot: React.FC<{
 };
 
 // ──────────────────────── MODAL EDIT (KHUSUS STATUS REVISI) ────────────────
-// ... (kode ModalEditRevisi tetap sama, tidak diubah) ...
+// Daftar dokumen di sini SENGAJA disamakan persis (nomor, label, keterangan,
+// dan field-nya) dengan checklist yang dipakai BPKAD di panel verifikasi
+// (lihat buildDokumenTampilan di LihatDaftarPengajuanAdmin.tsx) — supaya
+// OPD memperbaiki dokumen yang sama persis dengan yang dinilai BPKAD, dan
+// tidak ada field yang salah alamat.
+
+const BUKTI_TIDAK_MAMPU_ITEMS: {
+  key: keyof FormulirPenghapusanPiutangOPDRecord;
+  label: string;
+}[] = [
+  { key: "buktiTidakMampuKartuKeluargaMiskin", label: "Kartu Keluarga Miskin" },
+  { key: "buktiTidakMampuPutusanPailit", label: "Putusan Pailit" },
+  {
+    key: "buktiTidakMampuSuratKeteranganKelurahan",
+    label: "Surat Keterangan Kelurahan / Instansi Berwenang",
+  },
+  {
+    key: "buktiTidakMampuBantuanSosial",
+    label: "Bukti Penerima Bantuan Sosial (BPNT / BST / PKH)",
+  },
+  {
+    key: "buktiTidakMampuKunjunganPenagihan",
+    label: "Bukti Kunjungan Penagihan",
+  },
+];
+
+// Grup 6: "Surat tagihan telah diterbitkan" — 4 kemungkinan bukti, sama
+// persis dengan anak grup nomor 6 di buildDokumenTampilan (BPKAD).
+const SURAT_TAGIHAN_ITEMS: {
+  key: keyof FormulirPenghapusanPiutangOPDRecord;
+  label: string;
+}[] = [
+  { key: "riwayatPenagihan1", label: "Bukti riwayat tagihan ke-1" },
+  { key: "riwayatPenagihan2", label: "Bukti riwayat tagihan ke-2" },
+  { key: "riwayatPenagihan3", label: "Bukti riwayat tagihan ke-3" },
+  { key: "filePernyataanOPD", label: "Bukti pernyataan OPD" },
+];
+
+function formatRupiahInput(value: string): string {
+  if (!value) return "";
+  const num = parseFloat(value.replace(/,/g, ""));
+  if (isNaN(num)) return "";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+    .format(num)
+    .replace(/\s/g, "");
+}
+
+const parseRupiahInput = (value: string): string =>
+  value.replace(/[^0-9]/g, "");
+
+// Section wrapper kecil supaya tiap bagian formulir konsisten tampilannya.
+const EditSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <div>
+    <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
+      {title}
+    </h3>
+    <div className="space-y-3.5">{children}</div>
+  </div>
+);
+
 const ModalEditRevisi: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   onClose: () => void;
@@ -1103,6 +1349,7 @@ const ModalEditRevisi: React.FC<{
     updates: Partial<FormulirPenghapusanPiutangOPDRecord>,
   ) => void;
 }> = ({ record, onClose, onSimpan }) => {
+  // ── Data Pengajuan ──────────────────────────────────────────────────────
   const [namaPenanggungJawab, setNamaPenanggungJawab] = useState(
     record.namaPenanggungJawab,
   );
@@ -1118,26 +1365,55 @@ const ModalEditRevisi: React.FC<{
     record.jenisPenghapusan,
   );
 
+  // ── File: dua map terpisah, "file baru" (ganti) dan "ditandai hapus" ──
   const [fileBaru, setFileBaru] = useState<
     Partial<Record<string, File | null>>
   >({});
-  const setFile = (key: string, file: File | null) =>
+  const [fileDihapus, setFileDihapus] = useState<Record<string, boolean>>({});
+
+  const setFile = (key: string, file: File | null) => {
     setFileBaru((prev) => ({ ...prev, [key]: file }));
+    if (file) {
+      setFileDihapus((prev) => {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+  const hapusFile = (key: string) => {
+    setFileDihapus((prev) => ({ ...prev, [key]: true }));
+    setFileBaru((prev) => ({ ...prev, [key]: null }));
+  };
+  const batalkanHapusFile = (key: string) => {
+    setFileDihapus((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const [isSaving, setIsSaving] = useState(false);
-
-  const toRef = (file: File): UploadedFileRef => ({
-    id: `FILE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    url: URL.createObjectURL(file),
-    namaFile: file.name,
-    ukuranBytes: file.size,
-    uploadedAt: new Date().toISOString(),
-  });
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSimpan = async () => {
     setIsSaving(true);
+    setSaveError(null);
     try {
-      const updates: Partial<FormulirPenghapusanPiutangOPDRecord> = {
+      const fieldBaru: Partial<
+        Pick<
+          FormulirPenghapusanPiutangOPDRecord,
+          | "namaPenanggungJawab"
+          | "jabatan"
+          | "nomorSurat"
+          | "tanggalSurat"
+          | "jumlahDebitur"
+          | "totalNilaiPiutang"
+          | "jenisPiutang"
+          | "jenisPenghapusan"
+        >
+      > = {
         namaPenanggungJawab,
         jabatan,
         nomorSurat,
@@ -1146,33 +1422,79 @@ const ModalEditRevisi: React.FC<{
         totalNilaiPiutang,
         jenisPiutang,
         jenisPenghapusan,
-        status: "diajukan",
-        updatedAt: new Date().toISOString(),
       };
 
-      (
-        Object.keys(fileBaru) as (keyof FormulirPenghapusanPiutangOPDRecord)[]
-      ).forEach((key) => {
-        const file = fileBaru[key as string];
-        if (file) {
-          (updates as Record<string, UploadedFileRef>)[key as string] =
-            toRef(file);
-        }
+      // Map field dokumen -> File baru (diupload) | null (ditandai hapus,
+      // tidak diganti) — field yang tidak disentuh sama sekali TIDAK
+      // dimasukkan supaya dokumen lama di Firestore tidak ikut tertimpa.
+      const fileUpdates: Partial<Record<string, File | null>> = {};
+      (Object.keys(fileBaru) as string[]).forEach((key) => {
+        if (fileBaru[key]) fileUpdates[key] = fileBaru[key];
+      });
+      (Object.keys(fileDihapus) as string[]).forEach((key) => {
+        if (fileDihapus[key] && !fileBaru[key]) fileUpdates[key] = null;
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      onSimpan(record.id, updates);
+      // Upload sungguhan ke Cloudinary + simpan snapshot data lama ke
+      // riwayatRevisi + timpa dokumen utama — semua di dalam satu fungsi
+      // supaya data lama tidak pernah hilang (lihat lib/pengajuan.ts).
+      await ajukanUlangPengajuan(
+        record.id,
+        fieldBaru,
+        fileUpdates,
+        record.createdBy,
+      );
+
+      onSimpan(record.id, { ...fieldBaru, status: "diajukan" });
       onClose();
+    } catch (err) {
+      console.error("Gagal menyimpan revisi:", err);
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat menyimpan revisi. Coba lagi.",
+      );
     } finally {
       setIsSaving(false);
     }
   };
 
-  const tampilkanRiwayatTagihan =
-    record.opsiRiwayatPenagihan === "riwayat_tagihan";
-  const tampilkanPernyataanOPD =
-    record.opsiRiwayatPenagihan === "penyataan_opd";
-  const tampilkanDasarPiutang = record.opsiDokumenDasarPiutang === "ada";
+  // Helper render slot dokumen — bungkus EditFileSlot supaya tiap
+  // pemanggilan tidak perlu tulis ulang state hapus/batal. `key` HARUS
+  // persis nama field di FormulirPenghapusanPiutangOPDRecord (types.ts)
+  // supaya tidak salah alamat saat disimpan.
+  const renderSlot = (
+    key: keyof FormulirPenghapusanPiutangOPDRecord,
+    label: string,
+    required = true,
+    keterangan?: string,
+  ) => (
+    <div className="space-y-1">
+      <EditFileSlot
+        label={label}
+        existingFile={record[key] as unknown as UploadedFileRef | null}
+        newFile={(fileBaru[key as string] as File | null) ?? null}
+        dihapus={Boolean(fileDihapus[key as string])}
+        onChangeFile={(f) => setFile(key as string, f)}
+        onHapus={() => hapusFile(key as string)}
+        onBatalkanHapus={() => batalkanHapusFile(key as string)}
+        required={required}
+      />
+      {keterangan && (
+        <p className="pl-1 text-[11px] text-[#7a8899]">{keterangan}</p>
+      )}
+    </div>
+  );
+
+  const jumlahBuktiTidakMampu = BUKTI_TIDAK_MAMPU_ITEMS.filter(({ key }) => {
+    if (fileDihapus[key as string]) return false;
+    return Boolean(fileBaru[key as string] ?? record[key]);
+  }).length;
+
+  const jumlahSuratTagihan = SURAT_TAGIHAN_ITEMS.filter(({ key }) => {
+    if (fileDihapus[key as string]) return false;
+    return Boolean(fileBaru[key as string] ?? record[key]);
+  }).length;
 
   return (
     <div
@@ -1212,12 +1534,15 @@ const ModalEditRevisi: React.FC<{
         )}
 
         {/* Body scrollable */}
-        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
-          {/* Data Utama */}
-          <div>
-            <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
-              Data Pengajuan
-            </h3>
+        <div className="flex-1 space-y-7 overflow-y-auto px-4 py-5 sm:px-6">
+          <p className="rounded-md border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1d4ed8]">
+            Perbaiki bagian mana pun sesuai catatan BPKAD di atas — input data,
+            ganti dokumen yang salah unggah, atau hapus dokumen yang tidak
+            relevan. Dokumen yang tidak disentuh akan tetap memakai file lama.
+          </p>
+
+          {/* Data Pengajuan */}
+          <EditSection title="Data Pengajuan">
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div className="space-y-1">
                 <label className="block text-[12.5px] font-semibold text-[#3a4454]">
@@ -1230,7 +1555,6 @@ const ModalEditRevisi: React.FC<{
                   className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
-              {/* ... input lainnya ... */}
               <div className="space-y-1">
                 <label className="block text-[12.5px] font-semibold text-[#3a4454]">
                   Jabatan
@@ -1283,9 +1607,9 @@ const ModalEditRevisi: React.FC<{
                 </label>
                 <input
                   type="text"
-                  value={totalNilaiPiutang}
+                  value={formatRupiahInput(totalNilaiPiutang)}
                   onChange={(e) =>
-                    setTotalNilaiPiutang(e.target.value.replace(/[^0-9]/g, ""))
+                    setTotalNilaiPiutang(parseRupiahInput(e.target.value))
                   }
                   className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
@@ -1329,103 +1653,140 @@ const ModalEditRevisi: React.FC<{
                 </select>
               </div>
             </div>
-          </div>
+            {renderSlot("fileSurat", "Surat Pengantar (Surat Utama)")}
+          </EditSection>
 
-          {/* Upload ulang dokumen */}
-          <div>
-            <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
-              Unggah Ulang Dokumen
-            </h3>
-            <p className="mb-3 text-[11.5px] text-[#7a8899]">
-              Klik &quot;Ganti&quot; hanya pada dokumen yang perlu diperbaiki
-              sesuai catatan BPKAD. Dokumen yang tidak diganti akan tetap
-              memakai file lama.
-            </p>
-            <div className="space-y-3">
-              <EditFileSlot
-                label="1. Surat Pengantar Usulan"
-                existingFile={record.suratPengantarUsulan}
-                newFile={fileBaru.suratPengantarUsulan ?? null}
-                onChangeFile={(f) => setFile("suratPengantarUsulan", f)}
-              />
-              <EditFileSlot
-                label="2. Daftar Nominatif Usulan Piutang SKPD"
-                existingFile={record.daftarNominatifPiutang}
-                newFile={fileBaru.daftarNominatifPiutang ?? null}
-                onChangeFile={(f) => setFile("daftarNominatifPiutang", f)}
-              />
-              {/* ... slot lainnya ... */}
-              <EditFileSlot
-                label="Rekapitulasi Saldo Piutang"
-                existingFile={record.rekapitulasiSaldoPiutang}
-                newFile={fileBaru.rekapitulasiSaldoPiutang ?? null}
-                onChangeFile={(f) => setFile("rekapitulasiSaldoPiutang", f)}
-              />
-              <EditFileSlot
-                label="Neraca Awal Pencatatan Piutang"
-                existingFile={record.neracaAwalPencatatanPiutang}
-                newFile={fileBaru.neracaAwalPencatatanPiutang ?? null}
-                onChangeFile={(f) => setFile("neracaAwalPencatatanPiutang", f)}
-              />
-              <EditFileSlot
-                label="Rekapitulasi Angsuran"
-                existingFile={record.rekapitulasiAngsuran}
-                newFile={fileBaru.rekapitulasiAngsuran ?? null}
-                onChangeFile={(f) => setFile("rekapitulasiAngsuran", f)}
-              />
-              <EditFileSlot
-                label="Dokumen Pendukung (Surat Tidak Mampu Bayar)"
-                existingFile={record.dokumenPendukungSuratTidakMampuBayar}
-                newFile={fileBaru.dokumenPendukungSuratTidakMampuBayar ?? null}
-                onChangeFile={(f) =>
-                  setFile("dokumenPendukungSuratTidakMampuBayar", f)
-                }
-                required={false}
-              />
-              {tampilkanDasarPiutang && (
-                <EditFileSlot
-                  label="Dokumen Dasar Piutang"
-                  existingFile={record.dokumenDasarPiutang}
-                  newFile={fileBaru.dokumenDasarPiutang ?? null}
-                  onChangeFile={(f) => setFile("dokumenDasarPiutang", f)}
-                />
-              )}
-              {tampilkanRiwayatTagihan && (
-                <>
+          {/* Dokumen Pendukung — nomor, label, dan field SAMA PERSIS dengan
+              checklist yang dipakai BPKAD di panel verifikasi. */}
+          <EditSection title="Dokumen Pendukung">
+            {renderSlot("suratPengantarUsulan", "1. Surat Pengantar Usulan")}
+            {renderSlot(
+              "daftarNominatifPiutang",
+              "2. Daftar Nominatif Usulan Piutang SKPD",
+            )}
+            {renderSlot(
+              "persyaratanPiutangMacet",
+              "3. Piutang telah berstatus macet dengan usia piutang > 3 tahun",
+              true,
+              "Upload SKRD/SK/Surat Perjanjian",
+            )}
+            {renderSlot(
+              "persyaratanUsiaPencatatan",
+              "4. Usia pencatatan piutang telah memenuhi ketentuan",
+              false,
+              "Upload neraca awal terjadinya piutang",
+            )}
+
+            {/* 5. Tidak mempunyai kemampuan untuk menyelesaikan utang */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12.5px] font-semibold text-[#3a4454]">
+                  5. Tidak mempunyai kemampuan untuk menyelesaikan utang{" "}
+                  <span className="text-red-500">*</span>
+                </p>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    jumlahBuktiTidakMampu > 0
+                      ? "bg-green-50 text-green-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {jumlahBuktiTidakMampu} dari {BUKTI_TIDAK_MAMPU_ITEMS.length}{" "}
+                  diunggah
+                </span>
+              </div>
+              <p className="text-[11px] text-[#7a8899]">
+                Minimal satu harus dipenuhi dibawah ini.
+              </p>
+              <div className="space-y-3 rounded-md border border-[#e2e8f2] bg-[#f7f8fa] p-3">
+                {BUKTI_TIDAK_MAMPU_ITEMS.map((item) => (
                   <EditFileSlot
-                    label="Riwayat Penagihan Ke-1"
-                    existingFile={record.riwayatPenagihan1}
-                    newFile={fileBaru.riwayatPenagihan1 ?? null}
-                    onChangeFile={(f) => setFile("riwayatPenagihan1", f)}
+                    key={item.key as string}
+                    label={item.label}
+                    existingFile={
+                      record[item.key] as unknown as UploadedFileRef | null
+                    }
+                    newFile={
+                      (fileBaru[item.key as string] as File | null) ?? null
+                    }
+                    dihapus={Boolean(fileDihapus[item.key as string])}
+                    onChangeFile={(f) => setFile(item.key as string, f)}
+                    onHapus={() => hapusFile(item.key as string)}
+                    onBatalkanHapus={() =>
+                      batalkanHapusFile(item.key as string)
+                    }
+                    required={false}
                   />
-                  <EditFileSlot
-                    label="Riwayat Penagihan Ke-2"
-                    existingFile={record.riwayatPenagihan2}
-                    newFile={fileBaru.riwayatPenagihan2 ?? null}
-                    onChangeFile={(f) => setFile("riwayatPenagihan2", f)}
-                  />
-                  <EditFileSlot
-                    label="Riwayat Penagihan Ke-3"
-                    existingFile={record.riwayatPenagihan3}
-                    newFile={fileBaru.riwayatPenagihan3 ?? null}
-                    onChangeFile={(f) => setFile("riwayatPenagihan3", f)}
-                  />
-                </>
-              )}
-              {tampilkanPernyataanOPD && (
-                <EditFileSlot
-                  label="Surat Pernyataan OPD (Tanpa Riwayat Penagihan)"
-                  existingFile={record.filePernyataanOPD}
-                  newFile={fileBaru.filePernyataanOPD ?? null}
-                  onChangeFile={(f) => setFile("filePernyataanOPD", f)}
-                />
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+
+            {/* 6. Surat tagihan telah diterbitkan */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12.5px] font-semibold text-[#3a4454]">
+                  6. Surat tagihan telah diterbitkan{" "}
+                  <span className="text-red-500">*</span>
+                </p>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    jumlahSuratTagihan > 0
+                      ? "bg-green-50 text-green-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {jumlahSuratTagihan} dari {SURAT_TAGIHAN_ITEMS.length}{" "}
+                  diunggah
+                </span>
+              </div>
+              <p className="text-[11px] text-[#7a8899]">
+                Minimal satu harus dipenuhi dibawah ini.
+              </p>
+              <div className="space-y-3 rounded-md border border-[#e2e8f2] bg-[#f7f8fa] p-3">
+                {SURAT_TAGIHAN_ITEMS.map((item) => (
+                  <EditFileSlot
+                    key={item.key as string}
+                    label={item.label}
+                    existingFile={
+                      record[item.key] as unknown as UploadedFileRef | null
+                    }
+                    newFile={
+                      (fileBaru[item.key as string] as File | null) ?? null
+                    }
+                    dihapus={Boolean(fileDihapus[item.key as string])}
+                    onChangeFile={(f) => setFile(item.key as string, f)}
+                    onHapus={() => hapusFile(item.key as string)}
+                    onBatalkanHapus={() =>
+                      batalkanHapusFile(item.key as string)
+                    }
+                    required={false}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {renderSlot(
+              "buktiUpayaOptimal",
+              "7. Telah dilakukan upaya optimal sesuai ketentuan",
+              false,
+              "Opsional",
+            )}
+            {renderSlot(
+              "buktiKerjaSamaPihakKetiga",
+              "8. Telah dilakukan kerja sama penagihan dengan melibatkan pihak ketiga",
+              false,
+              "Khusus untuk nominal di atas Rp 1 Milyar",
+            )}
+          </EditSection>
         </div>
 
         {/* Footer aksi */}
         <div className="flex shrink-0 flex-col-reverse gap-2.5 border-t border-[#e2e8f2] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          {saveError && (
+            <p className="w-full text-left text-[12px] font-medium text-[#c0392b] sm:mr-auto sm:w-auto">
+              {saveError}
+            </p>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -1546,15 +1907,22 @@ export default function DaftarPengajuanOPDBaru({
     namaOPDAktif ?? getOpdBySlug("disdagkopukm")?.nama ?? "";
 
   const { data: dataStore, isLoading } = usePengajuanStore();
+  // `overrides` HANYA dipakai saat komponen dipakai dengan `data` prop
+  // manual (mis. cerita/preview tanpa Firestore) — kalau ambil dari
+  // dataStore, onSnapshot di PengajuanProvider sudah otomatis membawa
+  // perubahan real-time setelah ajukanUlangPengajuan() berhasil, jadi
+  // tidak perlu (dan tidak boleh) di-override manual lagi di sini.
   const [overrides, setOverrides] = useState<
     Record<string, Partial<FormulirPenghapusanPiutangOPDRecord>>
   >({});
 
   const data = useMemo(() => {
-    const source = dataProp ?? dataStore;
-    return source
-      .filter((r) => r.namaOPD === NAMA_OPD_AKTIF)
-      .map((r) => (overrides[r.id] ? { ...r, ...overrides[r.id] } : r));
+    if (dataProp) {
+      return dataProp
+        .filter((r) => r.namaOPD === NAMA_OPD_AKTIF)
+        .map((r) => (overrides[r.id] ? { ...r, ...overrides[r.id] } : r));
+    }
+    return dataStore.filter((r) => r.namaOPD === NAMA_OPD_AKTIF);
   }, [dataProp, dataStore, overrides, NAMA_OPD_AKTIF]);
 
   const [filter, setFilter] = useState<{
@@ -1569,11 +1937,17 @@ export default function DaftarPengajuanOPDBaru({
   const [editRecord, setEditRecord] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
 
+  // Dipanggil ModalEditRevisi SETELAH ajukanUlangPengajuan() sukses simpan
+  // ke Firestore. Untuk mode dataStore (real), tidak perlu apa-apa lagi di
+  // sini — onSnapshot yang urus refresh tampilan. `overrides` cuma dipakai
+  // untuk mode `data` prop manual (lihat komentar di atas).
   const handleSimpanEdit = (
     id: string,
     updates: Partial<FormulirPenghapusanPiutangOPDRecord>,
   ) => {
-    setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...updates } }));
+    if (dataProp) {
+      setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...updates } }));
+    }
   };
 
   const stats = useMemo(() => {

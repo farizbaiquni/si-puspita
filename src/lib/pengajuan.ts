@@ -1,6 +1,8 @@
 import {
   collection,
   doc,
+  getDoc,
+  increment,
   runTransaction,
   setDoc,
   Timestamp,
@@ -10,6 +12,7 @@ import { uploadDokumenOrNull } from "./cloudinary";
 import type {
   FormulirPenghapusanPiutangOPD,
   FormulirPenghapusanPiutangOPDRecord,
+  RiwayatRevisiRecord,
   UploadedFileRef,
 } from "@/types/types";
 import { getOpdByNama } from "@/types/types";
@@ -204,4 +207,148 @@ export async function createPengajuan(
   await setDoc(pengajuanRef, record);
 
   return { id: pengajuanId, nomorPengajuan };
+}
+
+/**
+ * Field non-dokumen yang boleh OPD ubah lewat "Edit & Ajukan Ulang".
+ * (Sengaja tidak termasuk field meta seperti id/status/opdId/dll — itu
+ * dikelola sendiri oleh fungsi ini, bukan oleh form edit.)
+ */
+type FieldBisaDirevisi =
+  | "namaPenanggungJawab"
+  | "jabatan"
+  | "nomorSurat"
+  | "tanggalSurat"
+  | "jumlahDebitur"
+  | "totalNilaiPiutang"
+  | "jenisPiutang"
+  | "jenisPenghapusan"
+  | "nilaiRekapitulasiSaldoPiutang"
+  | "nilaiRekapitulasiAngsuran"
+  | "opsiRiwayatPenagihan"
+  | "opsiDokumenDasarPiutang"
+  | "opsiTidakDapatDiserahkanPUPN"
+  | "opsiKerjaSamaPihakKetiga"
+  | "opsiUpayaOptimal"
+  | "pernyataan";
+
+/**
+ * Ajukan ulang pengajuan yang statusnya "revisi" (dipanggil OPD dari
+ * ModalEditRevisi di LihatDaftarPengajuan.tsx).
+ *
+ * Berbeda dari updatePengajuan biasa (pengajuan-store.tsx) yang cuma
+ * updateDoc polos, fungsi ini:
+ *  1. Meng-upload FILE BARU (kalau ada) ke Cloudinary sungguhan — bukan
+ *     lagi blob URL lokal seperti versi lama ModalEditRevisi.
+ *  2. Menyimpan SNAPSHOT nilai lama (sebelum ditimpa) sebagai satu
+ *     dokumen baru di subcollection "pengajuan/{id}/riwayatRevisi" —
+ *     supaya histori revisi tidak pernah hilang meski dokumen utama
+ *     sudah ditimpa data terbaru.
+ *  3. Menimpa dokumen utama dengan data baru, mengembalikan status jadi
+ *     "diajukan", dan menaikkan jumlahRevisi.
+ * Langkah 2 & 3 dibungkus satu Firestore transaction supaya konsisten:
+ * kalau salah satu gagal, tidak ada yang tertulis sama sekali.
+ *
+ * @param id               id dokumen pengajuan (Firestore doc ID)
+ * @param fieldBaru        field non-dokumen yang diubah OPD di form edit
+ * @param fileBaru         map field dokumen -> File baru (diupload) |
+ *                         null (dihapus, tidak diganti) | undefined
+ *                         (tidak disentuh, dokumen lama dipakai terus)
+ * @param diajukanUlangOleh  uid OPD yang menyimpan revisi ini
+ */
+export async function ajukanUlangPengajuan(
+  id: string,
+  fieldBaru: Partial<
+    Pick<FormulirPenghapusanPiutangOPDRecord, FieldBisaDirevisi>
+  >,
+  fileBaru: Partial<Record<(typeof FIELD_DOKUMEN)[number], File | null>>,
+  diajukanUlangOleh: string,
+): Promise<void> {
+  const pengajuanRef = doc(db, PENGAJUAN_COLLECTION, id);
+
+  // Dibaca dulu di luar transaction karena upload ke Cloudinary adalah
+  // network call yang tidak boleh dijalankan di dalam runTransaction
+  // Firestore (transaction hanya boleh berisi baca/tulis Firestore).
+  const snapshotAwal = await getDoc(pengajuanRef);
+  if (!snapshotAwal.exists()) {
+    throw new Error(`Pengajuan dengan id "${id}" tidak ditemukan.`);
+  }
+  const dataLama = snapshotAwal.data() as FormulirPenghapusanPiutangOPDRecord;
+
+  // Upload hanya field dokumen yang benar-benar diganti (value instanceof
+  // File). Field yang ditandai hapus (null) atau tidak disentuh
+  // (undefined) tidak perlu upload.
+  const entriesFileBaru = Object.entries(fileBaru).filter(
+    (entry): entry is [(typeof FIELD_DOKUMEN)[number], File] =>
+      entry[1] instanceof File,
+  );
+  const hasilUpload = await Promise.all(
+    entriesFileBaru.map(([field, file]) =>
+      uploadDokumenOrNull(file, id, field),
+    ),
+  );
+  const refDokumenBaru = Object.fromEntries(
+    entriesFileBaru.map(([field], i) => [field, hasilUpload[i]]),
+  ) as Partial<Record<(typeof FIELD_DOKUMEN)[number], UploadedFileRef | null>>;
+
+  // Field dokumen yang ditandai hapus (fileBaru[field] === null, dan
+  // TIDAK ada file baru untuk field itu) -> jadi null di dokumen utama.
+  const refDokumenDihapus = Object.fromEntries(
+    Object.entries(fileBaru)
+      .filter(([, v]) => v === null)
+      .map(([field]) => [field, null]),
+  ) as Partial<Record<(typeof FIELD_DOKUMEN)[number], null>>;
+
+  const updates: Record<string, unknown> = {
+    ...fieldBaru,
+    ...refDokumenBaru,
+    ...refDokumenDihapus,
+  };
+
+  // Snapshot nilai LAMA hanya untuk field yang benar-benar berubah pada
+  // revisi ini — inilah yang membuat data lama "tidak hilang": tersimpan
+  // permanen di riwayatRevisi walau dokumen utama sudah ditimpa.
+  const dataSebelum: Partial<FormulirPenghapusanPiutangOPDRecord> = {};
+  for (const key of Object.keys(updates)) {
+    (dataSebelum as Record<string, unknown>)[key] =
+      dataLama[key as keyof FormulirPenghapusanPiutangOPDRecord] ?? null;
+  }
+  // Ikut simpan status & catatan verifikasi BPKAD yang sedang direspon,
+  // supaya riwayat tetap punya konteks "revisi ini menjawab catatan apa".
+  dataSebelum.status = dataLama.status;
+  dataSebelum.catatanVerifikasi = dataLama.catatanVerifikasi;
+  dataSebelum.tanggalVerifikasi = dataLama.tanggalVerifikasi;
+  dataSebelum.verifikatorId = dataLama.verifikatorId;
+
+  const riwayatRef = doc(collection(pengajuanRef, "riwayatRevisi"));
+  const nowIso = new Date().toISOString();
+  const riwayat: RiwayatRevisiRecord = {
+    id: riwayatRef.id,
+    pengajuanId: id,
+    revisiKe: (dataLama.jumlahRevisi ?? 0) + 1,
+    catatanVerifikasi: dataLama.catatanVerifikasi ?? null,
+    dataSebelum,
+    diajukanUlangOleh,
+    createdAt: nowIso,
+  };
+
+  await runTransaction(db, async (tx) => {
+    // Baca ulang di dalam transaction (aturan Firestore: semua tx.get()
+    // sebelum tx.set/tx.update) supaya aman dari race condition kalau ada
+    // perubahan lain di antara getDoc() di atas dan transaction ini.
+    const freshSnap = await tx.get(pengajuanRef);
+    if (!freshSnap.exists()) {
+      throw new Error(`Pengajuan dengan id "${id}" tidak ditemukan.`);
+    }
+
+    tx.set(riwayatRef, riwayat);
+    tx.update(pengajuanRef, {
+      ...updates,
+      status: "diajukan",
+      catatanVerifikasi: null,
+      tanggalVerifikasi: null,
+      jumlahRevisi: increment(1),
+      updatedAt: nowIso,
+    });
+  });
 }

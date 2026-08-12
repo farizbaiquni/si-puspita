@@ -129,6 +129,27 @@ export interface NotifikasiOPD {
   createdAt: string; // ISO date
 }
 
+/* ==================== 1c. Riwayat Revisi ==================== */
+/*  Setiap kali OPD melakukan "Edit & Ajukan Ulang" atas pengajuan yang    */
+/*  statusnya "revisi", snapshot data SEBELUM diubah disimpan sebagai satu */
+/*  dokumen di subcollection Firestore "pengajuan/{id}/riwayatRevisi" —    */
+/*  supaya data lama tidak pernah tertimpa/hilang dan bisa ditelusuri.     */
+/*  `dataSebelum` sengaja Partial (bukan record penuh) karena hanya field  */
+/*  yang berubah pada revisi ini yang perlu disimpan; field yang tidak     */
+/*  disentuh cukup dilihat dari dokumen utama / riwayat sebelumnya.        */
+export interface RiwayatRevisiRecord {
+  id: string;
+  pengajuanId: string;
+  /** Ke berapa kali OPD mengajukan ulang (1 = revisi pertama, dst). */
+  revisiKe: number;
+  /** Catatan BPKAD yang sedang direspon lewat revisi ini (boleh kosong). */
+  catatanVerifikasi: string | null;
+  /** Snapshot field-field yang berubah, bernilai SEBELUM revisi ini disimpan. */
+  dataSebelum: Partial<FormulirPenghapusanPiutangOPDRecord>;
+  diajukanUlangOleh: string;
+  createdAt: string; // ISO date — kapan revisi ini disimpan
+}
+
 /* ==================== 2. Form types (client state) ==================== */
 /*  Field dokumen bertipe `File | null` — objek file mentah dari input.  */
 /*  Dokumen nominatif (daftar penanggung piutang) ada di sini sebagai    */
@@ -261,10 +282,23 @@ export interface FormulirPenghapusanPiutangOPDRecord {
   pernyataan: PernyataanOPD;
 
   // Diisi BPKAD saat verifikasi, kosong selama status masih "diajukan".
+  // Bertipe `| null` (bukan cuma opsional) karena ajukanUlangPengajuan()
+  // di lib/pengajuan.ts sengaja meng-null-kan kedua field ini setiap kali
+  // OPD ajukan ulang, supaya "Lihat catatan revisi →" tidak menampilkan
+  // catatan lama yang sudah dijawab (catatan lamanya tetap ada, cuma
+  // pindah ke riwayatRevisi lewat RiwayatRevisiRecord.catatanVerifikasi).
   checklistSubstantif?: Record<string, boolean>;
   verifikatorId?: string;
-  tanggalVerifikasi?: string;
-  catatanVerifikasi?: string;
+  tanggalVerifikasi?: string | null;
+  catatanVerifikasi?: string | null;
+
+  /**
+   * Berapa kali OPD sudah mengajukan ulang (edit setelah status "revisi").
+   * Naik setiap kali ajukanUlangPengajuan() berhasil; dipakai sebagai
+   * `revisiKe` pada dokumen riwayat & badge "Revisi ke-N" di UI. 0 kalau
+   * belum pernah direvisi sama sekali.
+   */
+  jumlahRevisi?: number;
 }
 
 // Payload submit: field File sudah dikonversi ke UploadedFileRef,

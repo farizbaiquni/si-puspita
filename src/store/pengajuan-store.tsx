@@ -40,7 +40,10 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getOpdByNama } from "@/types/types";
-import type { FormulirPenghapusanPiutangOPDRecord } from "@/types/types";
+import type {
+  FormulirPenghapusanPiutangOPDRecord,
+  RiwayatRevisiRecord,
+} from "@/types/types";
 
 type Data = FormulirPenghapusanPiutangOPDRecord[];
 
@@ -245,4 +248,56 @@ export function usePengajuanStore() {
     );
   }
   return ctx;
+}
+
+/**
+ * Baca riwayat revisi satu pengajuan secara real-time dari subcollection
+ * "pengajuan/{id}/riwayatRevisi" (diisi oleh ajukanUlangPengajuan() di
+ * lib/pengajuan.ts setiap kali OPD "Edit & Ajukan Ulang"). Diurut dari
+ * revisi TERBARU ke terlama supaya enak dibaca di UI (mis. ModalDetail).
+ *
+ * Dipisah dari PengajuanProvider (bukan bagian dari `data` utama) karena
+ * riwayat jarang dibutuhkan — cuma saat user buka detail satu pengajuan —
+ * jadi tidak perlu ikut ke-load/subscribe untuk semua baris di daftar.
+ */
+export function useRiwayatRevisi(pengajuanId: string | null | undefined) {
+  const [riwayat, setRiwayat] = useState<RiwayatRevisiRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(Boolean(pengajuanId));
+
+  // Pola "adjusting state during render" (bukan di dalam useEffect) — saat
+  // pengajuanId berubah, reset riwayat & isLoading LANGSUNG di badan render.
+  // React akan langsung re-render ulang tanpa commit antara, jadi tidak
+  // memicu "cascading render" seperti kalau setState dipanggil sinkron di
+  // badan effect. Referensi: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevPengajuanId, setPrevPengajuanId] = useState(pengajuanId);
+  if (pengajuanId !== prevPengajuanId) {
+    setPrevPengajuanId(pengajuanId);
+    setRiwayat([]);
+    setIsLoading(Boolean(pengajuanId));
+  }
+
+  useEffect(() => {
+    // Subscribe hanya kalau ada id — reset untuk kasus id kosong sudah
+    // ditangani di atas (saat render), bukan di sini.
+    if (!pengajuanId) return;
+
+    const q = query(
+      collection(db, PENGAJUAN_COLLECTION, pengajuanId, "riwayatRevisi"),
+      orderBy("createdAt", "desc"),
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setRiwayat(snapshot.docs.map((d) => d.data() as RiwayatRevisiRecord));
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error("Gagal membaca riwayat revisi:", err);
+        setIsLoading(false);
+      },
+    );
+    return unsubscribe;
+  }, [pengajuanId]);
+
+  return { riwayat, isLoading };
 }
