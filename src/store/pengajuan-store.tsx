@@ -63,7 +63,7 @@ function formatNomorRegistrasi(
   const xxx = String(urutan).padStart(3, "0");
   const mm = String(tanggal.getMonth() + 1).padStart(2, "0");
   const yyyy = tanggal.getFullYear();
-  return `${xxx}/REG/${kodeOpd}/${mm}/${yyyy}`;
+  return `${xxx}/REG-PUSPITA/${kodeOpd}/${mm}/${yyyy}`;
 }
 
 interface PengajuanStoreValue {
