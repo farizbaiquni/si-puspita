@@ -743,6 +743,8 @@ const FileUploadCard = ({
 export default function AjukanPermohonanWizard({
   onSubmitPengajuan: _onSubmitPengajuan,
   allowFreeNavigation = false,
+  isLoggedIn = false,
+  createdByOverride,
   defaultNamaOPD = "",
   onRequireLogin,
 }: {
@@ -761,25 +763,47 @@ export default function AjukanPermohonanWizard({
    * mengirim data.
    *
    * `true` (dipakai di ModalPengajuan/landing page publik): user boleh
-   * pindah langkah bebas tanpa harus mengisi semua field. Begitu formulir
-   * lengkap dan user menekan "Kirim" di langkah terakhir, TIDAK langsung
-   * mengirim data — karena sistem login belum diimplementasikan di sini,
-   * yang muncul adalah alert bahwa OPD harus login dahulu (lihat
-   * `showLoginRequiredAlert` / prop `onRequireLogin`).
+   * pindah langkah bebas tanpa harus mengisi semua field di tiap langkah.
+   * Begitu formulir lengkap dan user menekan "Kirim" di langkah terakhir,
+   * yang terjadi tergantung `isLoggedIn` — lihat prop itu.
    */
   allowFreeNavigation?: boolean;
   /**
+   * Hanya dipakai saat `allowFreeNavigation` true (mode publik). Menandakan
+   * apakah sesi OPD yang sedang login sudah ada (mis. `user?.role ===
+   * "OPD"` dari `useAuth()` di pemanggil).
+   *
+   * - `false` (default): begitu formulir lengkap, tombol "Kirim" MEMUNCULKAN
+   *   alert "harus login dahulu" (`showLoginRequiredAlert`) — tidak submit.
+   * - `true`: begitu formulir lengkap, langsung lanjut ke modal konfirmasi
+   *   lalu submit sungguhan ke Firestore lewat `createPengajuan()` — sama
+   *   seperti mode dashboard (`allowFreeNavigation` false).
+   *
+   * Navigasi antar langkah TETAP bebas selama ini true — prop ini cuma
+   * mengatur apa yang terjadi saat "Kirim" ditekan di langkah terakhir,
+   * bukan validasi per-langkah.
+   */
+  isLoggedIn?: boolean;
+  /**
+   * `createdBy` yang dikirim ke `createPengajuan()` saat submit di mode
+   * `allowFreeNavigation` + `isLoggedIn`. Diisi pemanggil dari sesi login
+   * sungguhan (mis. `user?.opdSlug`) karena field `namaOPD` di form ini
+   * disabled dan belum tentu representasi akun yang valid. Kalau kosong,
+   * fallback ke `getOpdByNama(form.namaOPD)?.slug` seperti sebelumnya.
+   */
+  createdByOverride?: string;
+  /**
    * Nilai awal field "Nama OPD". Default kosong (dipakai di ModalPengajuan
-   * publik — belum tentu jelas OPD mana yang mengisi sebelum login). Di
-   * dashboard (setelah login), parent bisa mengisi ini dengan nama OPD dari
-   * sesi user yang sedang login.
+   * publik sebelum login — belum tentu jelas OPD mana yang mengisi). Di
+   * dashboard maupun ModalPengajuan setelah login, parent mengisi ini
+   * dengan nama OPD dari sesi user yang sedang login (`user.namaOPD`).
    */
   defaultNamaOPD?: string;
   /**
    * Dipanggil saat user menekan "Login Sekarang" di alert "harus login
-   * dahulu" (mode allowFreeNavigation). Opsional — kalau parent ingin,
-   * misalnya, langsung membuka modal login. Kalau tidak diisi, tombol
-   * hanya menutup alert ini.
+   * dahulu" (mode allowFreeNavigation + belum login). Opsional — kalau
+   * parent ingin, misalnya, langsung membuka modal login. Kalau tidak
+   * diisi, tombol hanya menutup alert ini.
    */
   onRequireLogin?: () => void;
 } = {}) {
@@ -1480,17 +1504,25 @@ export default function AjukanPermohonanWizard({
       // Mode ModalPengajuan publik — user boleh lompat bebas antar langkah,
       // jadi di langkah terakhir ini kita validasi SELURUH formulir sekaligus.
       // Kalau ada yang belum lengkap, arahkan ke langkah pertama yang
-      // bermasalah dan tampilkan alert. Kalau sudah lengkap, TETAP belum
-      // benar-benar mengirim data — tampilkan alert "harus login dahulu",
-      // karena pengajuan sesungguhnya hanya bisa dikirim lewat dashboard
-      // OPD yang sudah login.
+      // bermasalah dan tampilkan alert — ini berlaku sama baik sudah login
+      // maupun belum, supaya OPD tidak login lalu ternyata masih harus
+      // melengkapi form dulu tanpa tahu bagian mana yang kurang.
       const { valid, firstInvalidStep } = validateAllSteps();
       if (!valid) {
         if (firstInvalidStep !== null) setCurrentStep(firstInvalidStep);
         setShowIncompleteAlert(true);
         return;
       }
-      setShowLoginRequiredAlert(true);
+      if (!isLoggedIn) {
+        // Formulir sudah lengkap tapi belum ada sesi OPD — belum bisa
+        // benar-benar mengirim, tampilkan alert "harus login dahulu".
+        setShowLoginRequiredAlert(true);
+        return;
+      }
+      // Sudah login DAN formulir lengkap — lanjut ke modal konfirmasi yang
+      // sama dengan mode dashboard, submit sungguhan ditangani handleSubmit().
+      setSubmitError(null);
+      setShowConfirm(true);
     } else {
       setSubmitError(null);
       setShowConfirm(true);
@@ -1505,10 +1537,12 @@ export default function AjukanPermohonanWizard({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      // createdBy sementara diturunkan dari nama OPD yang mengisi form
-      // (belum ada sesi login sungguhan) — begitu autentikasi selesai,
-      // ganti ke uid dari Firebase Auth di sini.
-      const createdBy = getOpdByNama(form.namaOPD)?.slug ?? "";
+      // createdBy diprioritaskan dari sesi login sungguhan (createdByOverride,
+      // mis. user.opdSlug dari useAuth() di ModalPengajuan/dashboard).
+      // Fallback ke slug hasil pencocokan form.namaOPD hanya untuk kondisi
+      // lama sebelum createdByOverride diisi pemanggil.
+      const createdBy =
+        createdByOverride || getOpdByNama(form.namaOPD)?.slug || "";
 
       // Cast aman: FormData di file ini field-per-field sama persis
       // dengan FormulirPenghapusanPiutangOPD di types.ts (union type

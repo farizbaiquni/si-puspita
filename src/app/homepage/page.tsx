@@ -652,10 +652,16 @@ function ModalUploadDokumen() {
 }
 
 function ModalPengajuan() {
-  // tambahPengajuan menulis ke store bersama (localStorage + context),
-  // jadi begitu OPD submit di sini, data langsung tersedia di ModalLacak
-  // homepage maupun di dashboard-v2 tanpa reload.
-  const { tambahPengajuan } = usePengajuanStore();
+  // Submit sungguhan ditulis langsung ke Firestore lewat createPengajuan()
+  // di dalam AjukanPermohonanWizard sendiri (lib/pengajuan.ts) — komponen
+  // ini hanya perlu tahu status login OPD, bukan lagi menulis ke store
+  // manual seperti sebelumnya.
+  const { user } = useAuth();
+
+  // Kelopak "Pengajuan" bisa diakses tanpa login (allowFreeNavigation),
+  // tapi submit sungguhan hanya boleh terjadi kalau sesi yang aktif adalah
+  // OPD — bukan Admin, dan bukan belum login sama sekali.
+  const isLoggedIn = user?.role === "OPD";
 
   // ModalPengajuan didefinisikan di luar SiPuspitaLandingPage (dipakai
   // lewat KELOPAK_LIST di level modul), jadi tidak punya akses langsung ke
@@ -670,9 +676,10 @@ function ModalPengajuan() {
 
   return (
     <AjukanPermohonanWizard
-      onSubmitPengajuan={tambahPengajuan}
       allowFreeNavigation
-      defaultNamaOPD="Nama OPD Terisi Otomatis"
+      isLoggedIn={isLoggedIn}
+      createdByOverride={isLoggedIn ? (user?.opdSlug ?? "") : undefined}
+      defaultNamaOPD={isLoggedIn ? (user?.namaOPD ?? "") : ""}
       onRequireLogin={handleRequireLogin}
     />
   );
