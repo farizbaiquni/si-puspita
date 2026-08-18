@@ -13,6 +13,21 @@ const UPLOAD_PRESET = "si_puspita_unsigned";
  *
  * pengajuanId & fieldName dipakai sebagai bagian dari `public_id` supaya
  * nama file di Cloudinary tetap terlacak asalnya dari pengajuan mana.
+ *
+ * `public_id` SENGAJA disertai suffix unik (timestamp + random) di
+ * belakangnya — BUKAN cuma `${pengajuanId}/${fieldName}` polos. Kalau
+ * public_id sama dipakai ulang setiap kali field ini diupload lagi (mis.
+ * saat OPD revisi), preset unsigned "si_puspita_unsigned" TIDAK akan
+ * overwrite file lama (overwrite untuk unsigned preset diatur dari
+ * Cloudinary Dashboard, defaultnya off) — hasilnya Cloudinary malah
+ * mengembalikan url FILE LAMA yang sudah ada, walau upload "sukses" dan
+ * field id/uploadedAt di record tetap kelihatan baru. Dengan public_id
+ * unik per upload, ini tidak mungkin terjadi lagi: setiap upload PASTI
+ * jadi file baru di Cloudinary (file lama tidak pernah tertimpa/hilang,
+ * cocok juga untuk keperluan riwayatRevisi yang butuh url versi lama
+ * tetap bisa dibuka), dan dokumen utama tinggal diupdate ke url baru
+ * ini seperti biasa (lihat createPengajuan/ajukanUlangPengajuan di
+ * lib/pengajuan.ts — keduanya tidak perlu berubah sama sekali).
  */
 export async function uploadDokumenKeCloudinary(
   file: File,
@@ -25,10 +40,14 @@ export async function uploadDokumenKeCloudinary(
     );
   }
 
+  // Suffix unik supaya public_id tidak pernah bentrok dengan upload
+  // sebelumnya untuk field yang sama — lihat penjelasan di komentar atas.
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("public_id", `${pengajuanId}/${fieldName}`);
+  formData.append("public_id", `${pengajuanId}/${fieldName}-${uniqueSuffix}`);
   formData.append("folder", "si-puspita");
 
   const res = await fetch(
@@ -44,7 +63,7 @@ export async function uploadDokumenKeCloudinary(
   const data = await res.json();
 
   return {
-    id: `FILE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `FILE-${uniqueSuffix}`,
     url: data.secure_url,
     namaFile: file.name,
     ukuranBytes: file.size,
