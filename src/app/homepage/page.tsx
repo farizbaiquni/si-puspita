@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import {
   ArrowRight,
   Phone,
@@ -23,8 +23,8 @@ import {
   CheckCircle2,
   BookOpen,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import AjukanPermohonanWizard from "@/app/dashboard-v2/contents/opd/ajukan-permohonan/AjukanPermohonan";
 import { usePengajuanStore } from "@/store/pengajuan-store";
@@ -52,6 +52,16 @@ interface KelopakItem {
   modalTitle: string;
   modalContent: React.ReactNode;
 }
+
+// Urutan pengelompokan status: Teregistrasi paling atas, lalu Diajukan, lalu
+// Revisi. Konstan (tidak pernah berubah), jadi ditaruh di module scope —
+// bukan di dalam komponen — supaya tidak perlu masuk dependency array
+// useMemo/useEffect yang memakainya.
+const STATUS_GROUP_ORDER: Record<StatusFormulir, number> = {
+  teregistrasi: 0,
+  diajukan: 1,
+  revisi: 2,
+};
 
 const DASAR_HUKUM_BUNGA = [
   "Undang-Undang Nomor 17 Tahun 2003 tentang Keuangan Negara",
@@ -817,13 +827,6 @@ function ModalLacak() {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Urutan pengelompokan status: Teregistrasi paling atas, lalu Diajukan, lalu Revisi.
-  const STATUS_GROUP_ORDER: Record<StatusFormulir, number> = {
-    teregistrasi: 0,
-    diajukan: 1,
-    revisi: 2,
-  };
-
   // Filtering: cocok berdasarkan No. Surat, nama OPD, atau ID pengajuan —
   // sekaligus disaring per status jika chip status dipilih. Hasil
   // dikelompokkan per status (Teregistrasi → Diajukan → Revisi), dan di
@@ -1167,6 +1170,13 @@ const KELOPAK_LIST: KelopakItem[] = [
     modalContent: <ModalInformasiUmum />,
   },
 ];
+
+// Slug URL-safe untuk tiap kelopak (id "sop&flowchart" mengandung "&" yang
+// tidak aman dipakai apa adanya di query string).
+const kelopakToSlug = (id: KelopakId) => id.replace(/&/g, "-");
+const slugToKelopak = (slug: string): KelopakId | null =>
+  (KELOPAK_LIST.find((k) => kelopakToSlug(k.id) === slug)?.id as
+    KelopakId | undefined) ?? null;
 
 // ─── Bunga Modal ──────────────────────────────────────────────────────────────
 function ModalBunga({
@@ -1548,16 +1558,90 @@ const OPD_BADGE_BY_SLUG: Record<string, string> = {
 
 export default function SiPuspitaLandingPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { login, user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [lastModalItem, setLastModalItem] = useState<KelopakItem | null>(null);
-  const [panduanOpen, setPanduanOpen] = useState(false);
+
+  // ─── Sinkronisasi modal <-> URL query string ──────────────────────────
+  // "modal", "login", dan "panduan" DIBACA LANGSUNG dari query string setiap
+  // render (bukan disalin ke useState lalu disinkronkan lewat useEffect) —
+  // ini yang dianjurkan React: kalau sebuah nilai bisa diturunkan langsung
+  // dari value lain yang reaktif (di sini searchParams), jangan duplikasi
+  // jadi state + effect, karena itu memicu "cascading render" saat effect
+  // memanggil setState secara sinkron.
+  const modalItem = useMemo<KelopakItem | null>(() => {
+    const slug = searchParams.get("modal");
+    if (!slug) return null;
+    const kelopakId = slugToKelopak(slug);
+    return kelopakId
+      ? (KELOPAK_LIST.find((k) => k.id === kelopakId) ?? null)
+      : null;
+  }, [searchParams]);
+  const loginOpen = searchParams.get("login") === "1";
+  const panduanOpen = searchParams.get("panduan") === "1";
+
+  // Menulis/menghapus query param tanpa reload halaman (soft navigation).
+  // Pakai replace() (bukan push()) supaya buka/tutup modal tidak menumpuk
+  // banyak entry di history — kalau nanti mau tombol back browser ikut
+  // menutup modal, tinggal ganti ke router.push di sini.
+  //
+  // searchParams & pathname disimpan lewat ref (di-refresh via effect tanpa
+  // dependency array setelah setiap render) supaya updateUrlParams — dan
+  // semua handler yang memakainya (handleCloseModal, handleKelopakClick,
+  // openLogin, dll) — punya IDENTITAS FUNGSI YANG STABIL lewat useCallback.
+  // Ini penting: ModalBunga punya effect ber-dependency [onClose]; kalau
+  // onClose (= handleCloseModal) berubah identitas di setiap render induk
+  // (mis. saat router.replace memicu render baru ketika modal ditutup),
+  // effect itu re-run dan menjadwalkan ulang animasi "muncul" — sehingga
+  // modal sempat terlihat "muncul lagi" sebelum benar-benar tertutup.
+  const searchParamsRef = useRef(searchParams);
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+    pathnameRef.current = pathname;
+  });
+
+  const updateUrlParams = useCallback(
+    (params: Record<string, string | null>) => {
+      const sp = new URLSearchParams(searchParamsRef.current.toString());
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null) sp.delete(key);
+        else sp.set(key, value);
+      });
+      const qs = sp.toString();
+      router.replace(
+        qs ? `${pathnameRef.current}?${qs}` : pathnameRef.current,
+        {
+          scroll: false,
+        },
+      );
+    },
+    [router],
+  );
+
+  const openLogin = useCallback(
+    () => updateUrlParams({ login: "1" }),
+    [updateUrlParams],
+  );
+  const closeLogin = useCallback(
+    () => updateUrlParams({ login: null }),
+    [updateUrlParams],
+  );
+  const openPanduan = useCallback(
+    () => updateUrlParams({ panduan: "1" }),
+    [updateUrlParams],
+  );
+  const closePanduan = useCallback(
+    () => updateUrlParams({ panduan: null }),
+    [updateUrlParams],
+  );
 
   // Dropdown profil di navbar (desktop) saat sudah login.
   const [profileOpen, setProfileOpen] = useState(false);
@@ -1657,14 +1741,13 @@ export default function SiPuspitaLandingPage() {
   // Bunga menu state
   const [bungaActiveId, setBungaActiveId] = useState<KelopakId | null>(null);
   const [bungaCenterActive, setBungaCenterActive] = useState(false);
-  const [modalItem, setModalItem] = useState<KelopakItem | null>(null);
   const isModalOpen = modalItem !== null;
 
   // Backsound klik kelopak — soft pop + sentuhan chime tipis, di-generate
   // langsung via Web Audio API (tidak perlu file audio eksternal)
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  const playKelopakSound = () => {
+  const playKelopakSound = useCallback(() => {
     try {
       if (!audioCtxRef.current) {
         const AudioCtx =
@@ -1707,49 +1790,66 @@ export default function SiPuspitaLandingPage() {
     } catch {
       // Abaikan bila Web Audio API tidak tersedia di browser
     }
-  };
+  }, []);
 
-  const handleKelopakClick = (id: KelopakId) => {
-    playKelopakSound();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setBungaCenterActive(false);
-    setBungaActiveId(id);
-    const found = KELOPAK_LIST.find((k) => k.id === id) ?? null;
-    setModalItem(found);
-    setLastModalItem(found); // ← ganti dari ref
-  };
+  const handleKelopakClick = useCallback(
+    (id: KelopakId) => {
+      playKelopakSound();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setBungaCenterActive(false);
+      setBungaActiveId(id);
+      const found = KELOPAK_LIST.find((k) => k.id === id) ?? null;
+      setLastModalItem(found);
+      updateUrlParams({ modal: kelopakToSlug(id) });
+    },
+    [playKelopakSound, updateUrlParams],
+  );
 
-  const handleCenterClick = () => {
+  const handleCenterClick = useCallback(() => {
     playKelopakSound();
     setBungaActiveId(null);
     setBungaCenterActive(true);
-  };
+  }, [playKelopakSound]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsModalClosing(true);
+    updateUrlParams({ modal: null });
     setTimeout(() => {
-      setModalItem(null);
       setBungaActiveId(null);
       setBungaCenterActive(false);
       setIsModalClosing(false);
     }, 600); // perpanjang agar animasi selesai dulu
-  };
+  }, [updateUrlParams]);
 
   // Didengarkan dari ModalPengajuan (lewat AjukanPermohonanWizard ->
   // onRequireLogin) — saat OPD menekan "Login Sekarang" di alert "harus
   // login dahulu", tutup modal pengajuan yang sedang terbuka lalu buka
   // modal login.
+  //
+  // handleCloseModal & openLogin dibuat ulang tiap render (bukan
+  // useCallback), jadi kalau dimasukkan ke dependency array, listener akan
+  // di-detach & di-attach ulang setiap render. Supaya effect tetap hanya
+  // subscribe sekali (mount) tapi tetap memanggil versi TERBARU dari kedua
+  // fungsi itu (menghindari stale closure), simpan lewat ref yang
+  // di-refresh setiap render — TAPI penulisan ke ref.current tidak boleh
+  // terjadi langsung di badan render, jadi dilakukan di useEffect terpisah
+  // tanpa dependency array (otomatis jalan lagi setelah setiap render).
+  const requestLoginHandlerRef = useRef<() => void>(() => {});
   useEffect(() => {
-    const handler = () => {
+    requestLoginHandlerRef.current = () => {
       handleCloseModal();
-      setLoginOpen(true);
+      openLogin();
     };
+  });
+
+  useEffect(() => {
+    const handler = () => requestLoginHandlerRef.current();
     window.addEventListener("si-puspita:request-login", handler);
     return () =>
       window.removeEventListener("si-puspita:request-login", handler);
   }, []);
 
-  const handleLogin = (e: FormEvent<HTMLFormElement>) => {
+  const handleLogin = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoginError("");
     if (!loginForm.username || !loginForm.password) {
@@ -1771,7 +1871,7 @@ export default function SiPuspitaLandingPage() {
         return;
       }
 
-      setLoginOpen(false);
+      closeLogin();
       setLoginForm({ username: "", password: "" });
       setToast({
         type: "success",
@@ -1860,7 +1960,7 @@ export default function SiPuspitaLandingPage() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setLoginOpen(true)}
+                  onClick={openLogin}
                   className="group relative flex items-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-200 hover:cursor-pointer hover:text-slate-700"
                 >
                   <LogIn className="h-3.5 w-3.5" /> Login
@@ -1933,7 +2033,7 @@ export default function SiPuspitaLandingPage() {
               ) : (
                 <button
                   onClick={() => {
-                    setLoginOpen(true);
+                    openLogin();
                     setMobileOpen(false);
                   }}
                   className="group relative w-fit rounded-lg px-4 py-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-[#1a4e8f]"
@@ -2049,7 +2149,7 @@ export default function SiPuspitaLandingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPanduanOpen(true)}
+                    onClick={openPanduan}
                     className="group inline-flex items-center justify-center gap-2 rounded-full border border-dashed border-amber-400/60 bg-amber-50/60 px-5 py-2.5 text-[13.5px] font-semibold text-amber-700 transition-all hover:border-amber-400 hover:bg-amber-50 hover:shadow-md hover:shadow-amber-200/40 active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[14px]"
                   >
                     <BookOpen className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
@@ -2352,7 +2452,7 @@ export default function SiPuspitaLandingPage() {
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              setLoginOpen(false);
+              closeLogin();
               setLoginError("");
               setLoginForm({ username: "", password: "" });
             }
@@ -2385,7 +2485,7 @@ export default function SiPuspitaLandingPage() {
                 </div>
                 <button
                   onClick={() => {
-                    setLoginOpen(false);
+                    closeLogin();
                     setLoginError("");
                     setLoginForm({ username: "", password: "" });
                   }}
@@ -2528,7 +2628,7 @@ export default function SiPuspitaLandingPage() {
               <button
                 onClick={() => {
                   setAuthGuardOpen(null);
-                  setLoginOpen(true);
+                  openLogin();
                 }}
                 className="flex-1 rounded-xl bg-yellow-500 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:cursor-pointer hover:bg-yellow-600"
               >
@@ -2548,7 +2648,7 @@ export default function SiPuspitaLandingPage() {
             backdropFilter: "blur(6px)",
           }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setPanduanOpen(false);
+            if (e.target === e.currentTarget) closePanduan();
           }}
         >
           <div className="relative flex h-[97vh] w-[98vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -2564,7 +2664,7 @@ export default function SiPuspitaLandingPage() {
                 </h3>
               </div>
               <button
-                onClick={() => setPanduanOpen(false)}
+                onClick={closePanduan}
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:cursor-pointer hover:bg-white/10 hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
