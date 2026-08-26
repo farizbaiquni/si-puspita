@@ -23,7 +23,14 @@ import {
   CheckCircle2,
   BookOpen,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import AjukanPermohonanWizard from "@/app/dashboard-v2/contents/opd/ajukan-permohonan/AjukanPermohonan";
@@ -1556,7 +1563,7 @@ const OPD_BADGE_BY_SLUG: Record<string, string> = {
   setwan: "SW",
 };
 
-export default function SiPuspitaLandingPage() {
+function SiPuspitaLandingPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -2702,5 +2709,19 @@ export default function SiPuspitaLandingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// `SiPuspitaLandingPageContent` memakai useSearchParams() untuk sinkronisasi
+// modal <-> URL query string. Next.js MEWAJIBKAN komponen yang memakai
+// useSearchParams() dibungkus <Suspense> — kalau tidak, build produksi akan
+// gagal saat mencoba prerender halaman ini ("useSearchParams() should be
+// wrapped in a suspense boundary"). Fallback di bawah cuma tampil sekejap
+// saat pertama kali halaman dimuat (client-side), sebelum searchParams siap.
+export default function SiPuspitaLandingPage() {
+  return (
+    <Suspense fallback={null}>
+      <SiPuspitaLandingPageContent />
+    </Suspense>
   );
 }
