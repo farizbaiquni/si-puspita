@@ -7,6 +7,7 @@ import DaftarPengajuanOPDBaru from "./contents/opd/lihat-daftar-pengajuan/LihatD
 import VerifikasiPengajuan from "./contents/bpkad/verifikasi-pengajuan/VerifikasiPengajuan";
 import LihatDaftarPengajuanAdmin from "./contents/bpkad/lihat-daftar-pengajuan-admin/LihatDaftarPengajuanAdmin";
 import RegisterDigital from "./contents/bpkad/register-digital/RegisterDigital";
+import LihatDaftarPengajuanBPKAD from "./contents/userBPKAD/LihatDaftarPengajuanBPKAD/LihatDaftarPengajuanBPKAD";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -38,12 +39,26 @@ import { getOpdBySlug } from "@/types/types";
 
 type UserRole = "OPD" | "ADMIN";
 
+// Tampilan sidebar/menu sebenarnya dibagi 3, BUKAN cuma ikut UserRole:
+//  - "OPD"         → role "OPD" (termasuk akun "bpkad_opd") — menu OPD biasa.
+//  - "BPKAD_ADMIN" → role "ADMIN" DAN opdSlug === "bpkad" (akun "bpkad") —
+//                    HANYA melihat daftar pengajuan (read-only), tidak
+//                    punya menu Verifikasi/Register Digital seperti Admin
+//                    umum.
+//  - "OTHER_ADMIN" → role "ADMIN" tapi opdSlug bukan "bpkad" (akun "admin"
+//                    generik) — tetap dapat menu Admin lengkap seperti
+//                    sebelumnya (Verifikasi, Register Digital, Lihat
+//                    Pengajuan).
+type TampilanRole = "OPD" | "BPKAD_ADMIN" | "OTHER_ADMIN";
+
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
 type AdminMenuKey =
   "verifikasi-pengajuan" | "lihat-daftar-pengajuan-admin" | "register-digital";
 
-type MenuKey = OPDMenuKey | AdminMenuKey;
+type BPKADAdminMenuKey = "lihat-daftar-pengajuan-bpkad";
+
+type MenuKey = OPDMenuKey | AdminMenuKey | BPKADAdminMenuKey;
 
 // ── Menu configs per role ─────────────────────────────────────────────────────
 
@@ -85,6 +100,16 @@ const ADMIN_MENUS: MenuItem[] = [
   },
 ];
 
+// Akun BPKAD ("bpkad", opdSlug "bpkad") HANYA dapat satu menu ini — bukan
+// menu Admin lengkap di atas.
+const BPKAD_ADMIN_MENUS: MenuItem[] = [
+  {
+    key: "lihat-daftar-pengajuan-bpkad",
+    icon: <IconEye />,
+    label: "Lihat Daftar Pengajuan",
+  },
+];
+
 const PAGE_META: Record<
   MenuKey,
   { title: string; subtitle: string; action?: { label: string } }
@@ -111,6 +136,11 @@ const PAGE_META: Record<
     title: "Register Digital",
     subtitle:
       "Daftar nominatif piutang yang telah diusulkan, dikelompokkan per OPD.",
+  },
+  "lihat-daftar-pengajuan-bpkad": {
+    title: "Lihat Daftar Pengajuan",
+    subtitle:
+      "Seluruh pengajuan penghapusan piutang dari semua OPD, beserta statusnya.",
   },
 };
 
@@ -197,7 +227,7 @@ const NavItem: React.FC<NavItemProps> = ({
 // ── Sidebar ──────────────────────────────────────────────────────────────────
 
 interface SidebarProps {
-  role: UserRole;
+  tampilan: TampilanRole;
   active: MenuKey;
   onNavigate: (key: MenuKey) => void;
   /** Status drawer terbuka di layar sempit (mobile/tablet). Diabaikan di lg+. */
@@ -206,13 +236,18 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-  role,
+  tampilan,
   active,
   onNavigate,
   mobileOpen,
   onCloseMobile,
 }) => {
-  const menus = role === "OPD" ? OPD_MENUS : ADMIN_MENUS;
+  const menus =
+    tampilan === "OPD"
+      ? OPD_MENUS
+      : tampilan === "BPKAD_ADMIN"
+        ? BPKAD_ADMIN_MENUS
+        : ADMIN_MENUS;
 
   const handleNavigate = (key: MenuKey) => {
     onNavigate(key);
@@ -484,7 +519,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
 // ── Header ───────────────────────────────────────────────────────────────────
 interface HeaderProps {
-  role: UserRole;
+  tampilan: TampilanRole;
   namaOPD: string | null;
   opdSlug: string | null;
   onOpenMobileMenu: () => void;
@@ -500,33 +535,39 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({
-  role,
+  tampilan,
   namaOPD,
   opdSlug,
   onOpenMobileMenu,
   onLogout,
   notifikasi,
 }) => {
-  console.log(opdSlug);
   const currentUser =
-    role === "ADMIN"
+    tampilan === "BPKAD_ADMIN"
       ? {
-          name: "Admin",
-          subtitle: "Tim Admin",
-          initials: "AD",
+          name: "BPKAD",
+          subtitle: "BPKAD Kab. Kendal",
+          initials: "BP",
           avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
         }
-      : {
-          // namaOPD & opdSlug berasal dari sesi login (lihat useAuth()) —
-          // otomatis mengikuti akun yang sedang login, bukan lagi
-          // hardcode ke satu OPD tertentu.
-          // name = singkatan OPD (mis. "Dishub"), subtitle = nama resmi
-          // panjangnya (mis. "Dinas Perhubungan").
-          name: (opdSlug && OPD_SINGKATAN_BY_SLUG[opdSlug]) || "OPD",
-          subtitle: namaOPD ?? "Operator OPD",
-          initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
-          avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
-        };
+      : tampilan === "OTHER_ADMIN"
+        ? {
+            name: "Admin",
+            subtitle: "Tim Admin",
+            initials: "AD",
+            avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+          }
+        : {
+            // namaOPD & opdSlug berasal dari sesi login (lihat useAuth()) —
+            // otomatis mengikuti akun yang sedang login, bukan lagi
+            // hardcode ke satu OPD tertentu.
+            // name = singkatan OPD (mis. "Dishub"), subtitle = nama resmi
+            // panjangnya (mis. "Dinas Perhubungan").
+            name: (opdSlug && OPD_SINGKATAN_BY_SLUG[opdSlug]) || "OPD",
+            subtitle: namaOPD ?? "Operator OPD",
+            initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
+            avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
+          };
 
   return (
     <header className="flex h-auto min-h-17 shrink-0 flex-wrap items-center gap-3 border-b border-[#f0f0f0] bg-white px-4 py-2.5 sm:px-6 lg:px-8">
@@ -653,6 +694,8 @@ const MainContent: React.FC<MainContentProps> = ({
         />
       ) : activeMenu === "lihat-daftar-pengajuan-admin" ? (
         <LihatDaftarPengajuanAdmin semuaPengajuan={semuaPengajuan} />
+      ) : activeMenu === "lihat-daftar-pengajuan-bpkad" ? (
+        <LihatDaftarPengajuanBPKAD semuaPengajuan={semuaPengajuan} />
       ) : activeMenu === "register-digital" ? (
         <RegisterDigital semuaPengajuan={semuaPengajuan} />
       ) : activeMenu === "verifikasi-pengajuan" ? (
@@ -672,9 +715,10 @@ const MainContent: React.FC<MainContentProps> = ({
 
 // ── Menu default per role ──────────────────────────────────────────────────────
 
-const DEFAULT_MENU_BY_ROLE: Record<UserRole, MenuKey> = {
+const DEFAULT_MENU_BY_TAMPILAN: Record<TampilanRole, MenuKey> = {
   OPD: "ajukan-permohonan",
-  ADMIN: "verifikasi-pengajuan",
+  OTHER_ADMIN: "verifikasi-pengajuan",
+  BPKAD_ADMIN: "lihat-daftar-pengajuan-bpkad",
 };
 
 // ── Page root ─────────────────────────────────────────────────────────────────
@@ -697,25 +741,36 @@ const DashboardContent: React.FC = () => {
   // tidak bisa dipalsukan lewat URL (?user-role=admin).
   const role: UserRole = user?.role === "ADMIN" ? "ADMIN" : "OPD";
 
+  // tampilan membedakan akun BPKAD ("bpkad", opdSlug "bpkad") dari akun
+  // Admin generik ("admin", tanpa opdSlug "bpkad") — keduanya sama-sama
+  // role "ADMIN", tapi BPKAD cuma dapat satu menu "Lihat Daftar
+  // Pengajuan" (read-only), bukan menu Admin lengkap.
+  const tampilan: TampilanRole =
+    role === "ADMIN"
+      ? user?.opdSlug === "bpkad"
+        ? "BPKAD_ADMIN"
+        : "OTHER_ADMIN"
+      : "OPD";
+
   const [activeMenu, setActiveMenu] = useState<MenuKey>(
-    DEFAULT_MENU_BY_ROLE[role],
+    DEFAULT_MENU_BY_TAMPILAN[tampilan],
   );
 
   // Status drawer sidebar untuk layar < lg (mobile/tablet).
-  // Ditutup langsung di tempat kejadian (blok penyesuaian role di bawah,
-  // dan di dalam Sidebar saat navigasi menu) — bukan lewat useEffect,
-  // supaya tidak memicu cascading render.
+  // Ditutup langsung di tempat kejadian (blok penyesuaian tampilan di
+  // bawah, dan di dalam Sidebar saat navigasi menu) — bukan lewat
+  // useEffect, supaya tidak memicu cascading render.
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Lacak role sebelumnya supaya bisa reset activeMenu saat role berubah
-  // (mis. login user lain di tab yang sama), TANPA pakai useEffect.
-  // Pola ini "adjusting state during render" — direkomendasikan React
-  // untuk kasus reset state akibat perubahan prop/derived value, karena
-  // tidak memicu render tambahan yang sempat ter-commit ke layar.
-  const [prevRole, setPrevRole] = useState(role);
-  if (role !== prevRole) {
-    setPrevRole(role);
-    setActiveMenu(DEFAULT_MENU_BY_ROLE[role]);
+  // Lacak tampilan sebelumnya supaya bisa reset activeMenu saat tampilan
+  // berubah (mis. login user lain di tab yang sama), TANPA pakai
+  // useEffect. Pola ini "adjusting state during render" — direkomendasikan
+  // React untuk kasus reset state akibat perubahan prop/derived value,
+  // karena tidak memicu render tambahan yang sempat ter-commit ke layar.
+  const [prevTampilan, setPrevTampilan] = useState(tampilan);
+  if (tampilan !== prevTampilan) {
+    setPrevTampilan(tampilan);
+    setActiveMenu(DEFAULT_MENU_BY_TAMPILAN[tampilan]);
     setMobileMenuOpen(false);
   }
 
@@ -792,7 +847,7 @@ const DashboardContent: React.FC = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f7f8fa] font-sans">
       <Sidebar
-        role={role}
+        tampilan={tampilan}
         active={activeMenu}
         onNavigate={setActiveMenu}
         mobileOpen={mobileMenuOpen}
@@ -800,7 +855,7 @@ const DashboardContent: React.FC = () => {
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
-          role={role}
+          tampilan={tampilan}
           namaOPD={user.namaOPD}
           opdSlug={user.opdSlug}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}

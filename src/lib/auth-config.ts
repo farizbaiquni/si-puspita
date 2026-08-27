@@ -58,6 +58,18 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
     role: "OPD",
     opdSlug: "dpmptsp",
   },
+  {
+    username: "bpkad_opd",
+    password: "bpkad_si_puspita#70",
+    role: "OPD",
+    opdSlug: "bpkad",
+  },
+  {
+    username: "bpkad",
+    password: "bpkad_si_puspita#00",
+    role: "ADMIN",
+    opdSlug: "bpkad",
+  },
 ] as const;
 
 /** Cocokkan username+password ke DAFTAR_AKUN (case-insensitive utk username). */

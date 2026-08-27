@@ -1673,12 +1673,19 @@ function SiPuspitaLandingPageContent() {
   const navProfile = !user
     ? null
     : user.role === "ADMIN"
-      ? {
-          name: "Admin",
-          subtitle: "Tim Admin",
-          initials: "AD",
-          avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
-        }
+      ? user.opdSlug === "bpkad"
+        ? {
+            name: "BPKAD",
+            subtitle: "BPKAD Kab. Kendal",
+            initials: "BP",
+            avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+          }
+        : {
+            name: "Admin",
+            subtitle: "Tim Admin",
+            initials: "AD",
+            avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+          }
       : {
           name: user.namaOPD ?? "OPD",
           subtitle: "Operator OPD",
@@ -1716,9 +1723,11 @@ function SiPuspitaLandingPageContent() {
     authGuardOpen === "opd"
       ? {
           title: "Login OPD diperlukan",
-          message: user
-            ? "Akun Anda saat ini login sebagai Admin. Untuk mengajukan permohonan, silakan logout lalu masuk kembali menggunakan akun OPD."
-            : "Untuk mengajukan permohonan penghapusan piutang, silakan login terlebih dahulu menggunakan akun OPD.",
+          // handleAjukanClick sudah mengarahkan user yang login (OPD
+          // maupun Admin) langsung ke dashboard, jadi guard "opd" ini
+          // hanya bisa terpicu saat user benar-benar belum login.
+          message:
+            "Untuk mengajukan permohonan penghapusan piutang, silakan login terlebih dahulu menggunakan akun OPD.",
         }
       : authGuardOpen === "admin"
         ? {
@@ -1730,12 +1739,18 @@ function SiPuspitaLandingPageContent() {
         : null;
 
   const handleAjukanClick = () => {
-    if (user?.role === "OPD") {
+    if (user) {
       router.push("/dashboard-v2");
     } else {
       setAuthGuardOpen("opd");
     }
   };
+
+  // Label CTA berubah begitu sudah login (OPD maupun Admin) — tidak ada
+  // lagi yang perlu "diajukan" dari landing page, cukup arahkan ke
+  // dashboard masing-masing.
+  const ajukanCtaLabel = user ? "Ke Dashboard" : "Ajukan Sekarang";
+  const ajukanHeroLabel = user ? "Ke Dashboard" : "Ajukan Permohonan";
 
   const handleVerifikasiClick = () => {
     if (user?.role === "ADMIN") {
@@ -1978,7 +1993,7 @@ function SiPuspitaLandingPageContent() {
                 onClick={handleAjukanClick}
                 className="rounded-lg bg-yellow-400 px-5 py-2 text-[13px] font-semibold text-[#0f2d5e] shadow-sm transition-all duration-200 hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342] hover:shadow-md"
               >
-                Ajukan Sekarang
+                {ajukanCtaLabel}
               </button>
             </div>
 
@@ -2011,7 +2026,7 @@ function SiPuspitaLandingPageContent() {
                 }}
                 className="w-fit rounded-lg bg-yellow-400 px-6 py-2.5 text-[14px] font-semibold text-[#0f2d5e] shadow-sm transition-all hover:cursor-pointer hover:bg-yellow-300 hover:text-[#0a2342]"
               >
-                Ajukan Sekarang
+                {ajukanCtaLabel}
               </button>
               {navProfile ? (
                 <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
@@ -2143,7 +2158,7 @@ function SiPuspitaLandingPageContent() {
                     onClick={handleAjukanClick}
                     className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#0f2d5e] px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-lg shadow-[#0f2d5e]/20 transition-all hover:bg-[#153a75] active:scale-[0.98] sm:px-6 sm:py-3 sm:text-[14px]"
                   >
-                    Ajukan Permohonan
+                    {ajukanHeroLabel}
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
                   <button
