@@ -59,7 +59,7 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
     opdSlug: "dpmptsp",
   },
   {
-    username: "bpkad_opd",
+    username: "bpkad",
     password: "bpkad_si_puspita#70",
     role: "OPD",
     opdSlug: "bpkad",
