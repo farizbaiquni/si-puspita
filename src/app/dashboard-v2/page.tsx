@@ -11,6 +11,10 @@ import LihatDaftarPengajuanBPKAD from "./contents/userBPKAD/LihatDaftarPengajuan
 import Link from "next/link";
 import Image from "next/image";
 
+// ── Modul Telaah Internal Struktural (additive) ──
+import TelaahInternalAdmin from "./contents/telaah/TelaahInternalAdmin";
+import TelaahSayaInternal from "./contents/telaah/TelaahSayaInternal";
+
 import {
   IconFilePlus,
   IconList,
@@ -27,6 +31,7 @@ import {
   useNotifikasiOPD,
   kirimNotifikasiVerifikasi,
 } from "@/store/notifikasi-store";
+import { useNotifikasiInternal } from "@/store/notifikasi-internal-store";
 import { useAuth } from "@/store/auth-store";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
@@ -34,31 +39,45 @@ import type {
   StatusFormulir,
 } from "@/types/types";
 import { getOpdBySlug } from "@/types/types";
+import {
+  TELAAH_LEVEL_SUBTITLE,
+  type NotifikasiInternalRecord,
+} from "@/types/telaah-internal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type UserRole = "OPD" | "ADMIN";
+type UserRole = "OPD" | "ADMIN" | "INTERNAL_STRUKTURAL";
 
-// Tampilan sidebar/menu sebenarnya dibagi 3, BUKAN cuma ikut UserRole:
-//  - "OPD"         → role "OPD" (termasuk akun "bpkad_opd") — menu OPD biasa.
-//  - "BPKAD_ADMIN" → role "ADMIN" DAN opdSlug === "bpkad" (akun "bpkad") —
-//                    HANYA melihat daftar pengajuan (read-only), tidak
-//                    punya menu Verifikasi/Register Digital seperti Admin
-//                    umum.
-//  - "OTHER_ADMIN" → role "ADMIN" tapi opdSlug bukan "bpkad" (akun "admin"
-//                    generik) — tetap dapat menu Admin lengkap seperti
-//                    sebelumnya (Verifikasi, Register Digital, Lihat
-//                    Pengajuan).
-type TampilanRole = "OPD" | "BPKAD_ADMIN" | "OTHER_ADMIN";
+// Tampilan sidebar/menu sebenarnya dibagi 6, BUKAN cuma ikut UserRole:
+//  - "OPD"            → role "OPD" (termasuk akun "bpkad_opd") — menu OPD biasa.
+//  - "BPKAD_ADMIN"    → role "ADMIN" DAN opdSlug === "bpkad" (akun "bpkad") —
+//                       HANYA melihat daftar pengajuan (read-only).
+//  - "OTHER_ADMIN"    → role "ADMIN" tapi opdSlug bukan "bpkad" (akun "admin"
+//                       generik) — menu Admin lengkap.
+//  - "TELAAH_KASUBBID" / "TELAAH_KABID" / "TELAAH_SEKBAN"
+//                     → role "INTERNAL_STRUKTURAL", menu "Telaah Saya".
+type TampilanRole =
+  | "OPD"
+  | "BPKAD_ADMIN"
+  | "OTHER_ADMIN"
+  | "TELAAH_KASUBBID"
+  | "TELAAH_KABID"
+  | "TELAAH_SEKBAN";
 
 type OPDMenuKey = "ajukan-permohonan" | "lihat-daftar-pengajuan";
 
 type AdminMenuKey =
-  "verifikasi-pengajuan" | "lihat-daftar-pengajuan-admin" | "register-digital";
+  | "verifikasi-pengajuan"
+  | "lihat-daftar-pengajuan-admin"
+  | "register-digital"
+  | "telaah-internal";
 
 type BPKADAdminMenuKey = "lihat-daftar-pengajuan-bpkad";
 
-type MenuKey = OPDMenuKey | AdminMenuKey | BPKADAdminMenuKey;
+// Menu baru untuk modul telaah internal (additive).
+type TelaahMenuKey = "telaah-saya";
+
+type MenuKey = OPDMenuKey | AdminMenuKey | BPKADAdminMenuKey | TelaahMenuKey;
 
 // ── Menu configs per role ─────────────────────────────────────────────────────
 
@@ -98,15 +117,30 @@ const ADMIN_MENUS: MenuItem[] = [
     icon: <IconEye />,
     label: "Lihat Pengajuan",
   },
+  // ── BARU: menu telaah internal untuk admin ──
+  {
+    key: "telaah-internal",
+    icon: <IconChecklist />,
+    label: "Telaah Internal",
+  },
 ];
 
-// Akun BPKAD ("bpkad", opdSlug "bpkad") HANYA dapat satu menu ini — bukan
-// menu Admin lengkap di atas.
+// Akun BPKAD ("bpkad", opdSlug "bpkad") HANYA dapat satu menu ini.
 const BPKAD_ADMIN_MENUS: MenuItem[] = [
   {
     key: "lihat-daftar-pengajuan-bpkad",
     icon: <IconEye />,
     label: "Lihat Daftar Pengajuan",
+  },
+];
+
+// ── BARU: menu untuk user INTERNAL_STRUKTURAL (kasubbid/kabid/sekban) ──
+// Hanya 1 menu — "Telaah Saya".
+const TELAAH_MENUS: MenuItem[] = [
+  {
+    key: "telaah-saya",
+    icon: <IconChecklist />,
+    label: "Telaah Saya",
   },
 ];
 
@@ -142,11 +176,19 @@ const PAGE_META: Record<
     subtitle:
       "Seluruh pengajuan penghapusan piutang dari semua OPD, beserta statusnya.",
   },
+  // ── BARU ──
+  "telaah-internal": {
+    title: "Telaah Internal",
+    subtitle:
+      "Ajukan pengajuan teregistrasi ke telaah substantif berjenjang (Kasubbid → Kabid → Sekban).",
+  },
+  "telaah-saya": {
+    title: "Telaah Saya",
+    subtitle: "Pengajuan yang menunggu telaah Anda.",
+  },
 };
 
-// Inisial pendek untuk avatar Header, per slug OPD (lebih jelas
-// daripada mengambil huruf pertama nama resmi — beberapa OPD sama-sama
-// diawali "Dinas ...").
+// Inisial pendek untuk avatar Header, per slug OPD.
 const OPD_BADGE_BY_SLUG: Record<string, string> = {
   rsud: "RS",
   dishub: "DH",
@@ -156,8 +198,7 @@ const OPD_BADGE_BY_SLUG: Record<string, string> = {
   dpmptsp: "DP",
 };
 
-// Singkatan resmi OPD (dipakai sebagai nama utama di Header/ProfileDropdown),
-// beda dari OPD_BADGE_BY_SLUG di atas yang cuma 2 huruf khusus avatar.
+// Singkatan resmi OPD (dipakai sebagai nama utama di Header/ProfileDropdown).
 const OPD_SINGKATAN_BY_SLUG: Record<string, string> = {
   rsud: "RSUD",
   dishub: "Dishub",
@@ -230,7 +271,6 @@ interface SidebarProps {
   tampilan: TampilanRole;
   active: MenuKey;
   onNavigate: (key: MenuKey) => void;
-  /** Status drawer terbuka di layar sempit (mobile/tablet). Diabaikan di lg+. */
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
@@ -247,7 +287,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       ? OPD_MENUS
       : tampilan === "BPKAD_ADMIN"
         ? BPKAD_ADMIN_MENUS
-        : ADMIN_MENUS;
+        : tampilan === "TELAAH_KASUBBID" ||
+            tampilan === "TELAAH_KABID" ||
+            tampilan === "TELAAH_SEKBAN"
+          ? TELAAH_MENUS
+          : ADMIN_MENUS; // OTHER_ADMIN (default)
 
   const handleNavigate = (key: MenuKey) => {
     onNavigate(key);
@@ -310,6 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 // ── Profile Dropdown ──────────────────────────────────────────────────────────
+
 interface ProfileDropdownProps {
   name: string;
   subtitle: string;
@@ -386,7 +431,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 
 // ── Notifikasi ───────────────────────────────────────────────────────────────
 
-/** Format selisih waktu jadi teks singkat: "Baru saja", "5 menit lalu", dst. */
 function formatWaktuRelatif(iso: string): string {
   const detik = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (detik < 60) return "Baru saja";
@@ -403,9 +447,6 @@ function formatWaktuRelatif(iso: string): string {
   });
 }
 
-// Warna aksen kecil di kiri tiap notifikasi, mengikuti status hasil
-// verifikasi — supaya OPD bisa langsung membedakan sekilas tanpa
-// membaca teksnya.
 const NOTIFIKASI_STATUS_COLOR: Record<string, string> = {
   teregistrasi: "bg-emerald-500",
   revisi: "bg-amber-500",
@@ -517,16 +558,143 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   );
 };
 
+// ── BARU: Dropdown notifikasi untuk user INTERNAL_STRUKTURAL & Admin ──
+// Beda skema dari NotificationDropdown (yang khusus OPD): field
+// `targetUsername`/`milestone` bukan `opdId`/`status`.
+const MILESTONE_NOTIF_COLOR: Record<string, string> = {
+  DIAJUKAN: "bg-[#1a4e8f]",
+  SUDAH_TELAAH_KASUBBID: "bg-emerald-500",
+  SUDAH_TELAAH_KABID: "bg-purple-500",
+  SUDAH_TELAAH_SEKBAN: "bg-rose-500",
+};
+
+interface NotificationDropdownInternalProps {
+  data: NotifikasiInternalRecord[];
+  unreadCount: number;
+  isLoading: boolean;
+  onTandaiDibaca: (id: string) => void;
+  onTandaiSemuaDibaca: () => void;
+}
+
+const NotificationDropdownInternal: React.FC<
+  NotificationDropdownInternalProps
+> = ({ data, unreadCount, isLoading, onTandaiDibaca, onTandaiSemuaDibaca }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notifikasi"
+        className="relative hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex"
+      >
+        <IconBell />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#ebebeb] bg-white shadow-lg">
+          <div className="flex items-center justify-between border-b border-[#f0f0f0] px-4 py-3">
+            <p className="text-sm font-semibold text-slate-800">Notifikasi</p>
+            {unreadCount > 0 && (
+              <button
+                onClick={onTandaiSemuaDibaca}
+                className="text-xs font-medium text-[#1a4e8f] hover:underline"
+              >
+                Tandai semua dibaca
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-96 overflow-y-auto">
+            {isLoading ? (
+              <p className="px-4 py-6 text-center text-sm text-[#b0bac5]">
+                Memuat notifikasi…
+              </p>
+            ) : data.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-[#b0bac5]">
+                Belum ada notifikasi.
+              </p>
+            ) : (
+              data.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => !n.dibaca && onTandaiDibaca(n.id)}
+                  className={`flex w-full items-start gap-2.5 border-b border-[#f5f5f5] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f7f8fa] ${
+                    n.dibaca ? "" : "bg-[#f0f4fb]/60"
+                  }`}
+                >
+                  <span
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                      n.dibaca
+                        ? "bg-transparent"
+                        : (MILESTONE_NOTIF_COLOR[n.milestone] ?? "bg-[#1a4e8f]")
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`truncate text-sm ${
+                        n.dibaca
+                          ? "font-medium text-slate-700"
+                          : "font-semibold text-slate-900"
+                      }`}
+                    >
+                      {n.judul}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                      {n.pesan}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#b0bac5]">
+                      {formatWaktuRelatif(n.createdAt)}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Header ───────────────────────────────────────────────────────────────────
+
 interface HeaderProps {
   tampilan: TampilanRole;
   namaOPD: string | null;
   opdSlug: string | null;
   onOpenMobileMenu: () => void;
   onLogout: () => void;
-  /** Hanya terisi untuk role OPD — lihat useNotifikasiOPD() di page root. */
+  /** Notifikasi untuk role OPD (existing, dari notifikasiOPD). */
   notifikasi?: {
     data: NotifikasiOPD[];
+    unreadCount: number;
+    isLoading: boolean;
+    onTandaiDibaca: (id: string) => void;
+    onTandaiSemuaDibaca: () => void;
+  };
+  /**
+   * BARU: notifikasi internal untuk user INTERNAL_STRUKTURAL & Admin.
+   * Bentuk field mirip `notifikasi`, tapi tipe data `NotifikasiInternalRecord[]`.
+   */
+  notifikasiInternal?: {
+    data: NotifikasiInternalRecord[];
     unreadCount: number;
     isLoading: boolean;
     onTandaiDibaca: (id: string) => void;
@@ -541,6 +709,7 @@ const Header: React.FC<HeaderProps> = ({
   onOpenMobileMenu,
   onLogout,
   notifikasi,
+  notifikasiInternal,
 }) => {
   const currentUser =
     tampilan === "BPKAD_ADMIN"
@@ -557,21 +726,37 @@ const Header: React.FC<HeaderProps> = ({
             initials: "AD",
             avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
           }
-        : {
-            // namaOPD & opdSlug berasal dari sesi login (lihat useAuth()) —
-            // otomatis mengikuti akun yang sedang login, bukan lagi
-            // hardcode ke satu OPD tertentu.
-            // name = singkatan OPD (mis. "Dishub"), subtitle = nama resmi
-            // panjangnya (mis. "Dinas Perhubungan").
-            name: (opdSlug && OPD_SINGKATAN_BY_SLUG[opdSlug]) || "OPD",
-            subtitle: namaOPD ?? "Operator OPD",
-            initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
-            avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
-          };
+        : tampilan === "TELAAH_KASUBBID"
+          ? {
+              name: "Kasubbid",
+              subtitle: TELAAH_LEVEL_SUBTITLE.kasubbid,
+              initials: "KS",
+              avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+            }
+          : tampilan === "TELAAH_KABID"
+            ? {
+                name: "Kabid",
+                subtitle: TELAAH_LEVEL_SUBTITLE.kabid,
+                initials: "KB",
+                avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+              }
+            : tampilan === "TELAAH_SEKBAN"
+              ? {
+                  name: "Sekban",
+                  subtitle: TELAAH_LEVEL_SUBTITLE.sekban,
+                  initials: "SB",
+                  avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
+                }
+              : {
+                  // namaOPD & opdSlug dari sesi login.
+                  name: (opdSlug && OPD_SINGKATAN_BY_SLUG[opdSlug]) || "OPD",
+                  subtitle: namaOPD ?? "Operator OPD",
+                  initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
+                  avatarGradient: "from-[#e06a3e] to-[#c44d2a]",
+                };
 
   return (
     <header className="flex h-auto min-h-17 shrink-0 flex-wrap items-center gap-3 border-b border-[#f0f0f0] bg-white px-4 py-2.5 sm:px-6 lg:px-8">
-      {/* Tombol menu, hanya tampil di layar < lg (sidebar jadi drawer) */}
       <button
         onClick={onOpenMobileMenu}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] lg:hidden"
@@ -589,7 +774,6 @@ const Header: React.FC<HeaderProps> = ({
         </svg>
       </button>
 
-      {/* Kotak pencarian: disembunyikan di layar paling sempit, ringkas di tablet */}
       <div className="order-3 flex w-full items-center gap-2.5 rounded-xl border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5 sm:order-0 sm:w-auto sm:max-w-85 sm:flex-1">
         <IconSearch />
         <span className="flex-1 text-sm text-[#b0bac5]">Search</span>
@@ -603,6 +787,7 @@ const Header: React.FC<HeaderProps> = ({
       <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconMail />
       </button>
+
       {notifikasi ? (
         <NotificationDropdown
           data={notifikasi.data}
@@ -610,6 +795,14 @@ const Header: React.FC<HeaderProps> = ({
           isLoading={notifikasi.isLoading}
           onTandaiDibaca={notifikasi.onTandaiDibaca}
           onTandaiSemuaDibaca={notifikasi.onTandaiSemuaDibaca}
+        />
+      ) : notifikasiInternal ? (
+        <NotificationDropdownInternal
+          data={notifikasiInternal.data}
+          unreadCount={notifikasiInternal.unreadCount}
+          isLoading={notifikasiInternal.isLoading}
+          onTandaiDibaca={notifikasiInternal.onTandaiDibaca}
+          onTandaiSemuaDibaca={notifikasiInternal.onTandaiSemuaDibaca}
         />
       ) : (
         <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
@@ -706,6 +899,10 @@ const MainContent: React.FC<MainContentProps> = ({
             onStatusUpdate(id, status, catatan, nomorRegistrasi)
           }
         />
+      ) : activeMenu === "telaah-internal" ? (
+        <TelaahInternalAdmin />
+      ) : activeMenu === "telaah-saya" ? (
+        <TelaahSayaInternal />
       ) : (
         <EmptyContent label={meta.title} />
       )}
@@ -719,6 +916,10 @@ const DEFAULT_MENU_BY_TAMPILAN: Record<TampilanRole, MenuKey> = {
   OPD: "ajukan-permohonan",
   OTHER_ADMIN: "verifikasi-pengajuan",
   BPKAD_ADMIN: "lihat-daftar-pengajuan-bpkad",
+  // ── BARU ──
+  TELAAH_KASUBBID: "telaah-saya",
+  TELAAH_KABID: "telaah-saya",
+  TELAAH_SEKBAN: "telaah-saya",
 };
 
 // ── Page root ─────────────────────────────────────────────────────────────────
@@ -729,44 +930,68 @@ const DashboardContent: React.FC = () => {
   const { user, isLoading: authLoading, logout } = useAuth();
 
   // Guard: begitu pembacaan sesi tersimpan selesai (authLoading === false)
-  // dan ternyata tidak ada user, lempar ke halaman login (homepage —
-  // sesuaikan bila nanti ada route /login terpisah).
+  // dan ternyata tidak ada user, lempar ke halaman login.
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/homepage");
     }
   }, [authLoading, user, router]);
 
-  // Role sekarang berasal dari sesi login, bukan query param — supaya
-  // tidak bisa dipalsukan lewat URL (?user-role=admin).
-  const role: UserRole = user?.role === "ADMIN" ? "ADMIN" : "OPD";
+  // ── BARU: auto-redirect user INTERNAL_STRUKTURAL ke /dashboard-v2/telaah ──
+  // Halaman utama /dashboard-v2 tidak relevan untuk mereka (bukan OPD,
+  // bukan admin). Setelah login dari homepage (yang hardcode redirect ke
+  // /dashboard-v2), user internal langsung dilempar ke /telaah.
+  //
+  // Baca dari localStorage langsung untuk menghindari race condition
+  // dengan useSyncExternalStore (user baru terisi setelah hydration).
+  useEffect(() => {
+    const raw = window.localStorage.getItem("si-puspita-session");
+    if (!raw) return;
+    try {
+      const session = JSON.parse(raw) as { role?: string };
+      if (session.role === "INTERNAL_STRUKTURAL") {
+        router.replace("/dashboard-v2/telaah");
+      }
+    } catch {
+      // session corrupt → biarkan guard utama yang handle
+    }
+  }, [router]);
 
-  // tampilan membedakan akun BPKAD ("bpkad", opdSlug "bpkad") dari akun
-  // Admin generik ("admin", tanpa opdSlug "bpkad") — keduanya sama-sama
-  // role "ADMIN", tapi BPKAD cuma dapat satu menu "Lihat Daftar
-  // Pengajuan" (read-only), bukan menu Admin lengkap.
+  // Role dari sesi login, bukan query param.
+  const role: UserRole =
+    user?.role === "ADMIN"
+      ? "ADMIN"
+      : user?.role === "INTERNAL_STRUKTURAL"
+        ? "INTERNAL_STRUKTURAL"
+        : "OPD";
+
+  // tampilan membedakan:
+  //  - OPD                       → role OPD
+  //  - OTHER_ADMIN               → role ADMIN generik
+  //  - BPKAD_ADMIN               → role ADMIN + opdSlug "bpkad"
+  //  - TELAAH_KASUBBID/_KABID/_SEKBAN → role INTERNAL_STRUKTURAL, per sub-level
   const tampilan: TampilanRole =
-    role === "ADMIN"
-      ? user?.opdSlug === "bpkad"
-        ? "BPKAD_ADMIN"
-        : "OTHER_ADMIN"
-      : "OPD";
+    role === "INTERNAL_STRUKTURAL"
+      ? user?.telaahLevel === "kabid"
+        ? "TELAAH_KABID"
+        : user?.telaahLevel === "sekban"
+          ? "TELAAH_SEKBAN"
+          : "TELAAH_KASUBBID"
+      : role === "ADMIN"
+        ? user?.opdSlug === "bpkad"
+          ? "BPKAD_ADMIN"
+          : "OTHER_ADMIN"
+        : "OPD";
 
   const [activeMenu, setActiveMenu] = useState<MenuKey>(
     DEFAULT_MENU_BY_TAMPILAN[tampilan],
   );
 
-  // Status drawer sidebar untuk layar < lg (mobile/tablet).
-  // Ditutup langsung di tempat kejadian (blok penyesuaian tampilan di
-  // bawah, dan di dalam Sidebar saat navigasi menu) — bukan lewat
-  // useEffect, supaya tidak memicu cascading render.
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Lacak tampilan sebelumnya supaya bisa reset activeMenu saat tampilan
-  // berubah (mis. login user lain di tab yang sama), TANPA pakai
-  // useEffect. Pola ini "adjusting state during render" — direkomendasikan
-  // React untuk kasus reset state akibat perubahan prop/derived value,
-  // karena tidak memicu render tambahan yang sempat ter-commit ke layar.
+  // berubah — pola "adjusting state during render" (hindari cascading
+  // render dari useEffect + setState).
   const [prevTampilan, setPrevTampilan] = useState(tampilan);
   if (tampilan !== prevTampilan) {
     setPrevTampilan(tampilan);
@@ -774,9 +999,7 @@ const DashboardContent: React.FC = () => {
     setMobileMenuOpen(false);
   }
 
-  // Sumber data tunggal (shared lewat PengajuanProvider di root layout) —
-  // pengganti useState lokal + MOCK_DATA. Sekarang otomatis sinkron
-  // dengan ModalLacak di homepage dan tab/route lain.
+  // Sumber data tunggal — dari PengajuanProvider di root layout.
   const {
     data: semuaPengajuan,
     tambahPengajuan,
@@ -784,14 +1007,19 @@ const DashboardContent: React.FC = () => {
     getPengajuanById,
   } = usePengajuanStore();
 
-  // opdId (bukan opdSlug) — mengikuti field opdId di
-  // FormulirPenghapusanPiutangOPDRecord, supaya query notifikasi di bawah
-  // cocok dengan opdId yang tersimpan di setiap pengajuan.
+  // opdId (bukan opdSlug) — mengikuti field opdId di record.
   const opdId =
     role === "OPD" && user?.opdSlug
       ? String(getOpdBySlug(user.opdSlug)?.id ?? "")
       : undefined;
   const notifikasiOpd = useNotifikasiOPD(opdId || undefined);
+
+  // ── BARU: notifikasi internal untuk user INTERNAL_STRUKTURAL + Admin ──
+  const notifikasiInternal = useNotifikasiInternal(
+    role === "INTERNAL_STRUKTURAL" || role === "ADMIN"
+      ? user?.username
+      : undefined,
+  );
 
   const handleTambahPengajuan = (
     record: FormulirPenghapusanPiutangOPDRecord,
@@ -807,20 +1035,12 @@ const DashboardContent: React.FC = () => {
   ) => {
     updatePengajuan(id, {
       status,
-      // Jejak audit verifikasi — handler ini hanya dipanggil dari panel
-      // verifikasi Admin, jadi selalu diisi.
       verifikatorId: "Admin",
       tanggalVerifikasi: new Date().toISOString(),
       catatanVerifikasi: catatan,
-      // Hanya terisi saat keputusan "Lolos Verifikasi" (teregistrasi) —
-      // digenerate di VerifikasiPengajuan dan diteruskan sampai sini
-      // supaya tersimpan di store dan muncul di ModalLacak homepage.
       ...(nomorRegistrasi ? { nomorRegistrasi } : {}),
     });
 
-    // Kirim notifikasi ke OPD pemilik pengajuan ini — muncul di ikon
-    // lonceng Header mereka (real-time kalau sedang online, atau saat
-    // login berikutnya kalau tidak).
     const pengajuan = getPengajuanById(id);
     if (pengajuan) {
       kirimNotifikasiVerifikasi(pengajuan, status, catatan);
@@ -832,10 +1052,8 @@ const DashboardContent: React.FC = () => {
     router.push("/homepage");
   };
 
-  // Selama sesi tersimpan belum selesai dibaca, atau ternyata tidak ada
-  // user (redirect di useEffect di atas sedang berjalan), jangan render
-  // konten dashboard sama sekali — supaya tidak "kelihatan sekilas"
-  // sebelum lempar ke halaman login.
+  // Selama sesi tersimpan belum selesai dibaca, atau tidak ada user
+  // (redirect di useEffect sedang berjalan), jangan render konten.
   if (authLoading || !user) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#f7f8fa]">
@@ -868,6 +1086,17 @@ const DashboardContent: React.FC = () => {
                   isLoading: notifikasiOpd.isLoading,
                   onTandaiDibaca: notifikasiOpd.tandaiDibaca,
                   onTandaiSemuaDibaca: notifikasiOpd.tandaiSemuaDibaca,
+                }
+              : undefined
+          }
+          notifikasiInternal={
+            role === "INTERNAL_STRUKTURAL" || role === "ADMIN"
+              ? {
+                  data: notifikasiInternal.data,
+                  unreadCount: notifikasiInternal.unreadCount,
+                  isLoading: notifikasiInternal.isLoading,
+                  onTandaiDibaca: notifikasiInternal.tandaiDibaca,
+                  onTandaiSemuaDibaca: notifikasiInternal.tandaiSemuaDibaca,
                 }
               : undefined
           }

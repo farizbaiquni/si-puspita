@@ -10,7 +10,7 @@
 
 import { getOpdBySlug } from "@/types/types";
 
-export type UserRole = "OPD" | "ADMIN";
+export type UserRole = "OPD" | "ADMIN" | "INTERNAL_STRUKTURAL";
 
 export interface AkunLogin {
   username: string;
@@ -18,6 +18,13 @@ export interface AkunLogin {
   role: UserRole;
   /** Slug OPD (lihat DAFTAR_OPD di types.ts) — hanya diisi untuk role "OPD". */
   opdSlug?: string;
+  /**
+   * Sub-level hierarki untuk role "INTERNAL_STRUKTURAL" — hanya diisi untuk
+   * akun dengan role tersebut. Nilai menentukan tahap telaah mana yang bisa
+   * di-approve oleh akun ini (lihat TELAAH_TAHAP_BY_LEVEL di
+   * types/telaah-internal.ts).
+   */
+  telaahLevel?: "kasubbid" | "kabid" | "sekban";
 }
 
 export const DAFTAR_AKUN: readonly AkunLogin[] = [
@@ -69,6 +76,30 @@ export const DAFTAR_AKUN: readonly AkunLogin[] = [
     password: "bpkad_si_puspita#00",
     role: "ADMIN",
     opdSlug: "bpkad",
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MODUL TELAAH INTERNAL STRUKTURAL (BPKAD)
+  //  Alur wajib: Kasubbid → Kabid → Sekban.
+  //  Ketiga akun single-instance (1 user per level).
+  // ═══════════════════════════════════════════════════════════════
+  {
+    username: "kasubbid",
+    password: "kasubbid_si_puspita#01",
+    role: "INTERNAL_STRUKTURAL",
+    telaahLevel: "kasubbid",
+  },
+  {
+    username: "kabid",
+    password: "kabid_si_puspita#02",
+    role: "INTERNAL_STRUKTURAL",
+    telaahLevel: "kabid",
+  },
+  {
+    username: "sekban",
+    password: "sekban_si_puspita#03",
+    role: "INTERNAL_STRUKTURAL",
+    telaahLevel: "sekban",
   },
 ] as const;
 

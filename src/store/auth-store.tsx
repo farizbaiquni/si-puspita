@@ -28,18 +28,7 @@ const SESSION_STORAGE_KEY = "si-puspita-session";
 
 /* ------------------------------------------------------------------ */
 /*  External-store plumbing untuk localStorage.                        */
-/*                                                                      */
-/*  Kenapa bukan useEffect + setUser seperti sebelumnya? Karena itu     */
-/*  memicu warning "setState synchronously within an effect": render    */
-/*  pertama selalu user=null, lalu effect jalan dan memaksa render      */
-/*  kedua. localStorage adalah sumber data eksternal, jadi tempatnya    */
-/*  memang di useSyncExternalStore — dibaca sinkron, tanpa render       */
-/*  buang-buang, dan otomatis aman untuk SSR (getServerSnapshot).       */
-/*                                                                      */
-/*  Event "storage" bawaan browser HANYA terpicu di tab LAIN, bukan di  */
-/*  tab yang memanggil setItem/removeItem sendiri. Makanya login() dan  */
-/*  logout() di bawah memanggil emitChange() secara manual supaya tab   */
-/*  yang sama juga ikut re-render.                                      */
+/*  (Bagian ini TIDAK BERUBAH sama sekali)                             */
 /* ------------------------------------------------------------------ */
 
 const listeners = new Set<() => void>();
@@ -57,9 +46,6 @@ function subscribe(callback: () => void) {
   };
 }
 
-// Cache sederhana supaya getSnapshot mengembalikan referensi yang SAMA
-// selama string mentah di localStorage belum berubah — wajib untuk
-// useSyncExternalStore, kalau tidak bisa infinite loop render.
 let cachedRaw: string | null = null;
 let cachedUser: SessionUser | null = null;
 
@@ -76,10 +62,13 @@ function getSnapshot(): SessionUser | null {
   return cachedUser;
 }
 
-// Di server, localStorage tidak ada — anggap saja belum ada sesi.
 function getServerSnapshot(): SessionUser | null {
   return null;
 }
+
+/* ==================================================================== */
+/*  ── PERUBAHAN LANGKAH 1.3: SessionUser dapat field baru ──           */
+/* ==================================================================== */
 
 export interface SessionUser {
   username: string;
@@ -90,16 +79,17 @@ export interface SessionUser {
   opdSlug: string | null;
   /** Id numerik OPD (lihat DAFTAR_OPD di types.ts) — hanya untuk role "OPD". */
   opdId: number | null;
+  /**
+   * Sub-level hierarki telaah internal — hanya terisi untuk user dengan
+   * role "INTERNAL_STRUKTURAL". Nilainya menentukan menu mana yang tampil
+   * dan tombol approve mana yang aktif di halaman /dashboard-v2/telaah.
+   * `null` untuk semua role lain (OPD, ADMIN).
+   */
+  telaahLevel: "kasubbid" | "kabid" | "sekban" | null;
 }
 
 interface AuthStoreValue {
   user: SessionUser | null;
-  /**
-   * Selalu false sekarang — useSyncExternalStore membaca localStorage
-   * secara sinkron, jadi tidak ada lagi jeda "belum selesai dibaca".
-   * Field ini dipertahankan supaya komponen yang sudah memakai
-   * `isLoading` dari useAuth() tidak perlu diubah.
-   */
   isLoading: boolean;
   login: (
     username: string,
@@ -111,14 +101,8 @@ interface AuthStoreValue {
 const AuthContext = createContext<AuthStoreValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Dibaca sinkron dari localStorage lewat useSyncExternalStore — tidak
-  // ada lagi render "kosong lalu diisi" seperti pola useEffect+setState.
   const user = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  // isLoading kini hanya berarti "belum sempat hydrate di client sama
-  // sekali". Selama getServerSnapshot() (null) dan getSnapshot() bisa
-  // berbeda, React sendiri yang menjamin re-render itu terjadi sebelum
-  // paint pertama di client, jadi tidak perlu state/efek terpisah.
   const isLoading = false;
 
   const login = (username: string, password: string) => {
@@ -127,6 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false, pesan: "Username atau password salah." };
     }
 
+    // ──────────────────────────────────────────────────────────────
+    //  PERUBAHAN LANGKAH 1.3: tambah 1 baris `telaahLevel: ...`
+    // ──────────────────────────────────────────────────────────────
     const sessionUser: SessionUser = {
       username: akun.username,
       role: akun.role,
@@ -139,6 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // generik — lihat dashboard-v2/page.tsx: user.opdSlug === "bpkad").
       opdSlug: akun.opdSlug ?? null,
       opdId: opdIdDariAkun(akun),
+      // BARU: sub-level telaah internal — hanya terisi untuk role
+      // "INTERNAL_STRUKTURAL", null untuk semua role lain.
+      telaahLevel: akun.telaahLevel ?? null,
     };
 
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionUser));

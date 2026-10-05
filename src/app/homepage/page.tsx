@@ -1904,14 +1904,26 @@ function SiPuspitaLandingPageContent() {
       setTimeout(() => router.push("/dashboard-v2"), 700);
     }, 600);
   };
+
   useEffect(() => {
     if (isModalOpen || isModalClosing) {
       document.body.style.overflow = "hidden";
-    } else {
-      setTimeout(() => {
-        document.body.style.overflow = "";
-      }, 600);
+      return;
     }
+
+    // Modal baru saja ditutup (atau memang belum pernah dibuka) — tunda
+    // pelepasan overflow: hidden selama 600ms supaya animasi tutup modal
+    // selesai dulu, tanpa "melompat" karena scrollbar muncul di tengah animasi.
+    const timer = setTimeout(() => {
+      document.body.style.overflow = "";
+    }, 600);
+
+    // Cleanup WAJIB: kalau user buka modal lagi sebelum 600ms habis,
+    // effect ini re-run dan cleanup ini membatalkan timeout lama —
+    // supaya tidak ada timeout "yatim" yang melepas overflow:hidden
+    // padahal modal sedang terbuka (yang membuat halaman di belakang
+    // ikut ter-scroll).
+    return () => clearTimeout(timer);
   }, [isModalOpen, isModalClosing]);
 
   return (
