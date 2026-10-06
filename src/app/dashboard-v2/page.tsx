@@ -11,9 +11,12 @@ import LihatDaftarPengajuanBPKAD from "./contents/userBPKAD/LihatDaftarPengajuan
 import Link from "next/link";
 import Image from "next/image";
 
-// ── Modul Telaah Internal Struktural (additive) ──
+// ── Modul Telaah Internal Struktural ──
 import TelaahInternalAdmin from "./contents/telaah/TelaahInternalAdmin";
 import TelaahSayaInternal from "./contents/telaah/TelaahSayaInternal";
+
+// ── Modul Reviu Inspektorat (additive) ──
+import ReviuInspektoratAdmin from "./contents/reviu-inspektorat/ReviuInspektoratAdmin";
 
 import {
   IconFilePlus,
@@ -39,23 +42,18 @@ import type {
   StatusFormulir,
 } from "@/types/types";
 import { getOpdBySlug } from "@/types/types";
-import {
-  TELAAH_LEVEL_SUBTITLE,
-  type NotifikasiInternalRecord,
-} from "@/types/telaah-internal";
+import type { NotifikasiInternalRecord } from "@/types/telaah-internal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type UserRole = "OPD" | "ADMIN" | "INTERNAL_STRUKTURAL";
 
-// Tampilan sidebar/menu sebenarnya dibagi 6, BUKAN cuma ikut UserRole:
-//  - "OPD"            → role "OPD" (termasuk akun "bpkad_opd") — menu OPD biasa.
-//  - "BPKAD_ADMIN"    → role "ADMIN" DAN opdSlug === "bpkad" (akun "bpkad") —
-//                       HANYA melihat daftar pengajuan (read-only).
-//  - "OTHER_ADMIN"    → role "ADMIN" tapi opdSlug bukan "bpkad" (akun "admin"
-//                       generik) — menu Admin lengkap.
+// Tampilan sidebar/menu dibagi 6:
+//  - "OPD"            → role "OPD"
+//  - "BPKAD_ADMIN"    → role "ADMIN" DAN opdSlug === "bpkad" (read-only)
+//  - "OTHER_ADMIN"    → role "ADMIN" (admin generik, akses penuh)
 //  - "TELAAH_KASUBBID" / "TELAAH_KABID" / "TELAAH_SEKBAN"
-//                     → role "INTERNAL_STRUKTURAL", menu "Telaah Saya".
+//                     → role "INTERNAL_STRUKTURAL", per sub-level
 type TampilanRole =
   | "OPD"
   | "BPKAD_ADMIN"
@@ -70,14 +68,34 @@ type AdminMenuKey =
   | "verifikasi-pengajuan"
   | "lihat-daftar-pengajuan-admin"
   | "register-digital"
-  | "telaah-internal";
+  | "telaah-internal"
+  | "reviu-inspektorat";
 
 type BPKADAdminMenuKey = "lihat-daftar-pengajuan-bpkad";
 
-// Menu baru untuk modul telaah internal (additive).
 type TelaahMenuKey = "telaah-saya";
 
 type MenuKey = OPDMenuKey | AdminMenuKey | BPKADAdminMenuKey | TelaahMenuKey;
+
+// ── Ikon lokal tambahan ──────────────────────────────────────────────────────
+
+const IconShield = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M10 1.5L3.5 4v6c0 4.5 2.75 7.5 6.5 8.5 3.75-1 6.5-4 6.5-8.5V4L10 1.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M7 10l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 // ── Menu configs per role ─────────────────────────────────────────────────────
 
@@ -117,15 +135,18 @@ const ADMIN_MENUS: MenuItem[] = [
     icon: <IconEye />,
     label: "Lihat Pengajuan",
   },
-  // ── BARU: menu telaah internal untuk admin ──
   {
     key: "telaah-internal",
     icon: <IconChecklist />,
     label: "Telaah Internal",
   },
+  {
+    key: "reviu-inspektorat",
+    icon: <IconShield />,
+    label: "Reviu Inspektorat",
+  },
 ];
 
-// Akun BPKAD ("bpkad", opdSlug "bpkad") HANYA dapat satu menu ini.
 const BPKAD_ADMIN_MENUS: MenuItem[] = [
   {
     key: "lihat-daftar-pengajuan-bpkad",
@@ -134,13 +155,11 @@ const BPKAD_ADMIN_MENUS: MenuItem[] = [
   },
 ];
 
-// ── BARU: menu untuk user INTERNAL_STRUKTURAL (kasubbid/kabid/sekban) ──
-// Hanya 1 menu — "Telaah Saya".
 const TELAAH_MENUS: MenuItem[] = [
   {
     key: "telaah-saya",
     icon: <IconChecklist />,
-    label: "Telaah Saya",
+    label: "Ruang Telaah",
   },
 ];
 
@@ -176,15 +195,19 @@ const PAGE_META: Record<
     subtitle:
       "Seluruh pengajuan penghapusan piutang dari semua OPD, beserta statusnya.",
   },
-  // ── BARU ──
   "telaah-internal": {
     title: "Telaah Internal",
     subtitle:
       "Ajukan pengajuan teregistrasi ke telaah substantif berjenjang (Kasubbid → Kabid → Sekban).",
   },
   "telaah-saya": {
-    title: "Telaah Saya",
-    subtitle: "Pengajuan yang menunggu telaah Anda.",
+    title: "Ruang Telaah",
+    subtitle: "Kelola pengajuan yang menunggu telaah Anda.",
+  },
+  "reviu-inspektorat": {
+    title: "Reviu Inspektorat",
+    subtitle:
+      "Kelola pengajuan yang telah selesai ditelaah internal untuk diteruskan ke Reviu Inspektorat.",
   },
 };
 
@@ -291,7 +314,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             tampilan === "TELAAH_KABID" ||
             tampilan === "TELAAH_SEKBAN"
           ? TELAAH_MENUS
-          : ADMIN_MENUS; // OTHER_ADMIN (default)
+          : ADMIN_MENUS;
 
   const handleNavigate = (key: MenuKey) => {
     onNavigate(key);
@@ -558,9 +581,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   );
 };
 
-// ── BARU: Dropdown notifikasi untuk user INTERNAL_STRUKTURAL & Admin ──
-// Beda skema dari NotificationDropdown (yang khusus OPD): field
-// `targetUsername`/`milestone` bukan `opdId`/`status`.
+// ── Dropdown notifikasi untuk user INTERNAL_STRUKTURAL & Admin ──
+
 const MILESTONE_NOTIF_COLOR: Record<string, string> = {
   DIAJUKAN: "bg-[#1a4e8f]",
   SUDAH_TELAAH_KASUBBID: "bg-emerald-500",
@@ -681,7 +703,6 @@ interface HeaderProps {
   opdSlug: string | null;
   onOpenMobileMenu: () => void;
   onLogout: () => void;
-  /** Notifikasi untuk role OPD (existing, dari notifikasiOPD). */
   notifikasi?: {
     data: NotifikasiOPD[];
     unreadCount: number;
@@ -689,10 +710,6 @@ interface HeaderProps {
     onTandaiDibaca: (id: string) => void;
     onTandaiSemuaDibaca: () => void;
   };
-  /**
-   * BARU: notifikasi internal untuk user INTERNAL_STRUKTURAL & Admin.
-   * Bentuk field mirip `notifikasi`, tapi tipe data `NotifikasiInternalRecord[]`.
-   */
   notifikasiInternal?: {
     data: NotifikasiInternalRecord[];
     unreadCount: number;
@@ -729,26 +746,25 @@ const Header: React.FC<HeaderProps> = ({
         : tampilan === "TELAAH_KASUBBID"
           ? {
               name: "Kasubbid",
-              subtitle: TELAAH_LEVEL_SUBTITLE.kasubbid,
+              subtitle: "BPKAD Kab. Kendal",
               initials: "KS",
               avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
             }
           : tampilan === "TELAAH_KABID"
             ? {
                 name: "Kabid",
-                subtitle: TELAAH_LEVEL_SUBTITLE.kabid,
+                subtitle: "BPKAD Kab. Kendal",
                 initials: "KB",
                 avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
               }
             : tampilan === "TELAAH_SEKBAN"
               ? {
                   name: "Sekban",
-                  subtitle: TELAAH_LEVEL_SUBTITLE.sekban,
+                  subtitle: "BPKAD Kab. Kendal",
                   initials: "SB",
                   avatarGradient: "from-[#1e8fd4] to-[#0e6ba8]",
                 }
               : {
-                  // namaOPD & opdSlug dari sesi login.
                   name: (opdSlug && OPD_SINGKATAN_BY_SLUG[opdSlug]) || "OPD",
                   subtitle: namaOPD ?? "Operator OPD",
                   initials: (opdSlug && OPD_BADGE_BY_SLUG[opdSlug]) || "OP",
@@ -903,6 +919,8 @@ const MainContent: React.FC<MainContentProps> = ({
         <TelaahInternalAdmin />
       ) : activeMenu === "telaah-saya" ? (
         <TelaahSayaInternal />
+      ) : activeMenu === "reviu-inspektorat" ? (
+        <ReviuInspektoratAdmin />
       ) : (
         <EmptyContent label={meta.title} />
       )}
@@ -916,7 +934,6 @@ const DEFAULT_MENU_BY_TAMPILAN: Record<TampilanRole, MenuKey> = {
   OPD: "ajukan-permohonan",
   OTHER_ADMIN: "verifikasi-pengajuan",
   BPKAD_ADMIN: "lihat-daftar-pengajuan-bpkad",
-  // ── BARU ──
   TELAAH_KASUBBID: "telaah-saya",
   TELAAH_KABID: "telaah-saya",
   TELAAH_SEKBAN: "telaah-saya",
@@ -929,19 +946,14 @@ const DashboardContent: React.FC = () => {
 
   const { user, isLoading: authLoading, logout } = useAuth();
 
-  // Guard: begitu pembacaan sesi tersimpan selesai (authLoading === false)
-  // dan ternyata tidak ada user, lempar ke halaman login.
+  // Guard: tidak ada user → redirect ke homepage.
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/homepage");
     }
   }, [authLoading, user, router]);
 
-  // ── BARU: auto-redirect user INTERNAL_STRUKTURAL ke /dashboard-v2/telaah ──
-  // Halaman utama /dashboard-v2 tidak relevan untuk mereka (bukan OPD,
-  // bukan admin). Setelah login dari homepage (yang hardcode redirect ke
-  // /dashboard-v2), user internal langsung dilempar ke /telaah.
-  //
+  // Auto-redirect user INTERNAL_STRUKTURAL ke /dashboard-v2/telaah.
   // Baca dari localStorage langsung untuk menghindari race condition
   // dengan useSyncExternalStore (user baru terisi setelah hydration).
   useEffect(() => {
@@ -957,7 +969,7 @@ const DashboardContent: React.FC = () => {
     }
   }, [router]);
 
-  // Role dari sesi login, bukan query param.
+  // Role dari sesi login.
   const role: UserRole =
     user?.role === "ADMIN"
       ? "ADMIN"
@@ -965,11 +977,6 @@ const DashboardContent: React.FC = () => {
         ? "INTERNAL_STRUKTURAL"
         : "OPD";
 
-  // tampilan membedakan:
-  //  - OPD                       → role OPD
-  //  - OTHER_ADMIN               → role ADMIN generik
-  //  - BPKAD_ADMIN               → role ADMIN + opdSlug "bpkad"
-  //  - TELAAH_KASUBBID/_KABID/_SEKBAN → role INTERNAL_STRUKTURAL, per sub-level
   const tampilan: TampilanRole =
     role === "INTERNAL_STRUKTURAL"
       ? user?.telaahLevel === "kabid"
@@ -989,9 +996,7 @@ const DashboardContent: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Lacak tampilan sebelumnya supaya bisa reset activeMenu saat tampilan
-  // berubah — pola "adjusting state during render" (hindari cascading
-  // render dari useEffect + setState).
+  // Reset activeMenu saat tampilan berubah (login user lain di tab sama).
   const [prevTampilan, setPrevTampilan] = useState(tampilan);
   if (tampilan !== prevTampilan) {
     setPrevTampilan(tampilan);
@@ -999,7 +1004,6 @@ const DashboardContent: React.FC = () => {
     setMobileMenuOpen(false);
   }
 
-  // Sumber data tunggal — dari PengajuanProvider di root layout.
   const {
     data: semuaPengajuan,
     tambahPengajuan,
@@ -1007,14 +1011,14 @@ const DashboardContent: React.FC = () => {
     getPengajuanById,
   } = usePengajuanStore();
 
-  // opdId (bukan opdSlug) — mengikuti field opdId di record.
+  // Notifikasi OPD (existing)
   const opdId =
     role === "OPD" && user?.opdSlug
       ? String(getOpdBySlug(user.opdSlug)?.id ?? "")
       : undefined;
   const notifikasiOpd = useNotifikasiOPD(opdId || undefined);
 
-  // ── BARU: notifikasi internal untuk user INTERNAL_STRUKTURAL + Admin ──
+  // Notifikasi internal (untuk INTERNAL_STRUKTURAL + ADMIN)
   const notifikasiInternal = useNotifikasiInternal(
     role === "INTERNAL_STRUKTURAL" || role === "ADMIN"
       ? user?.username
@@ -1052,8 +1056,6 @@ const DashboardContent: React.FC = () => {
     router.push("/homepage");
   };
 
-  // Selama sesi tersimpan belum selesai dibaca, atau tidak ada user
-  // (redirect di useEffect sedang berjalan), jangan render konten.
   if (authLoading || !user) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#f7f8fa]">

@@ -3,37 +3,28 @@
 /* ------------------------------------------------------------------ */
 /*  ModalKonfirmasiAjukan.tsx                                          */
 /*  Modal konfirmasi sebelum admin mengajukan pengajuan ke telaah      */
-/*  internal.                                                          */
+/*  internal. Sebelum user klik "Ya, Ajukan", belum ada dokumen telaah */
+/*  yang dibuat — semua prep di sini read-only.                        */
 /*                                                                      */
-/*  Design:                                                            */
-/*   - Width: max-w-2xl (lebih lebar, body 2 kolom).                   */
-/*   - Radius: rounded-sm (2px) — formal pemerintahan.                  */
-/*   - Top accent bar navy.                                            */
+/*  Setelah konfirmasi, parent memanggil `onConfirm()` yang menjalankan */
+/*  ajukanTelaah() dari store. Modal menampilkan loading state sampai  */
+/*  parent selesai (prop isSubmitting dari parent).                    */
 /* ------------------------------------------------------------------ */
 
 const IconCheck = () => (
   <svg
-    width="18"
-    height="18"
-    viewBox="0 0 20 20"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.9"
+    strokeWidth="2"
   >
-    <path d="M4 10l4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const IconClose = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path d="M3 3l8 8M11 3l-8 8" strokeLinecap="round" />
+    <path
+      d="M3 8l3.5 3.5L13 4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
@@ -68,112 +59,79 @@ export default function ModalKonfirmasiAjukan({
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div className="w-full max-w-2xl overflow-hidden rounded-sm border border-[#d8dfe8] bg-white shadow-2xl">
-        {/* ── Top accent bar ── */}
-        <div className="h-1 w-full bg-[#1a4e8f]" />
-
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-3 border-b border-[#eef1f5] px-6 py-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#eff6ff] text-[#1a4e8f]">
-              <IconCheck />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[16px] leading-snug font-bold text-[#1a1a2e]">
-                Ajukan Telaah Internal?
-              </h3>
-              <p className="mt-0.5 text-[12.5px] leading-snug text-[#7a8899]">
-                Konfirmasi sebelum pengajuan masuk ke tahap telaah substantif.
-              </p>
-            </div>
+      <div className="w-full max-w-md rounded-xl border border-[#e2e8f2] bg-white p-6 shadow-2xl">
+        {/* Ikon + judul */}
+        <div className="mb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eff6ff] text-[#1a4e8f]">
+            <IconCheck />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Tutup"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-[#7a8899] transition hover:bg-[#f0f4fb] hover:text-[#1a1a2e] disabled:opacity-50"
-          >
-            <IconClose />
-          </button>
-        </div>
-
-        {/* ── Body — 2 kolom ── */}
-        <div className="grid grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-5">
-          {/* Kiri (3/5): Info pengajuan */}
-          <div className="lg:col-span-3">
-            <p className="mb-2 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
-              Detail Pengajuan
+          <div className="min-w-0">
+            <h3 className="text-[16px] font-bold text-[#1a1a2e]">
+              Ajukan Telaah Internal?
+            </h3>
+            <p className="mt-0.5 text-[12.5px] text-[#7a8899]">
+              Konfirmasi sebelum pengajuan masuk ke tahap telaah.
             </p>
-            <div className="rounded-sm border border-[#e2e8f2] bg-[#f9fafc]">
-              <div className="flex items-start gap-3 border-b border-[#eef1f5] px-4 py-3">
-                <span className="w-28 shrink-0 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
-                  No. Registrasi
-                </span>
-                <span className="min-w-0 flex-1 font-mono text-[13px] font-bold break-all text-[#0f9b6e]">
-                  {identitas}
-                </span>
-              </div>
-              <div className="flex items-start gap-3 border-b border-[#eef1f5] px-4 py-3">
-                <span className="w-28 shrink-0 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
-                  Nama OPD
-                </span>
-                <span className="min-w-0 flex-1 text-[13px] font-semibold text-[#1a1a2e]">
-                  {namaOPD}
-                </span>
-              </div>
-              <div className="flex items-start gap-3 px-4 py-3">
-                <span className="w-28 shrink-0 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
-                  Status Pengajuan
-                </span>
-                <span className="inline-flex items-center rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-2 py-0.5 text-[11px] font-semibold text-[#065f46]">
-                  Teregistrasi
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Kanan (2/5): Alur telaah */}
-          <div className="lg:col-span-2">
-            <p className="mb-2 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
-              Alur Telaah
-            </p>
-            <div className="rounded-sm border border-[#dbe6f7] bg-[#f0f6fd] px-4 py-3">
-              <div className="space-y-2.5">
-                {["Kasubbid", "Kabid", "Sekban"].map((step, idx, arr) => (
-                  <div key={step} className="flex items-center gap-2.5">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-[11px] font-bold text-white">
-                      {idx + 1}
-                    </span>
-                    <span className="text-[12.5px] font-semibold text-[#1a4e8f]">
-                      {step}
-                    </span>
-                    {idx === arr.length - 1 && (
-                      <span className="ml-auto inline-flex items-center rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-1.5 py-0.5 text-[10px] font-bold text-[#065f46]">
-                        Selesai
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* ── Error (kalau ada) ── */}
+        {/* Info pengajuan */}
+        <div className="mb-4 space-y-2 rounded-lg border border-[#eef1f5] bg-[#f9fafc] p-4">
+          <div>
+            <div className="text-[10.5px] font-semibold tracking-wider text-[#7a8899] uppercase">
+              Nomor Registrasi
+            </div>
+            <div className="font-mono text-[13px] font-bold text-[#0f9b6e]">
+              {identitas}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10.5px] font-semibold tracking-wider text-[#7a8899] uppercase">
+              Nama OPD
+            </div>
+            <div className="text-[13px] text-[#1a1a2e]">{namaOPD}</div>
+          </div>
+        </div>
+
+        {/* Info alur */}
+        <div className="mb-4 rounded-lg border border-[#dbe6f7] bg-[#eff6ff] px-3.5 py-3 text-[12px] text-[#1e40af]">
+          <p className="mb-1 font-semibold">Alur telaah internal:</p>
+          <ol className="list-inside list-decimal space-y-0.5 text-[11.5px]">
+            <li>
+              <span className="font-semibold">Kasubbid</span> — telaah tahap 1
+            </li>
+            <li>
+              <span className="font-semibold">Kabid</span> — telaah tahap 2
+            </li>
+            <li>
+              <span className="font-semibold">Sekban</span> — telaah tahap 3
+              (final)
+            </li>
+          </ol>
+        </div>
+
+        {/* Peringatan */}
+        <div className="mb-4 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-3.5 py-2.5 text-[11.5px] text-[#9a3412]">
+          <span className="font-semibold">⚠️ Perhatian:</span> Setelah diajukan,
+          pengajuan ini{" "}
+          <span className="font-semibold">tidak bisa diajukan telaah lagi</span>{" "}
+          — satu pengajuan hanya boleh satu siklus telaah.
+        </div>
+
+        {/* Error dari parent */}
         {errorMessage && (
-          <div className="mx-6 mb-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[12px] text-[#c0392b]">
+          <div className="mb-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-[12px] text-[#c0392b]">
             {errorMessage}
           </div>
         )}
 
-        {/* ── Footer ── */}
-        <div className="flex flex-col-reverse gap-2 border-t border-[#eef1f5] bg-[#f9fafc] px-6 py-3.5 sm:flex-row sm:justify-end">
+        {/* Tombol */}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="w-full rounded-sm border border-[#e2e8f2] bg-white px-4 py-2 text-[13px] font-semibold text-[#5a6474] transition hover:bg-[#f0f4fb] disabled:opacity-50 sm:w-auto"
+            className="w-full rounded-lg border border-[#e2e8f2] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
           >
             Batal
           </button>
@@ -181,9 +139,9 @@ export default function ModalKonfirmasiAjukan({
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="w-full rounded-sm bg-[#1a4e8f] px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-[#2d63a8] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="w-full rounded-lg bg-[#1a4e8f] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#2d63a8] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {isSubmitting ? "Mengajukan…" : "Ya, Ajukan Telaah"}
+            {isSubmitting ? "Mengajukan…" : "Ya, Ajukan"}
           </button>
         </div>
       </div>

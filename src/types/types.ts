@@ -298,6 +298,17 @@ export interface FormulirPenghapusanPiutangOPDRecord {
   catatanVerifikasi?: string | null;
 
   /**
+   * Status Reviu Inspektorat — di-set admin setelah telaah internal selesai.
+   * `null` / undefined = belum masuk tahap reviu.
+   * `"MENUNGGU_REVIU"` = sudah diajukan ke Inspektorat (final, tidak ada
+   *                     aksi lanjutan di aplikasi — proses offline).
+   *
+   * CATATAN: field ini TIDAK mengubah `status` (StatusFormulir) — status
+   * tetap "teregistrasi". Field ini murni untuk menandai tahap reviu.
+   */
+  reviuInspektoratStatus?: "MENUNGGU_REVIU" | null;
+
+  /**
    * Berapa kali OPD sudah mengajukan ulang (edit setelah status "revisi").
    * Naik setiap kali ajukanUlangPengajuan() berhasil; dipakai sebagai
    * `revisiKe` pada dokumen riwayat & badge "Revisi ke-N" di UI. 0 kalau
