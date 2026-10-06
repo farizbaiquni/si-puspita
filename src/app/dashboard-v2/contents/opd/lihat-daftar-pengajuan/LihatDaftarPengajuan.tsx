@@ -173,6 +173,14 @@ const STATUS_CONFIG: Record<
   },
 };
 
+/** Badge config untuk status Reviu Inspektorat (display-only, mengoverride
+ *  badge "Teregistrasi" saat `reviuInspektoratStatus === "MENUNGGU_REVIU"`). */
+const REVIU_BADGE_CONFIG = {
+  label: "Menunggu Reviu Inspektorat",
+  badgeClass: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
+  dotClass: "bg-[#7c3aed]",
+} as const;
+
 // Urutan grup status pada daftar: teregistrasi (teregistrasi verifikasi) paling
 // atas, lalu revisi, lalu yang masih diajukan / menunggu verifikasi.
 const STATUS_ORDER: StatusFormulir[] = ["teregistrasi", "revisi", "diajukan"];
@@ -240,8 +248,14 @@ const StatCard: React.FC<{
 );
 
 // ───────────────────────── STATUS BADGE ─────────────────────────────────────
-const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
-  const cfg = STATUS_CONFIG[status];
+const StatusBadge: React.FC<{
+  status: StatusFormulir;
+  reviuStatus?: "MENUNGGU_REVIU" | null;
+}> = ({ status, reviuStatus }) => {
+  const cfg =
+    reviuStatus === "MENUNGGU_REVIU"
+      ? REVIU_BADGE_CONFIG
+      : STATUS_CONFIG[status];
   return (
     <span
       className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.badgeClass}`}
@@ -967,7 +981,10 @@ const ModalDetail: React.FC<{
                   <h2 className="text-base font-bold">
                     {record.namaPenanggungJawab}
                   </h2>
-                  <StatusBadge status={record.status} />
+                  <StatusBadge
+                    status={record.status}
+                    reviuStatus={record.reviuInspektoratStatus}
+                  />
                 </div>
                 <p className="truncate text-sm text-blue-100">
                   {record.namaOPD}
@@ -1882,7 +1899,10 @@ const RecordCardMobile: React.FC<{
     </div>
 
     <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#f1f5f9] pt-3">
-      <StatusBadge status={record.status} />
+      <StatusBadge
+        status={record.status}
+        reviuStatus={record.reviuInspektoratStatus}
+      />
       {record.status === "revisi" && (
         <button
           onClick={onLihatDetail}
@@ -2335,7 +2355,10 @@ export default function DaftarPengajuanOPDBaru({
                                 {record.jumlahDebitur} orang
                               </td>
                               <td className="p-[12px_14px] whitespace-nowrap">
-                                <StatusBadge status={record.status} />
+                                <StatusBadge
+                                  status={record.status}
+                                  reviuStatus={record.reviuInspektoratStatus}
+                                />
                                 {record.status === "revisi" && (
                                   <button
                                     onClick={() => setSelectedRecord(record)}

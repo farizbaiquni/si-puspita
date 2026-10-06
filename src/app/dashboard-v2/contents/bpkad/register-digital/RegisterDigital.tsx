@@ -159,8 +159,18 @@ const STATUS_BADGE: Record<
   },
 };
 
-const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
-  const cfg = STATUS_BADGE[status];
+const REVIU_BADGE = {
+  label: "Menunggu Reviu Inspektorat",
+  cls: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
+  dot: "bg-[#7c3aed]",
+} as const;
+
+const StatusBadge: React.FC<{
+  status: StatusFormulir;
+  reviuStatus?: "MENUNGGU_REVIU" | null;
+}> = ({ status, reviuStatus }) => {
+  const cfg =
+    reviuStatus === "MENUNGGU_REVIU" ? REVIU_BADGE : STATUS_BADGE[status];
   return (
     <span
       className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
@@ -666,7 +676,7 @@ const PengajuanRowCardMobile: React.FC<{
         </div>
       </div>
       <div className="shrink-0">
-        <StatusBadge status={p.status} />
+        <StatusBadge status={p.status} reviuStatus={p.reviuInspektoratStatus} />
       </div>
     </div>
 
@@ -1091,7 +1101,10 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
 
                                 {/* Status */}
                                 <td className="p-[12px_14px] whitespace-nowrap">
-                                  <StatusBadge status={p.status} />
+                                  <StatusBadge
+                                    status={p.status}
+                                    reviuStatus={p.reviuInspektoratStatus}
+                                  />
                                 </td>
 
                                 {/* Nomor Pengajuan */}
