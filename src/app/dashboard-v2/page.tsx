@@ -946,12 +946,32 @@ const DashboardContent: React.FC = () => {
 
   const { user, isLoading: authLoading, logout } = useAuth();
 
-  // Guard: tidak ada user → redirect ke homepage.
+  // ── Guard: baca session langsung dari localStorage ──
+  // TIDAK pakai `user` dari useAuth() karena nilainya masih null saat
+  // hydration pertama (race condition dengan useSyncExternalStore).
+  // Baca localStorage langsung menghilangkan race condition ini.
   useEffect(() => {
-    if (!authLoading && !user) {
+    const raw = window.localStorage.getItem("si-puspita-session");
+
+    // Belum login sama sekali → ke homepage
+    if (!raw) {
+      router.replace("/homepage");
+      return;
+    }
+
+    try {
+      const session = JSON.parse(raw) as { role?: string };
+
+      // User internal → redirect ke /dashboard-v2/telaah
+      if (session.role === "INTERNAL_STRUKTURAL") {
+        router.replace("/dashboard-v2/telaah");
+      }
+      // Kalau bukan internal → biarkan halaman render (guard tidak redirect)
+    } catch {
+      // Session corrupt → anggap tidak valid
       router.replace("/homepage");
     }
-  }, [authLoading, user, router]);
+  }, [router]);
 
   // Auto-redirect user INTERNAL_STRUKTURAL ke /dashboard-v2/telaah.
   // Baca dari localStorage langsung untuk menghindari race condition
