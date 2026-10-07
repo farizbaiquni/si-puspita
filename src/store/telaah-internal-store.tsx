@@ -10,8 +10,7 @@
 /*  - onSnapshot real-time ke collection "telaahInternal"              */
 /*  - Aksi tulis via runTransaction untuk validasi urutan tahap        */
 /*                                                                      */
-/*  Tidak menyentuh collection existing apapun (pengajuan,             */
-/*  notifikasiOPD, riwayatRevisi, counters).                           */
+/*  Tidak menyentuh collection existing apapun.                        */
 /* ------------------------------------------------------------------ */
 
 import {
@@ -54,10 +53,6 @@ const NOTIFIKASI_INTERNAL_COLLECTION = "notifikasiInternal";
 /**
  * Tulis satu dokumen ke `notifikasiInternal` lewat `addDoc` (doc ID
  * auto-generated oleh Firestore).
- *
- * Dipisah dari fungsi utama supaya:
- *  - format notif gampang diubah dari satu tempat,
- *  - unit test lebih mudah (mock `addDoc` cukup di satu spot).
  */
 async function kirimNotifikasiInternal(
   payload: Omit<NotifikasiInternalRecord, "id" | "dibaca" | "createdAt">,
@@ -75,8 +70,6 @@ async function kirimNotifikasiInternal(
 
 /**
  * Data minimal pengajuan yang dibutuhkan saat mengajukan telaah.
- * Sengaja tidak pakai `FormulirPenghapusanPiutangOPDRecord` penuh supaya
- * pemanggil tidak perlu passing seluruh objek (cukup field yang relevan).
  */
 interface PengajuanRingkas {
   id: string;
@@ -85,6 +78,13 @@ interface PengajuanRingkas {
   namaOPD: string;
   namaPenanggungJawab: string;
 }
+
+/**
+ * Shape checklist per dokumen — sama persis dengan yang di
+ * `TelaahLogEntry.checklistDokumen`. Didefinisikan di sini juga supaya
+ * tidak perlu import type dari file tipe setiap kali dipakai.
+ */
+type ChecklistDokumen = Record<string, { checked: boolean; catatan: string }>;
 
 /* ==================== Context value ==================== */
 
@@ -122,12 +122,18 @@ interface TelaahInternalStoreValue {
    *
    * Setelah commit, otomatis kirim notifikasi ke target selanjutnya
    * (kabid / sekban / admin).
+   *
+   * `checklistDokumen` opsional:
+   *  - Kalau diisi, disimpan di log entry sebagai bagian `riwayat[]`.
+   *  - Kalau kosong/undefined, log entry tidak akan menyertakan field
+   *    ini (backward compatible dengan pemanggil lama).
    */
   approveTelaah: (
     telaahId: string,
     level: TelaahLevel,
     username: string,
     catatan: string,
+    checklistDokumen?: ChecklistDokumen,
   ) => Promise<void>;
 }
 
@@ -175,9 +181,7 @@ export function TelaahInternalProvider({ children }: { children: ReactNode }) {
   // ── Aksi 1: Ajukan telaah ──
   const ajukanTelaah = useCallback(
     async (pengajuan: PengajuanRingkas, adminUsername: string) => {
-      // Doc ID = pengajuanId → deterministik, otomatis cegah duplikat.
       const telaahRef = doc(db, TELAAH_COLLECTION, pengajuan.id);
-
       const nowIso = new Date().toISOString();
 
       const logEntry: TelaahLogEntry = {
@@ -186,6 +190,7 @@ export function TelaahInternalProvider({ children }: { children: ReactNode }) {
         olehTelaahLevel: "admin",
         catatan: "",
         timestamp: nowIso,
+        // Tidak ada checklist untuk entry DIAJUKAN (dibuat admin).
       };
 
       const record: TelaahInternalRecord = {
@@ -240,6 +245,7 @@ export function TelaahInternalProvider({ children }: { children: ReactNode }) {
       level: TelaahLevel,
       username: string,
       catatan: string,
+      checklistDokumen?: ChecklistDokumen,
     ) => {
       const telaahRef = doc(db, TELAAH_COLLECTION, telaahId);
       const nowIso = new Date().toISOString();
@@ -275,6 +281,10 @@ export function TelaahInternalProvider({ children }: { children: ReactNode }) {
           olehTelaahLevel: level,
           catatan: catatan.trim(),
           timestamp: nowIso,
+          // Checklist opsional — pakai spread kondisional supaya field
+          // ini TIDAK disertakan sama sekali kalau undefined (Firestore
+          // menolak field bernilai `undefined` di dalam transaction).
+          ...(checklistDokumen ? { checklistDokumen } : {}),
         };
 
         const nextTahap = TELAAH_NEXT_TAHAP[expectedTahap];

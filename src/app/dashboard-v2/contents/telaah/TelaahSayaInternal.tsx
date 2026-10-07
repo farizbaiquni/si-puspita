@@ -10,8 +10,7 @@
 /*   - "Riwayat Telaah" → telaah yang riwayat-nya mengandung entry      */
 /*     dari user ini.                                                  */
 /*                                                                      */
-/*  Filter: Search + Filter OPD (dropdown) + Filter status chips       */
-/*  (khusus tab Riwayat).                                              */
+/*  Filter: Search + Filter OPD + Filter status chips.                 */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
@@ -183,54 +182,60 @@ const IconHourglass = () => (
 
 const IconInbox = () => (
   <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
+    width="22"
+    height="22"
+    viewBox="0 0 22 22"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.7"
+    strokeWidth="1.6"
   >
     <path
-      d="M3 10l2-6h10l2 6v5a1 1 0 01-1 1H4a1 1 0 01-1-1v-5z"
+      d="M3 11l2.5-7h11L19 11v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6z"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
-      d="M3 10h4l1 2h4l1-2h4"
+      d="M3 11h4.5l1 2h5l1-2H19"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
   </svg>
 );
 
-const IconHistory = () => (
+const IconCheckCircle = () => (
   <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
+    width="22"
+    height="22"
+    viewBox="0 0 22 22"
     fill="none"
     stroke="currentColor"
     strokeWidth="1.7"
   >
-    <path d="M10 5v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M3.5 3.5v3h3" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M3.5 6.5A7 7 0 1110 17a7 7 0 01-6.5-4.7" strokeLinecap="round" />
+    <circle cx="11" cy="11" r="8.5" />
+    <path d="M7 11l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
-const IconSparkles = () => (
+const IconTrophy = () => (
   <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
+    width="22"
+    height="22"
+    viewBox="0 0 22 22"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.7"
+    strokeWidth="1.6"
   >
     <path
-      d="M10 3v3M10 14v3M3 10h3M14 10h3M5.2 5.2l2.1 2.1M12.7 12.7l2.1 2.1M5.2 14.8l2.1-2.1M12.7 7.3l2.1-2.1"
+      d="M6 4h10v5a5 5 0 01-10 0V4z"
       strokeLinecap="round"
+      strokeLinejoin="round"
     />
+    <path
+      d="M6 5H3v2a3 3 0 003 3M16 5h3v2a3 3 0 01-3 3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M8 19h6M11 14v5" strokeLinecap="round" />
   </svg>
 );
 
@@ -278,40 +283,81 @@ function ambilEntryTerakhirSaya(
   return null;
 }
 
-/* ==================== Stat Card ==================== */
+/* ==================== Stat Card (dengan indicator) ==================== */
 
 const StatCard: React.FC<{
   icon: React.ReactNode;
   label: string;
   value: number;
-  sublabel?: string;
+  /** Angka pembanding untuk indicator "X dari Y". */
+  total?: number;
+  /** Label setelah angka total — mis. "telaah" atau "ditelaah Anda". */
+  totalLabel?: string;
   accentClass: string;
   bgClass: string;
   borderClass: string;
-}> = ({ icon, label, value, sublabel, accentClass, bgClass, borderClass }) => (
-  <div
-    className={`flex min-w-0 items-center gap-3 rounded-sm border px-4 py-3.5 ${bgClass} ${borderClass}`}
-  >
-    <div
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-white ${accentClass}`}
-    >
-      {icon}
-    </div>
-    <div className="min-w-0">
-      <div className="text-[22px] leading-none font-bold text-[#1a1a2e]">
-        {value}
+  /** Warna progress bar. */
+  progressColor: string;
+}> = ({
+  icon,
+  label,
+  value,
+  total,
+  totalLabel,
+  accentClass,
+  bgClass,
+  borderClass,
+  progressColor,
+}) => {
+  const hasIndicator = typeof total === "number" && !!totalLabel;
+  const percent =
+    hasIndicator && total! > 0
+      ? Math.min(100, Math.round((value / total!) * 100))
+      : 0;
+
+  return (
+    <div className={`rounded-sm border ${bgClass} ${borderClass} p-4`}>
+      {/* Row 1: icon + value + label */}
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm text-white ${accentClass}`}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[26px] leading-none font-bold text-[#1a1a2e]">
+            {value}
+          </div>
+          <div className="mt-1 text-[11.5px] leading-tight font-semibold text-[#5a6474]">
+            {label}
+          </div>
+        </div>
       </div>
-      <div className="mt-1 truncate text-[11.5px] font-semibold text-[#5a6474]">
-        {label}
-      </div>
-      {sublabel && (
-        <div className="mt-0.5 truncate text-[10.5px] text-[#7a8899]">
-          {sublabel}
+
+      {/* Row 2: indicator "X dari Y" + progress bar */}
+      {hasIndicator && (
+        <div className="mt-3 border-t border-current/10 pt-2.5">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] text-[#7a8899]">
+            <span className="truncate">
+              <span className="font-bold text-[#5a6474]">{value}</span> dari{" "}
+              <span className="font-bold text-[#5a6474]">{total}</span>{" "}
+              {totalLabel}
+            </span>
+            <span className="shrink-0 font-bold text-[#5a6474]">
+              {percent}%
+            </span>
+          </div>
+          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/70">
+            <div
+              className={`h-full transition-all duration-500 ${progressColor}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
         </div>
       )}
     </div>
-  </div>
-);
+  );
+};
 
 /* ==================== Kartu: Antrean Saya ==================== */
 
@@ -505,9 +551,7 @@ export default function TelaahSayaInternal() {
   const level = user?.telaahLevel ?? null;
   const username = user?.username ?? null;
 
-  /* ── Daftar OPD unik — dari semua telaah (bukan pengajuan) ──
-     Karena user internal hanya punya akses ke telaahInternal,
-     ambil namaOPD dari snapshot telaah. */
+  /* ── Daftar OPD unik — dari semua telaah ── */
   const daftarOPD = useMemo(() => {
     const set = new Set<string>();
     data.forEach((t) => {
@@ -550,9 +594,7 @@ export default function TelaahSayaInternal() {
 
   /* ── Filter generic — search + OPD ── */
   const matchFilter = (t: TelaahInternalRecord): boolean => {
-    // Filter OPD
     if (filterOPD && t.namaOPD !== filterOPD) return false;
-    // Filter search
     if (search.trim()) {
       const q = search.toLowerCase();
       return (
@@ -587,8 +629,13 @@ export default function TelaahSayaInternal() {
     const selesaiFinal = filterOPD
       ? daftarRiwayat.filter((t) => t.namaOPD === filterOPD && t.selesai).length
       : daftarRiwayat.filter((t) => t.selesai).length;
-    return { menunggu, sudah, selesaiFinal };
-  }, [daftarAntrean, daftarRiwayat, filterOPD]);
+    // Total telaah keseluruhan (untuk indicator "X dari Y") — juga
+    // menghormati filter OPD supaya indikator tetap relevan.
+    const totalTelaah = filterOPD
+      ? data.filter((t) => t.namaOPD === filterOPD).length
+      : data.length;
+    return { menunggu, sudah, selesaiFinal, totalTelaah };
+  }, [daftarAntrean, daftarRiwayat, data, filterOPD]);
 
   const isFilterAktif = Boolean(search.trim() || filterOPD);
 
@@ -656,34 +703,43 @@ export default function TelaahSayaInternal() {
 
       {/* ══════════ STAT CARDS ══════════ */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Card 1 — Menunggu Ditelaah Anda */}
         <StatCard
           icon={<IconInbox />}
-          label="Menunggu Telaah"
+          label="Menunggu Ditelaah Anda"
           value={stats.menunggu}
-          sublabel={
-            stats.menunggu > 0 ? "Perlu tindakan Anda" : "Antrean bersih"
-          }
+          total={stats.totalTelaah}
+          totalLabel="telaah"
           accentClass="bg-[#1a4e8f]"
           bgClass="bg-[#eef4fc]"
           borderClass="border-[#d0e0f5]"
+          progressColor="bg-[#1a4e8f]"
         />
+
+        {/* Card 2 — Sudah Ditelaah Anda */}
         <StatCard
-          icon={<IconHistory />}
-          label="Sudah Ditelaah"
+          icon={<IconCheckCircle />}
+          label="Sudah Ditelaah Anda"
           value={stats.sudah}
-          sublabel="Total riwayat Anda"
-          accentClass="bg-[#5a6474]"
-          bgClass="bg-[#f7f8fa]"
-          borderClass="border-[#e2e8f2]"
+          total={stats.totalTelaah}
+          totalLabel="telaah"
+          accentClass="bg-[#f59e0b]"
+          bgClass="bg-[#fffbeb]"
+          borderClass="border-[#fde68a]"
+          progressColor="bg-[#f59e0b]"
         />
+
+        {/* Card 3 — Telaah Telah Selesai */}
         <StatCard
-          icon={<IconSparkles />}
-          label="Selesai Final"
+          icon={<IconTrophy />}
+          label="Telaah Telah Selesai"
           value={stats.selesaiFinal}
-          sublabel="Lolos seluruh tahap"
+          total={stats.sudah}
+          totalLabel="ditelaah Anda"
           accentClass="bg-[#0f9b6e]"
           bgClass="bg-[#e6f7f2]"
           borderClass="border-[#a7e8d4]"
+          progressColor="bg-[#0f9b6e]"
         />
       </div>
 
@@ -716,9 +772,8 @@ export default function TelaahSayaInternal() {
         })}
       </div>
 
-      {/* ══════════ FILTER BAR (Search + OPD + Reset + Counter) ══════════ */}
+      {/* ══════════ FILTER BAR ══════════ */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] lg:flex-row lg:items-center">
-        {/* Search */}
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 lg:min-w-40 lg:flex-1">
           <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
@@ -741,7 +796,6 @@ export default function TelaahSayaInternal() {
           )}
         </div>
 
-        {/* Filter OPD */}
         <div className="flex shrink-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.75">
           <span className="shrink-0 text-[#7a8899]">
             <IconFilter />
@@ -760,7 +814,6 @@ export default function TelaahSayaInternal() {
           </select>
         </div>
 
-        {/* Reset */}
         <button
           onClick={resetFilter}
           disabled={!isFilterAktif}
@@ -769,7 +822,6 @@ export default function TelaahSayaInternal() {
           Reset
         </button>
 
-        {/* Counter */}
         <div className="shrink-0 text-xs text-[#7a8899]">
           {tab === "antrean"
             ? `${antreanFiltered.length} antrean`
@@ -856,7 +908,7 @@ export default function TelaahSayaInternal() {
       ) : /* ═══ Tab 2: Riwayat Telaah ═══ */
       daftarRiwayat.length === 0 ? (
         <EmptyState
-          icon={<IconHistory />}
+          icon={<IconTrophy />}
           title="Belum ada riwayat telaah"
           subtitle="Setelah Anda melakukan approve pada suatu pengajuan, riwayat akan muncul di sini."
         />

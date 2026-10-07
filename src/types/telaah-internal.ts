@@ -115,7 +115,7 @@ export const TELAAH_NEXT_TAHAP: Record<TelaahTahap, TelaahTahap> = {
 
 /**
  * Tahap "menunggu" yang cocok dengan level user tertentu.
- * Dipakai untuk memfilter daftar di halaman "Telaah Saya" dan untuk
+ * Dipakai untuk memfilter daftar di halaman "Ruang Telaah" dan untuk
  * memvalidasi apakah user berhak approve pada tahap tertentu.
  */
 export const TELAAH_TAHAP_BY_LEVEL: Record<TelaahLevel, TelaahTahap> = {
@@ -149,10 +149,10 @@ export const TELAAH_NOTIF_TARGET_BY_NEXT_TAHAP: Record<TelaahTahap, string> = {
 /* ==================== 4. Record types ==================== */
 
 /**
- * Satu baris log telaah — append-only, tidak pernah diedit atau dihapus.
+ * Satu baris log telaah — append-only, tidak pernah diedit.
  *
  * Semua field wajib ada. `catatan` boleh string kosong ("") karena
- * tombol "Approve & Teruskan" tetap valid walau user tidak menulis catatan.
+ * tombol "Approve & Teruskan" tetap valid walau user tidak mengisi.
  */
 export interface TelaahLogEntry {
   /** Milestone yang dicapai oleh entry ini. */
@@ -172,6 +172,32 @@ export interface TelaahLogEntry {
 
   /** Kapan entry ini dibuat — format ISO 8601. */
   timestamp: string;
+
+  /**
+   * Checklist & catatan per dokumen untuk level telaah ini.
+   *
+   * Key   = field name di FormulirPenghapusanPiutangOPDRecord
+   *         (mis. `suratPengantarUsulan`).
+   * Value = { checked, catatan }.
+   *
+   * Hanya field `checked` yang WAJIB (untuk dokumen yang diupload).
+   * `catatan` boleh "" (opsional).
+   *
+   * OPTIONAL dengan alasan backward compatibility:
+   *  - Entry `DIAJUKAN` (dibuat admin) tidak punya field ini.
+   *  - Entry lama (sebelum fitur checklist ditambahkan) juga tidak
+   *    punya — UI akan handle dengan menampilkan "—".
+   *
+   * Field ini SENGAJA tidak dipakai sebagai kunci query, hanya disimpan
+   * & dibaca sebagai bagian dari `riwayat[]`.
+   */
+  checklistDokumen?: Record<
+    string,
+    {
+      checked: boolean;
+      catatan: string;
+    }
+  >;
 }
 
 /**
@@ -179,14 +205,11 @@ export interface TelaahLogEntry {
  *
  * **Doc ID = pengajuanId** (deterministik) → satu pengajuan hanya bisa
  * punya satu siklus telaah. Percobaan `setDoc` ulang akan terdeteksi
- * lewat cek `getDoc` dulu di `ajukanTelaah()` (lihat telaah-internal-store).
+ * lewat cek `getDoc` dulu di `ajukanTelaah()`.
  *
  * Field `pengajuanId` tetap disimpan walau nilainya sama dengan `id`
- * untuk:
- *   - kenyamanan query `where("pengajuanId", "==", ...)` bila di masa depan
- *     butuh query lintas-relasi,
- *   - konsistensi pola dengan record lain (mis. notifikasiInternal juga
- *     menyimpan `pengajuanId` walau `telaahId` juga tersedia).
+ * untuk kenyamanan query `where("pengajuanId", "==", ...)` bila di masa
+ * depan butuh query lintas-relasi.
  */
 export interface TelaahInternalRecord {
   // ── Identitas (denormalized untuk tampilan cepat) ────────────────
@@ -264,9 +287,7 @@ export interface NotifikasiInternalRecord {
  * dengan `tahapSaatIni` tertentu.
  *
  * ⚠️ INI HANYA UNTUK GUARD UI — bukan enforcement sesungguhnya.
- * Enforcement wajib ada di dalam Firestore transaction `approveTelaah()`
- * (lihat telaah-internal-store.tsx), karena fungsi client bisa di-bypass
- * lewat DevTools.
+ * Enforcement wajib ada di dalam Firestore transaction `approveTelaah()`.
  */
 export function bolehApprove(
   tahapSaatIni: TelaahTahap,
