@@ -2484,7 +2484,12 @@ function SiPuspitaLandingPageContent() {
             backgroundColor: "rgba(8,13,28,0.7)",
             backdropFilter: "blur(8px)",
           }}
-          onClick={(e) => {
+          // Gunakan onMouseDown (bukan onClick) supaya modal TIDAK
+          // tertutup saat user drag-select teks di input lalu melepas
+          // mouse di luar modal. onClick akan trigger close karena
+          // target release = backdrop — padahal user hanya ingin
+          // memblok teks untuk dihapus.
+          onMouseDown={(e) => {
             if (e.target === e.currentTarget) {
               closeLogin();
               setLoginError("");
@@ -2638,7 +2643,7 @@ function SiPuspitaLandingPageContent() {
             backgroundColor: "rgba(8,13,28,0.65)",
             backdropFilter: "blur(6px)",
           }}
-          onClick={(e) => {
+          onMouseDown={(e) => {
             if (e.target === e.currentTarget) setAuthGuardOpen(null);
           }}
         >
@@ -2681,7 +2686,7 @@ function SiPuspitaLandingPageContent() {
             backgroundColor: "rgba(8,13,28,0.65)",
             backdropFilter: "blur(6px)",
           }}
-          onClick={(e) => {
+          onMouseDown={(e) => {
             if (e.target === e.currentTarget) closePanduan();
           }}
         >
