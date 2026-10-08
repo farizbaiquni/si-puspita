@@ -30,6 +30,17 @@ function formatTanggal(iso: string): string {
   });
 }
 
+function formatTanggalSingkat(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+}
+
 function formatTanggalWaktu(iso: string): string {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -60,12 +71,6 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
   return j ? map[j] : "-";
 }
 
-// Nomor yang ditampilkan di baris paling atas: untuk status "teregistrasi"
-// pakai Nomor Registrasi (identitas resmi setelah lolos verifikasi), untuk
-// status lain ("diajukan"/"revisi") pakai Nomor Pengajuan (identitas resmi
-// sejak awal submit, format XXX/PENGAJUAN/<KODE_OPD>/MM/YYYY) — BUKAN
-// Nomor Surat Usulan dari OPD, karena itu nomor surat internal OPD sendiri,
-// bukan identifier resmi SI PUSPITA.
 function nomorTampilan(p: FormulirPenghapusanPiutangOPDRecord): string {
   if (p.status === "teregistrasi") {
     return p.nomorRegistrasi || p.nomorPengajuan || "-";
@@ -74,26 +79,15 @@ function nomorTampilan(p: FormulirPenghapusanPiutangOPDRecord): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Daftar dokumen — dibangun dari field dokumen flat FormulirPenghapusanPiutangOPDRecord + fileSurat
+// Dokumen helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface DokumenEntry {
   key: string;
   label: string;
-  /** null = dokumen ini tidak/belum diupload OPD */
   file: UploadedFileRef | null;
 }
 
-/**
- * Struktur tampilan daftar dokumen pendukung — beda dari DokumenEntry
- * (yang cuma satu file), ini mengatur URUTAN dan PENGELOMPOKAN sesuai
- * checklist persyaratan substantif resmi (1-8), SAMA PERSIS dengan
- * VerifikasiPengajuan.tsx supaya tampilan konsisten di kedua tempat:
- *  - "single": item bernomor dengan satu file (mis. 1, 2, 3, 4, 7, 8)
- *  - "group": item bernomor TANPA file sendiri (cuma judul syarat),
- *    dengan beberapa sub-dokumen di bawahnya (mis. 5, 6) — dirender
- *    menjorok ke kanan tanpa nomor sendiri per DokumenItem.tsx.
- */
 type DokumenTampilanEntry =
   | {
       type: "single";
@@ -111,7 +105,6 @@ type DokumenTampilanEntry =
       anak: DokumenEntry[];
     };
 
-/** Ambil UploadedFileRef dari field record (atau null kalau belum diupload). */
 function ambilFile(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
   key: keyof FormulirPenghapusanPiutangOPDRecord,
@@ -122,7 +115,6 @@ function ambilFile(
     : null;
 }
 
-/** Label tampilan untuk opsiRiwayatPenagihan — lebih jelas dari label enum default. */
 function labelOpsiRiwayatPenagihanTampilan(
   opsi: FormulirPenghapusanPiutangOPDRecord["opsiRiwayatPenagihan"],
 ): string {
@@ -131,10 +123,6 @@ function labelOpsiRiwayatPenagihanTampilan(
   return "-";
 }
 
-// 5 kemungkinan bukti "tidak mampu bayar" — OPD cuma upload SALAH SATU dari
-// ini (bukan wajib kelima-limanya, lihat item 5 checklist substantif).
-// Dipakai di dua tempat: daftar dokumen (buildDokumenTampilan) dan info
-// ringkas "Bukti Dokumen Tidak Mampu Melunasi Utang" di bawah.
 const BUKTI_TIDAK_MAMPU_LABELS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
@@ -158,7 +146,6 @@ const BUKTI_TIDAK_MAMPU_LABELS: {
   },
 ];
 
-/** Cari mana dari 5 bukti "tidak mampu bayar" yang benar-benar diupload OPD. */
 function labelBuktiTidakMampuTerupload(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
 ): string {
@@ -168,18 +155,6 @@ function labelBuktiTidakMampuTerupload(
   return terupload ? terupload.label : "-";
 }
 
-/**
- * Bangun daftar tampilan dokumen pendukung sesuai urutan checklist
- * persyaratan substantif resmi:
- *  1. Surat Pengantar Usulan *
- *  2. Daftar Nominatif Usulan Piutang SKPD *
- *  3. Piutang telah berstatus macet dengan usia piutang > 3 tahun *
- *  4. Usia pencatatan piutang telah memenuhi ketentuan
- *  5. Tidak mempunyai kemampuan untuk menyelesaikan utang * (grup, min. 1)
- *  6. Surat tagihan telah diterbitkan * (grup)
- *  7. Telah dilakukan upaya optimal sesuai ketentuan (opsional)
- *  8. Telah dilakukan kerja sama penagihan pihak ketiga (> Rp 1 Milyar)
- */
 function buildDokumenTampilan(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
 ): DokumenTampilanEntry[] {
@@ -292,7 +267,6 @@ function buildDokumenTampilan(
   ];
 }
 
-/** Ratakan struktur tampilan jadi daftar file datar — dipakai untuk hitung X/Y terupload dan state preview modal. */
 function flattenDokumenTampilan(
   tampilan: DokumenTampilanEntry[],
 ): DokumenEntry[] {
@@ -324,18 +298,8 @@ const STATUS_BADGE: Record<
   },
 };
 
-const REVIU_BADGE = {
-  label: "Menunggu Reviu Inspektorat",
-  cls: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
-  dot: "bg-[#7c3aed]",
-} as const;
-
-const StatusBadge: React.FC<{
-  status: StatusFormulir;
-  reviuStatus?: "MENUNGGU_REVIU" | null;
-}> = ({ status, reviuStatus }) => {
-  const cfg =
-    reviuStatus === "MENUNGGU_REVIU" ? REVIU_BADGE : STATUS_BADGE[status];
+const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
+  const cfg = STATUS_BADGE[status];
   return (
     <span
       className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
@@ -352,7 +316,7 @@ const JenisPenghapusanBadge: React.FC<{ jenis: JenisPenghapusan }> = ({
   const isBersyarat = jenis === "Penghapusan Bersyarat";
   return (
     <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${
+      className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide whitespace-nowrap uppercase ${
         isBersyarat
           ? "border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]"
           : "border-[#ddd6fe] bg-[#f5f3ff] text-[#5b21b6]"
@@ -461,19 +425,6 @@ const IconCheck = () => (
   </svg>
 );
 
-const IconX = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
-  </svg>
-);
-
 const IconArrowLeft = () => (
   <svg
     width="16"
@@ -484,6 +435,19 @@ const IconArrowLeft = () => (
     strokeWidth="1.8"
   >
     <path d="M10 3L4 8l6 5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconArrowRight = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path d="M5 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -514,6 +478,38 @@ const IconClock = () => (
   </svg>
 );
 
+const IconAlert = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
+    <path
+      d="M8 2.5l6 11H2l6-11z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M8 6.5v3.5M8 12v.5" strokeLinecap="round" />
+  </svg>
+);
+
+const SortIndicator: React.FC<{ active: boolean; dir: "asc" | "desc" }> = ({
+  active,
+  dir,
+}) => {
+  if (!active) {
+    return <span className="ml-1 inline-block text-[9px] opacity-40">⇅</span>;
+  }
+  return (
+    <span className="ml-1 inline-block text-[9px] text-[#fbbf24]">
+      {dir === "asc" ? "▲" : "▼"}
+    </span>
+  );
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Modal Preview PDF
 // ─────────────────────────────────────────────────────────────────────────────
@@ -539,7 +535,6 @@ const ModalPreviewPDF: React.FC<{
       }}
     >
       <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:rounded-sm">
-        {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e2e8f2] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
@@ -574,7 +569,6 @@ const ModalPreviewPDF: React.FC<{
           </div>
         </div>
 
-        {/* PDF viewer */}
         <div className="flex-1 overflow-hidden bg-[#f1f3f5] p-2">
           <iframe
             src={url}
@@ -592,7 +586,6 @@ const ModalPreviewPDF: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DokumenItem: React.FC<{
-  /** Nomor urut tampilan (1, 2, 3, ...). null untuk sub-item — tampil dash "-" alih-alih nomor. */
   nomor: number | null;
   dok: DokumenEntry;
   onPreview: () => void;
@@ -640,7 +633,9 @@ const DokumenItem: React.FC<{
           )}
         </div>
         <div
-          className={`text-xs ${belumUpload ? "text-[#c0392b] italic" : "text-[#7a8899]"}`}
+          className={`text-xs ${
+            belumUpload ? "text-[#c0392b] italic" : "text-[#7a8899]"
+          }`}
         >
           {belumUpload ? "Tidak diupload" : formatUkuran(dok.file!.ukuranBytes)}
         </div>
@@ -659,7 +654,7 @@ const DokumenItem: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Detail Pengajuan (panel) — read-only, tanpa form/tombol verifikasi
+// Detail Pengajuan (panel)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PanelDetail: React.FC<{
@@ -688,7 +683,6 @@ const PanelDetail: React.FC<{
         />
       )}
 
-      {/* Back */}
       <button
         onClick={onBack}
         className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-[#1a4e8f] hover:underline"
@@ -698,9 +692,7 @@ const PanelDetail: React.FC<{
       </button>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* ── Kolom kiri: info pengajuan & dokumen ── */}
         <div className="space-y-4 lg:col-span-2">
-          {/* Kartu info pengajuan — digabung jadi satu (identitas + field ringkas + penanggung jawab) */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white">
             <div className="p-5">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -767,7 +759,6 @@ const PanelDetail: React.FC<{
               </div>
             </div>
 
-            {/* Penanggung Jawab OPD */}
             <div className="border-t border-[#eef1f5] p-5">
               <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
                 Penanggung Jawab OPD
@@ -798,7 +789,6 @@ const PanelDetail: React.FC<{
             </div>
           </div>
 
-          {/* Dokumen pendukung */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Dokumen Pendukung ({dokumen.filter((d) => d.file).length}/
@@ -822,7 +812,6 @@ const PanelDetail: React.FC<{
                     />
                   ) : (
                     <div key={`grup-${d.nomor}`} className="space-y-2">
-                      {/* Judul syarat (item 5 & 6) — tanpa file sendiri, cuma label + sub-dokumen di bawahnya */}
                       <div className="flex items-baseline gap-2 px-1 pt-1">
                         <span className="text-sm font-normal text-gray-500">
                           {d.nomor}.
@@ -837,7 +826,6 @@ const PanelDetail: React.FC<{
                           )}
                         </div>
                       </div>
-                      {/* Sub-dokumen — menjorok ke kanan, tanpa nomor sendiri */}
                       <div className="ml-6 space-y-2 border-l-2 border-[#e2e8f2] pl-3">
                         {d.anak.map((entry) => (
                           <DokumenItem
@@ -856,7 +844,6 @@ const PanelDetail: React.FC<{
           </div>
         </div>
 
-        {/* ── Kolom kanan: info status (read-only, tanpa form keputusan) ── */}
         <div className="lg:col-span-1">
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5 lg:sticky lg:top-4">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
@@ -930,8 +917,7 @@ const PanelDetail: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Kartu baris — versi mobile (< sm) pengganti tabel yang kolomnya kebanyakan
-// untuk layar sempit
+// Kartu baris — versi mobile (< sm)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PengajuanRowCardMobile: React.FC<{
@@ -945,7 +931,7 @@ const PengajuanRowCardMobile: React.FC<{
         <div className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
           #{no} · {nomorTampilan(p)}
         </div>
-        <div className="mt-0.5 truncate text-[14px] font-semibold text-[#1a1a2e]">
+        <div className="mt-0.5 truncate text-[14px] font-bold text-[#1a1a2e]">
           {p.namaOPD}
         </div>
         <div className="mt-px truncate text-[11px] text-[#7a8899]">
@@ -953,27 +939,37 @@ const PengajuanRowCardMobile: React.FC<{
         </div>
       </div>
       <div className="shrink-0">
-        <StatusBadge status={p.status} reviuStatus={p.reviuInspektoratStatus} />
+        <StatusBadge status={p.status} />
       </div>
     </div>
 
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[13px] font-bold text-[#1a1a2e]">
+    <div>
+      <div className="text-[13.5px] font-bold text-[#1a1a2e]">
         {formatRupiah(p.totalNilaiPiutang)}
-      </span>
-      <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
+      </div>
+      <div className="mt-1">
+        <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
+      </div>
+      <div className="mt-0.5 text-[11px] text-[#5a6474]">
+        {labelJenisPiutang(p.jenisPiutang)}
+      </div>
     </div>
 
-    <div className="flex items-center justify-between gap-2 text-[11px] text-[#7a8899]">
-      <span className="truncate">{labelJenisPiutang(p.jenisPiutang)}</span>
-      <span className="shrink-0">{formatTanggal(p.tanggalSurat)}</span>
+    <div className="flex items-center justify-between gap-2 text-[11px]">
+      <span className="shrink-0 font-semibold text-[#3a4454]">
+        📅 {formatTanggal(p.tanggalSurat)}
+      </span>
+      <span className="truncate font-medium text-[#7a8899]">
+        Input: {formatTanggal(p.createdAt)}
+      </span>
     </div>
 
     <button
       onClick={onLihatDetail}
-      className="w-full rounded-sm border border-[#e2e8f2] bg-white py-2 text-xs font-semibold text-[#1a4e8f] transition hover:bg-[#f7f8fa]"
+      className="flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#1a4e8f] py-2 text-xs font-semibold text-white transition hover:bg-[#2d63a8]"
     >
       Lihat Detail
+      <IconArrowRight />
     </button>
   </div>
 );
@@ -983,22 +979,13 @@ const PengajuanRowCardMobile: React.FC<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface LihatDaftarPengajuanAdminProps {
-  /**
-   * Opsional — override sumber data (mis. untuk testing/storybook).
-   * Kalau tidak diisi, komponen ambil langsung dari usePengajuanStore()
-   * supaya selalu sinkron dengan data yang sama dipakai ModalLacak
-   * (homepage) & panel VerifikasiPengajuan — bukan data acak/mock lokal.
-   */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
 }
 
-// Urutan grup status untuk tampilan grouping (collapse/expand): Teregistrasi
-// paling atas, lalu Revisi, lalu Diajukan paling bawah. Di dalam grup yang
-// sama, urutkan dari updatedAt paling baru ke paling lama.
 const STATUS_GROUP_ORDER: StatusFormulir[] = [
-  "teregistrasi",
-  "revisi",
   "diajukan",
+  "revisi",
+  "teregistrasi",
 ];
 
 const STATUS_PRIORITY: Record<StatusFormulir, number> = Object.fromEntries(
@@ -1010,14 +997,36 @@ interface PengajuanGroup {
   items: FormulirPenghapusanPiutangOPDRecord[];
 }
 
+type SortKey = "tanggalSurat" | "createdAt";
+
+interface SortConfig {
+  key: SortKey;
+  dir: "asc" | "desc";
+}
+
 function LihatDaftarPengajuanAdmin({
   semuaPengajuan,
 }: LihatDaftarPengajuanAdminProps = {}) {
-  // Sumber data tunggal: pengajuan-store (localStorage + in-memory),
-  // sama seperti yang dipakai VerifikasiPengajuan & ModalLacak. Prop
-  // semuaPengajuan (kalau diisi) menang duluan sebagai override manual.
   const { data: dataStore } = usePengajuanStore();
 
+  // ── State filter (hanya via chips) ──
+  const [activeStatuses, setActiveStatuses] = useState<Set<StatusFormulir>>(
+    new Set(STATUS_GROUP_ORDER),
+  );
+  const [search, setSearch] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [selected, setSelected] =
+    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<StatusFormulir, boolean>
+  >({
+    diajukan: false,
+    revisi: false,
+    teregistrasi: false,
+  });
+
+  // ── Data source ──
   const daftarPengajuan = useMemo(() => {
     const sumber = semuaPengajuan ?? dataStore;
     return [...sumber].sort((a, b) => {
@@ -1028,115 +1037,194 @@ function LihatDaftarPengajuanAdmin({
     });
   }, [semuaPengajuan, dataStore]);
 
-  // Ringkasan jumlah per status (seluruh data, bukan sesi)
-  const jumlahDiajukan = useMemo(
-    () => daftarPengajuan.filter((p) => p.status === "diajukan").length,
-    [daftarPengajuan],
-  );
-  const jumlahTeregistrasi = useMemo(
-    () => daftarPengajuan.filter((p) => p.status === "teregistrasi").length,
-    [daftarPengajuan],
-  );
-  const jumlahRevisi = useMemo(
-    () => daftarPengajuan.filter((p) => p.status === "revisi").length,
-    [daftarPengajuan],
-  );
+  // ── Stats ──
+  const stats = useMemo(() => {
+    const total = daftarPengajuan.length;
+    const diajukan = daftarPengajuan.filter(
+      (p) => p.status === "diajukan",
+    ).length;
+    const revisi = daftarPengajuan.filter((p) => p.status === "revisi").length;
+    const teregistrasi = daftarPengajuan.filter(
+      (p) => p.status === "teregistrasi",
+    ).length;
+    return { total, diajukan, revisi, teregistrasi };
+  }, [daftarPengajuan]);
 
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] =
-    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+  // ── Toggle status (dari chips) ──
+  const toggleStatus = (status: StatusFormulir) => {
+    setActiveStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      if (next.size === 0) return new Set(STATUS_GROUP_ORDER);
+      return next;
+    });
+  };
 
+  const resetFilter = () => {
+    setActiveStatuses(new Set(STATUS_GROUP_ORDER));
+    setSearch("");
+    setSortConfig(null);
+  };
+
+  const isFilterAktif =
+    activeStatuses.size < STATUS_GROUP_ORDER.length ||
+    search.trim().length > 0 ||
+    sortConfig !== null;
+
+  // ── Filter ──
   const filtered = useMemo(() => {
-    if (!search) return daftarPengajuan;
-    const q = search.toLowerCase();
-    return daftarPengajuan.filter(
-      (p) =>
-        p.id.toLowerCase().includes(q) ||
-        p.nomorPengajuan.toLowerCase().includes(q) ||
-        p.nomorSurat.toLowerCase().includes(q) ||
-        (p.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
-        p.namaOPD.toLowerCase().includes(q) ||
-        p.namaPenanggungJawab.toLowerCase().includes(q),
-    );
-  }, [daftarPengajuan, search]);
+    return daftarPengajuan.filter((p) => {
+      if (!activeStatuses.has(p.status)) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          p.id.toLowerCase().includes(q) ||
+          p.nomorPengajuan.toLowerCase().includes(q) ||
+          p.nomorSurat.toLowerCase().includes(q) ||
+          (p.nomorRegistrasi?.toLowerCase().includes(q) ?? false) ||
+          p.namaOPD.toLowerCase().includes(q) ||
+          p.namaPenanggungJawab.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [daftarPengajuan, activeStatuses, search]);
 
-  // Pengelompokan berdasarkan status, urutan tetap sesuai STATUS_GROUP_ORDER.
-  // Saat sedang mencari (search aktif), grup yang kosong disembunyikan supaya
-  // tidak menambah noise di hasil pencarian.
+  // ── Group + Sort ──
   const groupedPengajuan = useMemo<PengajuanGroup[]>(() => {
-    return STATUS_GROUP_ORDER.map((status) => ({
-      status,
-      items: filtered.filter((p) => p.status === status),
-    })).filter((group) => group.items.length > 0 || !search);
-  }, [filtered, search]);
-
-  // Status expand/collapse per grup — default semua grup terbuka.
-  const [collapsedGroups, setCollapsedGroups] = useState<
-    Record<StatusFormulir, boolean>
-  >({
-    teregistrasi: false,
-    revisi: false,
-    diajukan: false,
-  });
+    return STATUS_GROUP_ORDER.map((status) => {
+      const items = filtered.filter((p) => p.status === status);
+      if (sortConfig) {
+        items.sort((a, b) => {
+          const va = a[sortConfig.key] || "";
+          const vb = b[sortConfig.key] || "";
+          const cmp = String(va).localeCompare(String(vb));
+          return sortConfig.dir === "asc" ? cmp : -cmp;
+        });
+      } else {
+        items.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+      }
+      return { status, items };
+    }).filter((group) => group.items.length > 0 || !search);
+  }, [filtered, sortConfig, search]);
 
   const toggleGroup = (status: StatusFormulir) => {
     setCollapsedGroups((prev) => ({ ...prev, [status]: !prev[status] }));
   };
 
-  // ── Render: panel detail (read-only) ──────────────────────────────────────
+  const handleSortClick = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+      }
+      return { key, dir: "desc" };
+    });
+  };
+
   if (selected) {
     return (
       <PanelDetail pengajuan={selected} onBack={() => setSelected(null)} />
     );
   }
 
-  // ── Render: daftar pengajuan ───────────────────────────────────────────────
+  // ── Config kartu statis (bukan filter) ──
+  const statusCards: {
+    status: StatusFormulir;
+    label: string;
+    count: number;
+    icon: React.ReactNode;
+    accentClass: string;
+    bgClass: string;
+    borderClass: string;
+    progressColor: string;
+  }[] = [
+    {
+      status: "diajukan",
+      label: "Menunggu Verifikasi",
+      count: stats.diajukan,
+      icon: <IconClock />,
+      accentClass: "bg-[#1a4e8f]",
+      bgClass: "bg-[#e8f0fb]",
+      borderClass: "border-[#c8d9f5]",
+      progressColor: "bg-[#1a4e8f]",
+    },
+    {
+      status: "revisi",
+      label: "Perlu Revisi",
+      count: stats.revisi,
+      icon: <IconAlert />,
+      accentClass: "bg-[#c0392b]",
+      bgClass: "bg-[#fef2f2]",
+      borderClass: "border-[#fecaca]",
+      progressColor: "bg-[#c0392b]",
+    },
+    {
+      status: "teregistrasi",
+      label: "Teregistrasi",
+      count: stats.teregistrasi,
+      icon: <IconCheck />,
+      accentClass: "bg-[#0f9b6e]",
+      bgClass: "bg-[#e6f7f2]",
+      borderClass: "border-[#a7e8d4]",
+      progressColor: "bg-[#0f9b6e]",
+    },
+  ];
+
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
-      {/* ── Summary ── */}
+      {/* ══════════ Summary Cards (statis, bukan filter) ══════════ */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#c8d9f5] bg-[#e8f0fb] px-4.5 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#1a4e8f] text-white">
-            <IconClock />
-          </div>
-          <div>
-            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {jumlahDiajukan}
-            </div>
-            <div className="mt-0.5 text-xs text-[#7a8899]">
-              Menunggu Verifikasi
-            </div>
-          </div>
-        </div>
+        {statusCards.map((card) => {
+          const percent =
+            stats.total === 0
+              ? 0
+              : Math.round((card.count / stats.total) * 100);
 
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#a7e8d4] bg-[#e6f7f2] px-4.5 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#0f9b6e] text-white">
-            <IconCheck />
-          </div>
-          <div>
-            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {jumlahTeregistrasi}
-            </div>
-            <div className="mt-0.5 text-xs text-[#7a8899]">Teregistrasi</div>
-          </div>
-        </div>
+          return (
+            <div
+              key={card.status}
+              className={`flex min-w-0 flex-col gap-3 rounded-sm border px-4 py-3.5 ${card.bgClass} ${card.borderClass}`}
+            >
+              <div className="flex w-full items-center gap-3">
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-white ${card.accentClass}`}
+                >
+                  {card.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
+                    {card.count}
+                  </div>
+                  <div className="mt-0.5 truncate text-xs text-[#7a8899]">
+                    {card.label}
+                  </div>
+                </div>
+              </div>
 
-        <div className="flex min-w-0 items-center gap-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-4.5 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#c0392b] text-white">
-            <IconX />
-          </div>
-          <div>
-            <div className="text-xl leading-tight font-bold text-[#1a1a2e]">
-              {jumlahRevisi}
+              {/* Progress bar */}
+              <div className="w-full">
+                <div className="h-1 w-full overflow-hidden rounded-full bg-white">
+                  <div
+                    className={`h-full transition-all duration-500 ${card.progressColor}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+                <div className="mt-1 flex items-center justify-end text-[10px] text-[#7a8899]">
+                  <span className="font-bold">{percent}%</span>
+                </div>
+              </div>
             </div>
-            <div className="mt-0.5 text-xs text-[#7a8899]">Perlu Revisi</div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      {/* ── Search bar ── */}
-      <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
-        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
+      {/* ══════════ Search bar ══════════ */}
+      <div className="mb-3 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[10px_14px] sm:flex-row sm:items-center">
+        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.5 sm:min-w-40 sm:flex-1">
           <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
@@ -1156,12 +1244,67 @@ function LihatDaftarPengajuanAdmin({
             </button>
           )}
         </div>
-        <div className="shrink-0 text-xs text-[#7a8899]">
-          {filtered.length} dari {daftarPengajuan.length} pengajuan
+        <div className="flex shrink-0 items-center gap-2">
+          {isFilterAktif && (
+            <button
+              onClick={resetFilter}
+              className="rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#7a8899] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+            >
+              Reset Filter
+            </button>
+          )}
+          <span className="text-xs text-[#7a8899]">
+            {filtered.length} dari {daftarPengajuan.length}
+          </span>
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* ══════════ Filter Chips ══════════ */}
+      <div className="mb-3.5 flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
+          Filter:
+        </span>
+        {STATUS_GROUP_ORDER.map((status) => {
+          const isActive = activeStatuses.has(status);
+          const cfg = STATUS_BADGE[status];
+          const count =
+            status === "diajukan"
+              ? stats.diajukan
+              : status === "revisi"
+                ? stats.revisi
+                : stats.teregistrasi;
+          return (
+            <button
+              key={status}
+              type="button"
+              onClick={() => toggleStatus(status)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                isActive
+                  ? cfg.cls
+                  : "border-[#e2e8f2] bg-white text-[#b0bac5] hover:border-[#d0d7de]"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot} ${
+                  isActive ? "" : "opacity-40"
+                }`}
+              />
+              {cfg.label}
+              <span
+                className={`rounded-full px-1.5 py-px text-[9.5px] font-bold ${
+                  isActive
+                    ? "bg-white/60 text-current"
+                    : "bg-[#f0f4fb] text-[#b0bac5]"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ══════════ Tabel ══════════ */}
       <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 p-[56px_24px] text-[#7a8899]">
@@ -1171,17 +1314,29 @@ function LihatDaftarPengajuanAdmin({
             <div className="text-sm font-semibold text-[#8a96a3]">
               {daftarPengajuan.length === 0
                 ? "Belum ada pengajuan"
-                : "Tidak ada pengajuan yang cocok"}
+                : search
+                  ? "Tidak ada pengajuan yang cocok"
+                  : "Tidak ada pengajuan untuk filter aktif"}
             </div>
             <div className="text-xs text-[#b0bac5]">
               {daftarPengajuan.length === 0
                 ? "Belum ada formulir yang masuk dari OPD."
-                : "Coba ubah kata kunci pencarian."}
+                : search
+                  ? "Coba ubah kata kunci pencarian."
+                  : "Coba aktifkan filter status di atas."}
             </div>
+            {isFilterAktif && (
+              <button
+                onClick={resetFilter}
+                className="mt-1 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-[11.5px] font-semibold text-[#1a4e8f] transition hover:bg-[#e8f0fb]"
+              >
+                Reset Filter
+              </button>
+            )}
           </div>
         ) : (
           <>
-            {/* Kartu — tampilan mobile (< sm), dikelompokkan per status */}
+            {/* Kartu — tampilan mobile (< sm) */}
             <div className="sm:hidden">
               {groupedPengajuan.map((group) => {
                 const isCollapsed = collapsedGroups[group.status];
@@ -1204,60 +1359,76 @@ function LihatDaftarPengajuanAdmin({
                       </span>
                       <span className="flex items-center gap-1.5">
                         <span
-                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`}
+                          className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`}
                         />
                         <span className="text-[13px] font-bold text-[#1a1a2e]">
                           {cfg.label}
                         </span>
                       </span>
-                      <span className="ml-auto text-xs font-semibold text-[#7a8899]">
+                      <span
+                        className={`ml-auto rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${cfg.cls}`}
+                      >
                         {group.items.length}
                       </span>
                     </button>
 
-                    {!isCollapsed &&
-                      (group.items.length === 0 ? (
-                        <div className="px-4 py-5 text-center text-xs text-[#b0bac5]">
-                          Tidak ada pengajuan.
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-[#e2e8f2]">
-                          {group.items.map((p, idx) => (
-                            <PengajuanRowCardMobile
-                              key={p.id}
-                              p={p}
-                              no={idx + 1}
-                              onLihatDetail={() => setSelected(p)}
-                            />
-                          ))}
-                        </div>
-                      ))}
+                    {!isCollapsed && group.items.length > 0 && (
+                      <div className="divide-y divide-[#e2e8f2]">
+                        {group.items.map((p, idx) => (
+                          <PengajuanRowCardMobile
+                            key={p.id}
+                            p={p}
+                            no={idx + 1}
+                            onLihatDetail={() => setSelected(p)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
 
-            {/* Tabel — tampilan tablet & desktop (>= sm), dikelompokkan per status */}
+            {/* Tabel — tampilan tablet & desktop (>= sm) */}
             <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full border-collapse text-[13px]">
+              <table className="w-full border-collapse text-[12px]">
                 <thead>
                   <tr className="border-b border-[#e2e8f2] bg-[#263e6e]">
-                    {[
-                      "No",
-                      "Pengajuan",
-                      "Piutang & Nominal",
-                      "Status",
-                      "Tgl Surat",
-                      "Tgl Input Pengajuan",
-                      "Aksi",
-                    ].map((label, idx) => (
-                      <th
-                        key={idx}
-                        className="p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase"
-                      >
-                        {label}
-                      </th>
-                    ))}
+                    <th className="w-10 px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase">
+                      No
+                    </th>
+                    <th className="px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase">
+                      Pengajuan
+                    </th>
+                    <th className="px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase">
+                      Piutang & Nominal
+                    </th>
+                    <th className="px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase">
+                      Status
+                    </th>
+                    <th
+                      onClick={() => handleSortClick("tanggalSurat")}
+                      className="cursor-pointer px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase transition hover:bg-[#2f4a80]"
+                    >
+                      Tgl Surat
+                      <SortIndicator
+                        active={sortConfig?.key === "tanggalSurat"}
+                        dir={sortConfig?.dir ?? "desc"}
+                      />
+                    </th>
+                    <th
+                      onClick={() => handleSortClick("createdAt")}
+                      className="cursor-pointer px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase transition hover:bg-[#2f4a80]"
+                    >
+                      Tgl Input
+                      <SortIndicator
+                        active={sortConfig?.key === "createdAt"}
+                        dir={sortConfig?.dir ?? "desc"}
+                      />
+                    </th>
+                    <th className="px-3 py-2 text-left text-[10px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase">
+                      Aksi
+                    </th>
                   </tr>
                 </thead>
                 {groupedPengajuan.map((group) => {
@@ -1265,12 +1436,12 @@ function LihatDaftarPengajuanAdmin({
                   const cfg = STATUS_BADGE[group.status];
                   return (
                     <tbody key={group.status}>
-                      {/* Header grup — bisa diklik untuk collapse/expand */}
+                      {/* Header grup */}
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f4fb]">
                         <td colSpan={7} className="p-0">
                           <button
                             onClick={() => toggleGroup(group.status)}
-                            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-[#e8f0fb]"
+                            className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-[#e8f0fb]"
                           >
                             <span
                               className={`shrink-0 text-[#7a8899] transition-transform duration-150 ${
@@ -1281,14 +1452,16 @@ function LihatDaftarPengajuanAdmin({
                             </span>
                             <span className="flex items-center gap-1.5">
                               <span
-                                className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`}
+                                className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`}
                               />
-                              <span className="text-[13px] font-bold text-[#1a1a2e]">
+                              <span className="text-[12.5px] font-bold text-[#1a1a2e]">
                                 {cfg.label}
                               </span>
                             </span>
-                            <span className="text-xs font-semibold text-[#7a8899]">
-                              {group.items.length} pengajuan
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${cfg.cls}`}
+                            >
+                              {group.items.length}
                             </span>
                           </button>
                         </td>
@@ -1299,9 +1472,9 @@ function LihatDaftarPengajuanAdmin({
                           <tr>
                             <td
                               colSpan={7}
-                              className="py-5 text-center text-xs text-[#b0bac5]"
+                              className="py-6 text-center text-xs text-[#b0bac5]"
                             >
-                              Tidak ada pengajuan.
+                              Tidak ada pengajuan pada status ini.
                             </td>
                           </tr>
                         ) : (
@@ -1311,70 +1484,68 @@ function LihatDaftarPengajuanAdmin({
                             return (
                               <tr
                                 key={p.id}
-                                className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
+                                className={`transition-colors duration-150 hover:bg-[#f7f9fc] ${
                                   isLastInGroup
                                     ? ""
-                                    : "border-b border-[#e2e8f2]"
+                                    : "border-b border-[#eef1f5]"
                                 }`}
                               >
-                                {/* No */}
-                                <td className="w-8 p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
-                                  {idx + 1}
+                                {/* No — plain text, rata atas */}
+                                <td className="px-3 py-2.5 align-top text-[12px] font-semibold text-[#7a8899]">
+                                  {idx + 1}.
                                 </td>
 
-                                {/* Kolom gabungan: No Reg/No Pengajuan + OPD + Penanggung Jawab */}
-                                <td className="p-[12px_14px]">
-                                  <div className="font-mono text-xs font-bold whitespace-nowrap text-[#1a4e8f]">
+                                {/* Pengajuan */}
+                                <td className="px-3 py-2.5 align-top">
+                                  <div className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
                                     {nomorTampilan(p)}
                                   </div>
-                                  <div className="mt-0.5 text-[13px] font-semibold whitespace-nowrap text-[#1a1a2e]">
+                                  <div className="mt-0.5 text-[13px] font-bold whitespace-nowrap text-[#1a1a2e]">
                                     {p.namaOPD}
                                   </div>
-                                  <div className="mt-px text-[11px] text-[#7a8899]">
+                                  <div className="mt-px text-[10.5px] text-[#7a8899]">
                                     {p.namaPenanggungJawab}
                                   </div>
                                 </td>
 
-                                {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[13px] font-bold text-[#1a1a2e]">
-                                      {formatRupiah(p.totalNilaiPiutang)}
-                                    </span>
+                                {/* Piutang & Nominal — badge di bawah nominal */}
+                                <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                                  <div className="text-[12.5px] font-bold text-[#1a1a2e]">
+                                    {formatRupiah(p.totalNilaiPiutang)}
+                                  </div>
+                                  <div className="mt-1">
                                     <JenisPenghapusanBadge
                                       jenis={p.jenisPenghapusan}
                                     />
                                   </div>
-                                  <div className="mt-0.5 text-xs text-[#5a6474]">
+                                  <div className="mt-0.5 text-[11px] text-[#5a6474]">
                                     {labelJenisPiutang(p.jenisPiutang)}
                                   </div>
                                 </td>
 
                                 {/* Status */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
-                                  <StatusBadge
-                                    status={p.status}
-                                    reviuStatus={p.reviuInspektoratStatus}
-                                  />
+                                <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                                  <StatusBadge status={p.status} />
                                 </td>
 
                                 {/* Tgl Surat */}
-                                <td className="p-[12px_14px] text-center text-xs whitespace-nowrap text-[#7a8899]">
-                                  {formatTanggal(p.tanggalSurat)}
+                                <td className="px-3 py-2.5 align-top text-[11.5px] font-semibold whitespace-nowrap text-[#3a4454]">
+                                  {formatTanggalSingkat(p.tanggalSurat)}
                                 </td>
 
-                                {/* Tgl Input Pengajuan — kapan pengajuan dibuat di sistem (createdAt), beda dari Tgl Surat yang diisi OPD manual */}
-                                <td className="p-[12px_14px] text-center text-xs whitespace-nowrap text-[#7a8899]">
-                                  {formatTanggal(p.createdAt)}
+                                {/* Tgl Input */}
+                                <td className="px-3 py-2.5 align-top text-[11.5px] font-semibold whitespace-nowrap text-[#3a4454]">
+                                  {formatTanggalSingkat(p.createdAt)}
                                 </td>
 
-                                {/* Tombol Aksi — read-only, selalu "Lihat Detail" */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
+                                {/* Aksi */}
+                                <td className="px-3 py-2.5 align-top whitespace-nowrap">
                                   <button
                                     onClick={() => setSelected(p)}
-                                    className="rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+                                    className="inline-flex items-center gap-1 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
                                   >
-                                    Lihat Detail
+                                    Lihat
+                                    <IconArrowRight />
                                   </button>
                                 </td>
                               </tr>

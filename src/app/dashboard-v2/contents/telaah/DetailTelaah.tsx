@@ -37,6 +37,7 @@ import DaftarDokumenDenganChecklist, {
   type ChecklistMap,
   type ChecklistItem,
 } from "./DaftarDokumenDenganChecklist";
+import DaftarDokumenReadOnly from "./DaftarDokumenReadOnly";
 
 /* ==================== Ikon ==================== */
 
@@ -715,16 +716,10 @@ export default function DetailTelaah({
               onChecklistChange={handleChecklistChange}
             />
           ) : (
-            <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-              <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-                Dokumen Pendukung (read-only)
-              </div>
-              <p className="text-[12.5px] text-[#7a8899]">
-                Panel dokumen read-only — lihat di halaman{" "}
-                <span className="font-semibold">Telaah Internal</span> admin
-                untuk detail lengkap dengan preview PDF.
-              </p>
-            </div>
+            <DaftarDokumenReadOnly
+              pengajuan={pengajuan}
+              riwayat={telaah.riwayat}
+            />
           )}
 
           {/* ⚡ TimelineRiwayat DIPINDAH ke kolom kanan (lihat di bawah) */}

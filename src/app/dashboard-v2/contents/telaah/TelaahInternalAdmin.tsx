@@ -1,11 +1,13 @@
 "use client";
 
 /* ------------------------------------------------------------------ */
-/*  TelaahInternalAdmin.tsx                                            */
+/*  TelaahInternalAdmin.tsx (Compact Version)                          */
 /*  Menu "Telaah Internal" untuk admin — 3 tab + filter OPD.           */
 /*                                                                      */
-/*  Design: kartu unified 3-kolom (icon | content | action),           */
-/*  accent bar kiri w-0.75 (3px), padding simetris dengan menu lain.   */
+/*  Kartu design compact: 2 baris utama + action button di kanan.      */
+/*   - Baris 1: nomor + badge + nominal (kanan)
+/*   - Baris 2: OPD · PJ · debitur                                        */
+/*   - Baris 3 (khusus Dalam Proses/Selesai): meta tambahan              */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
@@ -110,8 +112,8 @@ const IconClock = () => (
 
 const IconPlus = () => (
   <svg
-    width="14"
-    height="14"
+    width="13"
+    height="13"
     viewBox="0 0 14 14"
     fill="none"
     stroke="currentColor"
@@ -123,8 +125,8 @@ const IconPlus = () => (
 
 const IconArrowRight = () => (
   <svg
-    width="14"
-    height="14"
+    width="13"
+    height="13"
     viewBox="0 0 14 14"
     fill="none"
     stroke="currentColor"
@@ -136,8 +138,8 @@ const IconArrowRight = () => (
 
 const IconBuilding = () => (
   <svg
-    width="22"
-    height="22"
+    width="18"
+    height="18"
     viewBox="0 0 22 22"
     fill="none"
     stroke="currentColor"
@@ -153,8 +155,8 @@ const IconBuilding = () => (
 
 const IconHourglass = () => (
   <svg
-    width="22"
-    height="22"
+    width="18"
+    height="18"
     viewBox="0 0 22 22"
     fill="none"
     stroke="currentColor"
@@ -229,41 +231,6 @@ const IconLayers = () => (
   </svg>
 );
 
-const IconCoins = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-  >
-    <ellipse cx="6" cy="5" rx="4" ry="2.2" />
-    <path
-      d="M2 5v3.5c0 1.2 1.8 2.2 4 2.2s4-1 4-2.2V5M2 8.5v3.5c0 1.2 1.8 2.2 4 2.2 1.6 0 3-.55 3.6-1.35"
-      strokeLinecap="round"
-    />
-    <ellipse cx="11" cy="9.5" rx="3.2" ry="1.8" />
-  </svg>
-);
-
-const IconUsers = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-  >
-    <circle cx="6" cy="5" r="2.5" />
-    <path
-      d="M1 13c0-2.7 2.2-5 5-5M11 5a2.5 2.5 0 110 5M15 13c0-2.7-2.2-5-5-5"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
 /* ==================== Helper ==================== */
 
 function formatDurasi(fromIso: string, toIso?: string | null): string {
@@ -310,15 +277,15 @@ const StatCard: React.FC<{
   borderClass: string;
 }> = ({ icon, label, value, sublabel, accentClass, bgClass, borderClass }) => (
   <div
-    className={`flex min-w-0 items-center gap-3 rounded-sm border px-4 py-3.5 ${bgClass} ${borderClass}`}
+    className={`flex min-w-0 items-center gap-3 rounded-sm border px-4 py-3 ${bgClass} ${borderClass}`}
   >
     <div
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-white ${accentClass}`}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-white ${accentClass}`}
     >
       {icon}
     </div>
     <div className="min-w-0">
-      <div className="text-[22px] leading-none font-bold text-[#1a1a2e]">
+      <div className="text-[20px] leading-none font-bold text-[#1a1a2e]">
         {value}
       </div>
       <div className="mt-1 truncate text-[11.5px] font-semibold text-[#5a6474]">
@@ -333,21 +300,21 @@ const StatCard: React.FC<{
   </div>
 );
 
-/* ==================== Progress Bar ==================== */
+/* ==================== Progress Bar (compact) ==================== */
 
 const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
   const selesai = stepSelesai(tahap);
-  const steps = ["Kasubbid", "Kabid", "Sekban"];
+  const steps = ["Kas", "Kab", "Sek"];
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="inline-flex items-center gap-1">
       {steps.map((label, idx) => {
         const isDone = idx < selesai;
         const isActive = idx === selesai && tahap !== "SELESAI";
         return (
           <div key={label} className="flex items-center gap-1">
             <div
-              className={`flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ${
+              className={`flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[9.5px] font-bold ${
                 isDone
                   ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]"
                   : isActive
@@ -357,8 +324,8 @@ const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
             >
               {isDone && (
                 <svg
-                  width="9"
-                  height="9"
+                  width="8"
+                  height="8"
                   viewBox="0 0 16 16"
                   fill="none"
                   stroke="currentColor"
@@ -378,7 +345,7 @@ const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
             </div>
             {idx < steps.length - 1 && (
               <span
-                className={`h-px w-2.5 ${idx < selesai ? "bg-[#a7f3d0]" : "bg-[#e2e8f2]"}`}
+                className={`h-px w-1.5 ${idx < selesai ? "bg-[#a7f3d0]" : "bg-[#e2e8f2]"}`}
               />
             )}
           </div>
@@ -389,7 +356,6 @@ const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
 };
 
 /* ==================== Kartu: Belum Diajukan ==================== */
-
 const KartuBelumDiajukan: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onAjukan: () => void;
@@ -397,51 +363,56 @@ const KartuBelumDiajukan: React.FC<{
   const identitas = pengajuan.nomorRegistrasi || pengajuan.nomorPengajuan;
 
   return (
-    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#dbe6f7] bg-white transition-all duration-150 hover:border-[#1a4e8f]/40 hover:shadow-md sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#dbe6f7] bg-white pl-3.5 transition-all duration-150 hover:border-[#1a4e8f]/40 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3">
       {/* Accent bar kiri */}
       <div className="absolute inset-y-0 left-0 w-0.75 bg-[#1a4e8f]" />
 
-      {/* Icon */}
-      <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-[#eff6ff] text-[#1a4e8f] sm:flex">
+      {/* ═══ Kolom 1: Icon (align top) ═══ */}
+      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#eff6ff] text-[#1a4e8f] sm:flex">
         <IconBuilding />
       </div>
 
-      {/* Konten */}
-      <div className="min-w-0 flex-1 p-4 sm:p-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
-            {identitas}
-          </span>
-          <span className="rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
-            Siap Ditelaah
-          </span>
+      {/* ═══ Kolom 2: Nomor + OPD + PJ ═══ */}
+      <div className="min-w-0 flex-1 p-3.5 sm:p-0">
+        <div className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
+          {identitas}
         </div>
-        <div className="mt-1.5 truncate text-[15px] leading-tight font-bold text-[#1a1a2e]">
+        <div className="mt-1 truncate text-[13px] leading-tight font-bold text-[#1a1a2e]">
           {pengajuan.namaOPD}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[#7a8899]">
-          <span className="truncate">{pengajuan.namaPenanggungJawab}</span>
-          <span className="flex items-center gap-1">
-            <IconUsers />
-            <span className="font-medium text-[#5a6474]">
-              {pengajuan.jumlahDebitur}
-            </span>{" "}
-            debitur
-          </span>
-          <span className="flex items-center gap-1">
-            <IconCoins />
-            <span className="font-bold text-[#1a4e8f]">
-              {formatRupiah(pengajuan.totalNilaiPiutang)}
-            </span>
-          </span>
+        <div className="mt-0.5 truncate text-[11.5px] text-[#7a8899]">
+          {pengajuan.namaPenanggungJawab}
         </div>
       </div>
 
-      {/* Action */}
-      <div className="shrink-0 border-t border-[#f1f5f9] p-4 sm:border-t-0 sm:p-0">
+      {/* ═══ Kolom 3: Badge Siap Ditelaah + Jumlah Debitur (align top) ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
+        <span className="inline-block rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
+          Siap Ditelaah
+        </span>
+        <div className="mt-1 text-[11px] text-[#7a8899]">
+          <span className="font-semibold text-[#5a6474]">
+            {pengajuan.jumlahDebitur}
+          </span>{" "}
+          debitur
+        </div>
+      </div>
+
+      {/* ═══ Kolom 4: Nominal (align top) ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:min-w-32.5 sm:border-t-0 sm:p-0 sm:pt-0.5 sm:text-right">
+        <div className="text-[10px] font-bold tracking-wider text-[#7a8899] uppercase sm:text-right">
+          Nilai Piutang
+        </div>
+        <div className="mt-0.5 text-[13px] leading-tight font-bold text-[#1a4e8f]">
+          {formatRupiah(pengajuan.totalNilaiPiutang)}
+        </div>
+      </div>
+
+      {/* ═══ Kolom 5: Tombol Ajukan (align top) ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
         <button
           onClick={onAjukan}
-          className="flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#1a4e8f] px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-sm transition hover:bg-[#2d63a8] hover:shadow-md sm:w-auto"
+          className="flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#1a4e8f] px-3.5 py-2 text-[12px] font-semibold whitespace-nowrap text-white shadow-sm transition hover:bg-[#2d63a8] hover:shadow-md sm:w-auto"
         >
           <IconPlus />
           Ajukan Telaah
@@ -459,6 +430,7 @@ const KartuDalamProses: React.FC<{
   nomorPengajuan: string;
   namaOPD: string;
   namaPenanggungJawab: string;
+  totalNilaiPiutang?: string;
   tahapSaatIni: TelaahTahap;
   diajukanPada: string;
   onLihat: () => void;
@@ -467,6 +439,7 @@ const KartuDalamProses: React.FC<{
   nomorPengajuan,
   namaOPD,
   namaPenanggungJawab,
+  totalNilaiPiutang,
   tahapSaatIni,
   diajukanPada,
   onLihat,
@@ -476,50 +449,48 @@ const KartuDalamProses: React.FC<{
   const durasi = formatDurasi(diajukanPada);
 
   return (
-    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#fde68a] bg-white transition-all duration-150 hover:border-[#f59e0b]/50 hover:shadow-md sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#fde68a] bg-white pl-3.5 transition-all duration-150 hover:border-[#f59e0b]/50 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3">
       {/* Accent bar kiri */}
       <div className="absolute inset-y-0 left-0 w-0.75 bg-[#f59e0b]" />
 
-      {/* Icon */}
-      <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-[#fffbeb] text-[#b45309] sm:flex">
+      {/* ═══ Kolom 1: Icon (align top) ═══ */}
+      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fffbeb] text-[#b45309] sm:flex">
         <IconHourglass />
       </div>
 
-      {/* Konten */}
-      <div className="min-w-0 flex-1 p-4 sm:p-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
-            {identitas}
-          </span>
-          <span className="rounded-sm border border-[#fde68a] bg-[#fffbeb] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#b45309] uppercase">
-            Dalam Proses
-          </span>
+      {/* ═══ Kolom 2: Nomor + OPD + PJ (align top) ═══ */}
+      <div className="min-w-0 shrink-0 p-3.5 sm:max-w-60 sm:p-0">
+        <div className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
+          {identitas}
         </div>
-        <div className="mt-1.5 truncate text-[15px] leading-tight font-bold text-[#1a1a2e]">
+        <div className="mt-1 truncate text-[13px] leading-tight font-bold text-[#1a1a2e]">
           {namaOPD}
         </div>
-        <div className="mt-1 truncate text-[11.5px] text-[#7a8899]">
+        <div className="mt-0.5 truncate text-[11.5px] text-[#7a8899]">
           {namaPenanggungJawab}
         </div>
+      </div>
 
-        {/* Progress + pemegang */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      {/* ═══ Kolom 3: Badge + Progress + Date/Duration (align top) ═══ */}
+      <div className="-mt-1 min-w-0 flex-1 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0">
+        <span className="inline-block rounded-sm border border-[#fde68a] bg-[#fffbeb] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#b45309] uppercase">
+          Dalam Proses
+        </span>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <ProgressTelaah tahap={tahapSaatIni} />
           {pemegang && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-[#7a8899]">
+            <span className="inline-flex items-center gap-1 text-[10.5px] text-[#7a8899]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#f59e0b]" />
               di <span className="font-bold text-[#b45309]">{pemegang}</span>
             </span>
           )}
         </div>
-
-        {/* Meta */}
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#7a8899]">
+        {/* Date-time kiri · Duration kanan — sejajar satu baris */}
+        <div className="mt-1.5 flex items-center gap-3 text-[10.5px] text-[#7a8899]">
           <span className="inline-flex items-center gap-1">
             <IconClock />
             {formatTanggalWaktu(diajukanPada)}
           </span>
-          <span className="text-[#d0d7de]">·</span>
           <span>
             Durasi{" "}
             <span className="font-semibold text-[#b45309]">{durasi}</span>
@@ -527,11 +498,21 @@ const KartuDalamProses: React.FC<{
         </div>
       </div>
 
-      {/* Action */}
-      <div className="shrink-0 border-t border-[#fef3c7] p-4 sm:border-t-0 sm:p-0">
+      {/* ═══ Kolom 4: Nominal (align top, right) ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:min-w-32.5 sm:border-t-0 sm:p-0 sm:text-right">
+        <div className="text-[10px] font-bold tracking-wider text-[#7a8899] uppercase sm:text-right">
+          Nilai Piutang
+        </div>
+        <div className="mt-0.5 text-[13px] leading-tight font-bold text-[#1a4e8f]">
+          {totalNilaiPiutang ? formatRupiah(totalNilaiPiutang) : "—"}
+        </div>
+      </div>
+
+      {/* ═══ Kolom 5: Tombol (align top) ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0">
         <button
           onClick={onLihat}
-          className="flex w-full items-center justify-center rounded-sm border border-[#fde68a] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#b45309] transition hover:border-[#f59e0b] hover:bg-[#fffbeb] sm:w-auto"
+          className="flex w-full items-center justify-center rounded-sm border border-[#fde68a] bg-white px-3.5 py-2 text-[12px] font-semibold whitespace-nowrap text-[#b45309] transition hover:border-[#f59e0b] hover:bg-[#fffbeb] sm:w-auto"
         >
           Lihat Detail
         </button>
@@ -547,6 +528,7 @@ const KartuSelesai: React.FC<{
   nomorPengajuan: string;
   namaOPD: string;
   namaPenanggungJawab: string;
+  totalNilaiPiutang?: string;
   diajukanPada: string;
   selesaiPada: string | null;
   riwayatCount: number;
@@ -556,6 +538,7 @@ const KartuSelesai: React.FC<{
   nomorPengajuan,
   namaOPD,
   namaPenanggungJawab,
+  totalNilaiPiutang,
   diajukanPada,
   selesaiPada,
   riwayatCount,
@@ -565,35 +548,34 @@ const KartuSelesai: React.FC<{
   const durasi = selesaiPada ? formatDurasi(diajukanPada, selesaiPada) : "—";
 
   return (
-    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#a7f3d0] bg-white transition-all duration-150 hover:border-[#0f9b6e]/40 hover:shadow-md sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#a7f3d0] bg-white pl-3.5 transition-all duration-150 hover:border-[#0f9b6e]/40 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3">
       {/* Accent bar kiri */}
       <div className="absolute inset-y-0 left-0 w-0.75 bg-[#0f9b6e]" />
 
-      {/* Icon */}
-      <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-[#ecfdf5] text-[#0f6e56] sm:flex">
+      {/* ═══ Kolom 1: Icon (align top) ═══ */}
+      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#ecfdf5] text-[#0f6e56] sm:flex">
         <IconCheckBig />
       </div>
 
-      {/* Konten */}
-      <div className="min-w-0 flex-1 p-4 sm:p-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
-            {identitas}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#065f46] uppercase">
-            <IconCheck />
-            Selesai
-          </span>
+      {/* ═══ Kolom 2: Nomor + OPD + PJ ═══ */}
+      <div className="min-w-0 shrink-0 p-3.5 sm:max-w-60 sm:p-0 sm:pt-0.5">
+        <div className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
+          {identitas}
         </div>
-        <div className="mt-1.5 truncate text-[15px] leading-tight font-bold text-[#1a1a2e]">
+        <div className="mt-1 truncate text-[13px] leading-tight font-bold text-[#1a1a2e]">
           {namaOPD}
         </div>
-        <div className="mt-1 truncate text-[11.5px] text-[#7a8899]">
+        <div className="mt-0.5 truncate text-[11.5px] text-[#7a8899]">
           {namaPenanggungJawab}
         </div>
+      </div>
 
-        {/* Meta */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#7a8899]">
+      {/* ═══ Kolom 3: Badge + Meta inline ═══ */}
+      <div className="min-w-0 flex-1 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
+        <span className="inline-flex items-center gap-1 rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#065f46] uppercase">
+          <IconCheck /> Selesai
+        </span>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-[#7a8899]">
           <span className="inline-flex items-center gap-1">
             <IconClock />
             Selesai{" "}
@@ -607,18 +589,25 @@ const KartuSelesai: React.FC<{
             <span className="font-semibold text-[#0f6e56]">{durasi}</span>
           </span>
           <span className="text-[#d0d7de]">·</span>
-          <span>
-            <span className="font-semibold text-[#5a6474]">{riwayatCount}</span>{" "}
-            langkah
-          </span>
+          <span>{riwayatCount} langkah</span>
         </div>
       </div>
 
-      {/* Action */}
-      <div className="shrink-0 border-t border-[#d1fae5] p-4 sm:border-t-0 sm:p-0">
+      {/* ═══ Kolom 4: Nominal ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:min-w-32.5 sm:border-t-0 sm:p-0 sm:pt-0.5 sm:text-right">
+        <div className="text-[10px] font-bold tracking-wider text-[#7a8899] uppercase sm:text-right">
+          Nilai Piutang
+        </div>
+        <div className="mt-0.5 text-[13px] leading-tight font-bold text-[#1a4e8f]">
+          {totalNilaiPiutang ? formatRupiah(totalNilaiPiutang) : "—"}
+        </div>
+      </div>
+
+      {/* ═══ Kolom 5: Tombol ═══ */}
+      <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
         <button
           onClick={onLihat}
-          className="flex w-full items-center justify-center rounded-sm border border-[#a7f3d0] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#0f6e56] transition hover:bg-[#ecfdf5] sm:w-auto"
+          className="flex w-full items-center justify-center rounded-sm border border-[#a7f3d0] bg-white px-3.5 py-2 text-[12px] font-semibold whitespace-nowrap text-[#0f6e56] transition hover:bg-[#ecfdf5] sm:w-auto"
         >
           Lihat Detail
         </button>
@@ -649,7 +638,7 @@ const EmptyState: React.FC<{
 
 export default function TelaahInternalAdmin() {
   const { user } = useAuth();
-  const { data: semuaPengajuan } = usePengajuanStore();
+  const { data: semuaPengajuan, getPengajuanById } = usePengajuanStore();
   const { data: semuaTelaah, ajukanTelaah } = useTelaahInternalStore();
 
   const [tab, setTab] = useState<TabKey>("belum");
@@ -805,7 +794,7 @@ export default function TelaahInternalAdmin() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full max-w-400">
       {pendingAjukan && (
         <ModalKonfirmasiAjukan
           nomorRegistrasi={pendingAjukan.nomorRegistrasi ?? ""}
@@ -893,8 +882,8 @@ export default function TelaahInternalAdmin() {
       </div>
 
       {/* FILTER BAR */}
-      <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] lg:flex-row lg:items-center">
-        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 lg:min-w-40 lg:flex-1">
+      <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[10px_14px] lg:flex-row lg:items-center">
+        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.5 lg:min-w-40 lg:flex-1">
           <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
@@ -916,7 +905,7 @@ export default function TelaahInternalAdmin() {
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.75">
+        <div className="flex shrink-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.5">
           <span className="shrink-0 text-[#7a8899]">
             <IconFilter />
           </span>
@@ -937,7 +926,7 @@ export default function TelaahInternalAdmin() {
         <button
           onClick={resetFilter}
           disabled={!isFilterAktif}
-          className="shrink-0 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.75 text-[12px] font-semibold text-[#7a8899] transition enabled:hover:border-[#a0bdec] enabled:hover:bg-[#e8f0fb] enabled:hover:text-[#1a4e8f] disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#7a8899] transition enabled:hover:border-[#a0bdec] enabled:hover:bg-[#e8f0fb] enabled:hover:text-[#1a4e8f] disabled:cursor-not-allowed disabled:opacity-40"
         >
           Reset
         </button>
@@ -949,7 +938,7 @@ export default function TelaahInternalAdmin() {
         </div>
       </div>
 
-      {/* KONTEN */}
+      {/* KONTEN PER TAB */}
       {tab === "belum" && (
         <>
           {belumFiltered.length === 0 ? (
@@ -967,7 +956,7 @@ export default function TelaahInternalAdmin() {
               }
             />
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {belumFiltered.map((p) => (
                 <KartuBelumDiajukan
                   key={p.id}
@@ -1000,19 +989,23 @@ export default function TelaahInternalAdmin() {
               }
             />
           ) : (
-            <div className="space-y-2.5">
-              {prosesFiltered.map((t) => (
-                <KartuDalamProses
-                  key={t.id}
-                  nomorRegistrasi={t.nomorRegistrasi}
-                  nomorPengajuan={t.nomorPengajuan}
-                  namaOPD={t.namaOPD}
-                  namaPenanggungJawab={t.namaPenanggungJawab}
-                  tahapSaatIni={t.tahapSaatIni}
-                  diajukanPada={t.diajukanPada}
-                  onLihat={() => setSelectedTelaahId(t.id)}
-                />
-              ))}
+            <div className="space-y-2">
+              {prosesFiltered.map((t) => {
+                const pengajuan = getPengajuanById(t.pengajuanId);
+                return (
+                  <KartuDalamProses
+                    key={t.id}
+                    nomorRegistrasi={t.nomorRegistrasi}
+                    nomorPengajuan={t.nomorPengajuan}
+                    namaOPD={t.namaOPD}
+                    namaPenanggungJawab={t.namaPenanggungJawab}
+                    totalNilaiPiutang={pengajuan?.totalNilaiPiutang}
+                    tahapSaatIni={t.tahapSaatIni}
+                    diajukanPada={t.diajukanPada}
+                    onLihat={() => setSelectedTelaahId(t.id)}
+                  />
+                );
+              })}
             </div>
           )}
         </>
@@ -1035,20 +1028,24 @@ export default function TelaahInternalAdmin() {
               }
             />
           ) : (
-            <div className="space-y-2.5">
-              {selesaiFiltered.map((t) => (
-                <KartuSelesai
-                  key={t.id}
-                  nomorRegistrasi={t.nomorRegistrasi}
-                  nomorPengajuan={t.nomorPengajuan}
-                  namaOPD={t.namaOPD}
-                  namaPenanggungJawab={t.namaPenanggungJawab}
-                  diajukanPada={t.diajukanPada}
-                  selesaiPada={t.selesaiPada}
-                  riwayatCount={t.riwayat.length}
-                  onLihat={() => setSelectedTelaahId(t.id)}
-                />
-              ))}
+            <div className="space-y-2">
+              {selesaiFiltered.map((t) => {
+                const pengajuan = getPengajuanById(t.pengajuanId);
+                return (
+                  <KartuSelesai
+                    key={t.id}
+                    nomorRegistrasi={t.nomorRegistrasi}
+                    nomorPengajuan={t.nomorPengajuan}
+                    namaOPD={t.namaOPD}
+                    namaPenanggungJawab={t.namaPenanggungJawab}
+                    totalNilaiPiutang={pengajuan?.totalNilaiPiutang}
+                    diajukanPada={t.diajukanPada}
+                    selesaiPada={t.selesaiPada}
+                    riwayatCount={t.riwayat.length}
+                    onLihat={() => setSelectedTelaahId(t.id)}
+                  />
+                );
+              })}
             </div>
           )}
         </>
