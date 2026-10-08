@@ -14,15 +14,11 @@ import {
 } from "@/types/types";
 import { usePengajuanStore } from "@/store/pengajuan-store";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
+/* ─── Helpers (TIDAK berubah) ─── */
 function formatRupiah(nominal: string | number): string {
   const n = typeof nominal === "string" ? Number(nominal) || 0 : nominal;
   return "Rp " + n.toLocaleString("id-ID");
 }
-
 function formatTanggal(iso: string): string {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -33,28 +29,21 @@ function formatTanggal(iso: string): string {
     year: "numeric",
   });
 }
-
-function formatTanggalWaktu(iso: string): string {
+function formatTanggalSingkat(iso: string): string {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
-  return (
-    d.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }) +
-    " · " +
-    d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
-  );
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
 }
-
 function formatUkuran(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
 function labelJenisPiutang(j: JenisPiutang | ""): string {
   const map: Record<JenisPiutang, string> = {
     "Piutang Retribusi Daerah": "Retribusi Daerah",
@@ -63,28 +52,18 @@ function labelJenisPiutang(j: JenisPiutang | ""): string {
   };
   return j ? map[j] : "-";
 }
-
-// Nomor yang ditampilkan di baris paling atas: untuk status "teregistrasi"
-// pakai Nomor Registrasi (identitas resmi setelah lolos verifikasi), untuk
-// status lain ("diajukan"/"revisi") pakai Nomor Surat Usulan dari OPD karena
-// nomor registrasi belum digenerate.
 function nomorTampilan(p: FormulirPenghapusanPiutangOPDRecord): string {
-  if (p.status === "teregistrasi") {
+  if (p.status === "teregistrasi")
     return p.nomorRegistrasi || p.nomorSurat || "-";
-  }
   return p.nomorSurat || "-";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Daftar dokumen — dibangun dari field dokumen flat FormulirPenghapusanPiutangOPDRecord + fileSurat
-// ─────────────────────────────────────────────────────────────────────────────
-
+/* ─── Dokumen helpers (TIDAK berubah) ─── */
 interface DokumenEntry {
   key: string;
   label: string;
   file: UploadedFileRef;
 }
-
 const NOMINATIF_DOC_LABELS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
@@ -110,12 +89,10 @@ const NOMINATIF_DOC_LABELS: {
   },
   { key: "dokumenDasarPiutang", label: "Dokumen Dasar Piutang" },
 ];
-
 function buildDokumenList(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
 ): DokumenEntry[] {
   const list: DokumenEntry[] = [];
-
   if (pengajuan.fileSurat) {
     list.push({
       key: "fileSurat",
@@ -123,21 +100,16 @@ function buildDokumenList(
       file: pengajuan.fileSurat,
     });
   }
-
   NOMINATIF_DOC_LABELS.forEach(({ key, label }) => {
     const value = pengajuan[key];
     if (value && typeof value === "object" && "url" in value) {
       list.push({ key, label, file: value as UploadedFileRef });
     }
   });
-
   return list;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Badge config
-// ─────────────────────────────────────────────────────────────────────────────
-
+/* ─── Badges (TIDAK berubah) ─── */
 const STATUS_BADGE: Record<
   StatusFormulir,
   { label: string; cls: string; dot: string }
@@ -158,7 +130,6 @@ const STATUS_BADGE: Record<
     dot: "bg-[#10b981]",
   },
 };
-
 const REVIU_BADGE = {
   label: "Menunggu Reviu Inspektorat",
   cls: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
@@ -168,26 +139,36 @@ const REVIU_BADGE = {
 const StatusBadge: React.FC<{
   status: StatusFormulir;
   reviuStatus?: "MENUNGGU_REVIU" | null;
-}> = ({ status, reviuStatus }) => {
+  compact?: boolean;
+}> = ({ status, reviuStatus, compact = false }) => {
   const cfg =
     reviuStatus === "MENUNGGU_REVIU" ? REVIU_BADGE : STATUS_BADGE[status];
   return (
     <span
-      className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
+      className={`inline-flex items-center rounded-full border font-semibold tracking-wide whitespace-nowrap ${
+        compact
+          ? "gap-1 px-1.5 py-0.5 text-[10px]"
+          : "gap-1.25 px-2.25 py-0.75 text-[11px]"
+      } ${cfg.cls}`}
     >
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+      <span
+        className={`shrink-0 rounded-full ${compact ? "h-1 w-1" : "h-1.5 w-1.5"} ${cfg.dot}`}
+      />
       {cfg.label}
     </span>
   );
 };
 
-const JenisPenghapusanBadge: React.FC<{ jenis: JenisPenghapusan }> = ({
-  jenis,
-}) => {
+const JenisPenghapusanBadge: React.FC<{
+  jenis: JenisPenghapusan;
+  compact?: boolean;
+}> = ({ jenis, compact = false }) => {
   const isBersyarat = jenis === "Penghapusan Bersyarat";
   return (
     <span
-      className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${
+      className={`inline-flex items-center rounded border font-bold tracking-wide uppercase ${
+        compact ? "px-1 py-px text-[9px]" : "px-2 py-0.5 text-[11px]"
+      } ${
         isBersyarat
           ? "border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]"
           : "border-[#ddd6fe] bg-[#f5f3ff] text-[#5b21b6]"
@@ -198,14 +179,11 @@ const JenisPenghapusanBadge: React.FC<{ jenis: JenisPenghapusan }> = ({
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Icons
-// ─────────────────────────────────────────────────────────────────────────────
-
+/* ─── Icons ─── */
 const IconSearch = () => (
   <svg
-    width="15"
-    height="15"
+    width="14"
+    height="14"
     viewBox="0 0 15 15"
     fill="none"
     stroke="currentColor"
@@ -215,11 +193,10 @@ const IconSearch = () => (
     <path d="M10 10l3 3" strokeLinecap="round" />
   </svg>
 );
-
 const IconClose = () => (
   <svg
-    width="14"
-    height="14"
+    width="12"
+    height="12"
     viewBox="0 0 14 14"
     fill="none"
     stroke="currentColor"
@@ -228,7 +205,6 @@ const IconClose = () => (
     <path d="M3 3l8 8M11 3l-8 8" strokeLinecap="round" />
   </svg>
 );
-
 const IconFileText = () => (
   <svg
     width="32"
@@ -246,7 +222,6 @@ const IconFileText = () => (
     <path d="M18 3v8h8M11 17h10M11 21h7" strokeLinecap="round" />
   </svg>
 );
-
 const IconPdf = () => (
   <svg
     width="18"
@@ -264,11 +239,10 @@ const IconPdf = () => (
     <path d="M10.5 2v4.5H15" strokeLinecap="round" />
   </svg>
 );
-
 const IconEye = () => (
   <svg
-    width="14"
-    height="14"
+    width="13"
+    height="13"
     viewBox="0 0 14 14"
     fill="none"
     stroke="currentColor"
@@ -278,7 +252,6 @@ const IconEye = () => (
     <circle cx="7" cy="7" r="1.5" />
   </svg>
 );
-
 const IconArrowLeft = () => (
   <svg
     width="16"
@@ -291,11 +264,10 @@ const IconArrowLeft = () => (
     <path d="M10 3L4 8l6 5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-
 const IconChevronDown = () => (
   <svg
-    width="14"
-    height="14"
+    width="13"
+    height="13"
     viewBox="0 0 14 14"
     fill="none"
     stroke="currentColor"
@@ -304,11 +276,10 @@ const IconChevronDown = () => (
     <path d="M3 5l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-
 const IconClock = () => (
   <svg
-    width="16"
-    height="16"
+    width="15"
+    height="15"
     viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
@@ -319,10 +290,88 @@ const IconClock = () => (
   </svg>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Modal Preview PDF
-// ─────────────────────────────────────────────────────────────────────────────
+/* Icons untuk SummaryHeader */
+const IconStack = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 18 18"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M9 1.5L2 5l7 3.5L16 5 9 1.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M2 9l7 3.5L16 9M2 13l7 3.5L16 13"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const IconBuilding = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <path
+      d="M3.5 14.5V2.5a1 1 0 011-1h7a1 1 0 011 1v12"
+      strokeLinecap="round"
+    />
+    <path
+      d="M2 14.5h12M6 5.5h1M9 5.5h1M6 8.5h1M9 8.5h1M6 11.5h1M9 11.5h1"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+const IconWallet = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <path
+      d="M1.5 4.5a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0112.5 4.5v.5h-9A1.5 1.5 0 002 6.5v6A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V6.5A1.5 1.5 0 0012.5 5H3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="11" cy="10" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+const IconFileStack = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.4"
+  >
+    <path
+      d="M10 2H4a1 1 0 00-1 1v10a1 1 0 001 1h1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M6 5h5l3 3v6a1 1 0 01-1 1H6a1 1 0 01-1-1V6a1 1 0 011-1z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M11 5v3h3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
+/* ─── Modal Preview PDF (TIDAK berubah) ─── */
 const ModalPreviewPDF: React.FC<{
   namaFile: string;
   url: string;
@@ -335,7 +384,6 @@ const ModalPreviewPDF: React.FC<{
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
-
   return (
     <div
       className="fixed inset-0 z-1100 flex items-center justify-center bg-[rgba(10,20,40,0.55)] p-0 backdrop-blur-[2px] sm:p-6"
@@ -344,7 +392,6 @@ const ModalPreviewPDF: React.FC<{
       }}
     >
       <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:rounded-sm">
-        {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e2e8f2] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
@@ -357,7 +404,6 @@ const ModalPreviewPDF: React.FC<{
               <p className="text-[13px] text-[#7a8899]">Preview Dokumen PDF</p>
             </div>
           </div>
-
           <div className="flex shrink-0 items-center gap-2">
             <a
               href={url}
@@ -378,8 +424,6 @@ const ModalPreviewPDF: React.FC<{
             </button>
           </div>
         </div>
-
-        {/* PDF viewer */}
         <div className="flex-1 overflow-hidden bg-[#f1f3f5] p-2">
           <iframe
             src={url}
@@ -392,54 +436,43 @@ const ModalPreviewPDF: React.FC<{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Dokumen list item
-// ─────────────────────────────────────────────────────────────────────────────
-
-const DokumenItem: React.FC<{
-  dok: DokumenEntry;
-  onPreview: () => void;
-}> = ({ dok, onPreview }) => {
-  return (
-    <div className="flex items-center gap-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2.5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
-        <IconPdf />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
-          {dok.label}
-        </div>
-        <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
-          {dok.file.namaFile}
-        </div>
-        <div className="text-[11px] text-[#7a8899]">
-          {formatUkuran(dok.file.ukuranBytes)}
-        </div>
-      </div>
-      <button
-        onClick={onPreview}
-        className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
-      >
-        <IconEye />
-        Lihat PDF
-      </button>
+/* ─── Dokumen list item (TIDAK berubah) ─── */
+const DokumenItem: React.FC<{ dok: DokumenEntry; onPreview: () => void }> = ({
+  dok,
+  onPreview,
+}) => (
+  <div className="flex items-center gap-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2.5">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
+      <IconPdf />
     </div>
-  );
-};
+    <div className="min-w-0 flex-1">
+      <div className="mb-0.5 text-[11px] leading-snug font-semibold text-[#1a4e8f]">
+        {dok.label}
+      </div>
+      <div className="truncate text-[13px] font-semibold text-[#1a1a2e]">
+        {dok.file.namaFile}
+      </div>
+      <div className="text-[11px] text-[#7a8899]">
+        {formatUkuran(dok.file.ukuranBytes)}
+      </div>
+    </div>
+    <button
+      onClick={onPreview}
+      className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+    >
+      <IconEye /> Lihat PDF
+    </button>
+  </div>
+);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Detail Pengajuan (panel) — read-only, tanpa form/tombol verifikasi
-// ─────────────────────────────────────────────────────────────────────────────
-
+/* ─── Panel Detail (TIDAK berubah) ─── */
 const PanelDetail: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
   onBack: () => void;
 }> = ({ pengajuan, onBack }) => {
   const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
-
   const dokumen = useMemo(() => buildDokumenList(pengajuan), [pengajuan]);
   const sudahDiverifikasi = pengajuan.status !== "diajukan";
-
   return (
     <div className="mx-auto w-full max-w-400">
       {previewDoc && (
@@ -449,20 +482,14 @@ const PanelDetail: React.FC<{
           onClose={() => setPreviewDoc(null)}
         />
       )}
-
-      {/* Back */}
       <button
         onClick={onBack}
         className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-[#1a4e8f] hover:underline"
       >
-        <IconArrowLeft />
-        Kembali ke daftar
+        <IconArrowLeft /> Kembali ke daftar
       </button>
-
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* ── Kolom kiri: info pengajuan & dokumen ── */}
         <div className="space-y-4 lg:col-span-2">
-          {/* Header card */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -488,7 +515,6 @@ const PanelDetail: React.FC<{
                 <StatusBadge status={pengajuan.status} />
               </div>
             </div>
-
             <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-3">
               {[
                 { label: "Nama OPD", value: pengajuan.namaOPD },
@@ -519,8 +545,6 @@ const PanelDetail: React.FC<{
               ))}
             </div>
           </div>
-
-          {/* Data Penanggung Jawab OPD */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Penanggung Jawab OPD
@@ -555,8 +579,6 @@ const PanelDetail: React.FC<{
               ))}
             </div>
           </div>
-
-          {/* Dokumen pendukung */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Dokumen Pendukung ({dokumen.length})
@@ -578,14 +600,11 @@ const PanelDetail: React.FC<{
             )}
           </div>
         </div>
-
-        {/* ── Kolom kanan: info status (read-only, tanpa form keputusan) ── */}
         <div className="lg:col-span-1">
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5 lg:sticky lg:top-4">
             <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
               Status Verifikasi
             </div>
-
             {!sudahDiverifikasi ? (
               <div className="flex flex-col items-center gap-2 rounded-sm border border-dashed border-[#e2e8f2] py-8 text-center">
                 <div className="text-[#b0bac5]">
@@ -620,7 +639,7 @@ const PanelDetail: React.FC<{
                   </div>
                   <div className="text-[13px] text-[#1a1a2e]">
                     {pengajuan.tanggalVerifikasi
-                      ? formatTanggalWaktu(pengajuan.tanggalVerifikasi)
+                      ? formatTanggal(pengajuan.tanggalVerifikasi)
                       : "-"}
                   </div>
                 </div>
@@ -638,7 +657,6 @@ const PanelDetail: React.FC<{
                 </div>
               </div>
             )}
-
             <button
               onClick={onBack}
               className="mt-4 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa]"
@@ -652,83 +670,213 @@ const PanelDetail: React.FC<{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Kartu baris — versi mobile (< sm) pengganti tabel yang kolomnya kebanyakan
-// untuk layar sempit
-// ─────────────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════
+   ✨ SUMMARY HEADER — Palette 3-hue harmonis (Navy · Sky · Slate · Gold)
+   ═══════════════════════════════════════════════════════════════════ */
+const SummaryHeader: React.FC<{
+  pengajuan: FormulirPenghapusanPiutangOPDRecord[];
+}> = ({ pengajuan }) => {
+  const total = pengajuan.length;
+  const totalNilai = pengajuan.reduce(
+    (sum, p) => sum + (Number(p.totalNilaiPiutang) || 0),
+    0,
+  );
+  const jumlahOPD = new Set(pengajuan.map((p) => p.namaOPD)).size;
+  const perStatus = {
+    teregistrasi: pengajuan.filter((p) => p.status === "teregistrasi").length,
+    diajukan: pengajuan.filter((p) => p.status === "diajukan").length,
+    revisi: pengajuan.filter((p) => p.status === "revisi").length,
+  };
+  const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100);
 
+  return (
+    <div className="mb-3 overflow-hidden rounded-sm border border-[#e2e8f2] bg-white shadow-xs">
+      {/* Top accent bar — navy → gold → navy (satu-satunya gradient di bar luar) */}
+      <div className="h-0.75 w-full bg-linear-to-r from-[#1a4e8f] via-[#c8a020] to-[#1a4e8f]" />
+
+      {/* ═══ ROW 1: Stat cards ═══ */}
+      <div className="grid grid-cols-2 gap-2 p-2.5 lg:grid-cols-[1.4fr_1fr_1fr_2fr] lg:gap-3 lg:p-3">
+        {/* ── Brand Block (Navy) ── */}
+        <div className="relative col-span-2 flex items-center gap-3 overflow-hidden rounded-sm border border-[#dbe6f7] bg-[#f0f4fb] px-3 py-2.5 lg:col-span-1">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-linear-to-br from-[#1a4e8f] to-[#0e3b6e] text-white shadow-sm">
+            <IconStack />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13.5px] leading-tight font-bold text-[#1a1a2e]">
+              Register Digital
+            </div>
+            <div className="truncate text-[10.5px] text-[#7a8899]">
+              Ringkasan seluruh pengajuan
+            </div>
+          </div>
+        </div>
+
+        {/* ── Card: Pengajuan (Sky blue) ── */}
+        <div className="relative flex items-center gap-2.5 overflow-hidden rounded-sm border border-[#bae6fd] bg-[#f0f9ff] px-3 py-2.5 transition-shadow hover:shadow-sm">
+          {/* Accent bar kiri */}
+          <div className="absolute inset-y-0 left-0 w-1 bg-linear-to-b from-[#38bdf8] to-[#0284c7]" />
+          <span className="ml-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-linear-to-br from-[#0ea5e9] to-[#0369a1] text-white shadow-xs">
+            <IconFileStack />
+          </span>
+          <div className="min-w-0">
+            <div className="text-[18px] leading-none font-bold text-[#1a1a2e]">
+              {total}
+            </div>
+            <div className="mt-1 truncate text-[10px] font-semibold tracking-wider text-[#0369a1] uppercase">
+              Pengajuan
+            </div>
+          </div>
+        </div>
+
+        {/* ── Card: OPD (Slate — netral, tidak berkompetisi) ── */}
+        <div className="relative flex items-center gap-2.5 overflow-hidden rounded-sm border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5 transition-shadow hover:shadow-sm">
+          <div className="absolute inset-y-0 left-0 w-1 bg-linear-to-b from-[#94a3b8] to-[#475569]" />
+          <span className="ml-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-linear-to-br from-[#64748b] to-[#475569] text-white shadow-xs">
+            <IconBuilding />
+          </span>
+          <div className="min-w-0">
+            <div className="text-[18px] leading-none font-bold text-[#1a1a2e]">
+              {jumlahOPD}
+            </div>
+            <div className="mt-1 truncate text-[10px] font-semibold tracking-wider text-[#475569] uppercase">
+              OPD
+            </div>
+          </div>
+        </div>
+
+        {/* ── Card: Total Nilai (Gold — highlight utama, kolom paling lebar) ── */}
+        <div className="relative col-span-2 flex items-center gap-3 overflow-hidden rounded-sm border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 transition-shadow hover:shadow-sm lg:col-span-1">
+          <div className="absolute inset-y-0 left-0 w-1 bg-linear-to-b from-[#eab308] to-[#a16207]" />
+          <span className="ml-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-linear-to-br from-[#c8a020] to-[#92400e] text-white shadow-sm">
+            <IconWallet />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold tracking-wider text-[#a16207] uppercase">
+              Total Nilai
+            </div>
+            <div className="text-[15px] leading-tight font-bold whitespace-nowrap text-[#78350f] lg:text-[16px] xl:text-[17px]">
+              {formatRupiah(totalNilai)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ ROW 2: Distribusi Status ═══ */}
+      <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-3 py-2.5 lg:px-4 lg:py-3">
+        <div className="mb-2 flex items-center justify-between text-[10px] font-bold tracking-wider uppercase">
+          <span className="text-[#5a6474]">Distribusi Status</span>
+          <span className="text-[#1a4e8f]">{total} total</span>
+        </div>
+
+        {/* Stacked progress bar */}
+        <div className="flex h-2.5 w-full overflow-hidden rounded-sm bg-[#e2e8f0]">
+          {perStatus.teregistrasi > 0 && (
+            <div
+              className="bg-linear-to-r from-[#10b981] to-[#059669] transition-all"
+              style={{ width: `${pct(perStatus.teregistrasi)}%` }}
+              title={`Teregistrasi: ${perStatus.teregistrasi}`}
+            />
+          )}
+          {perStatus.diajukan > 0 && (
+            <div
+              className="bg-linear-to-r from-[#3b82f6] to-[#2563eb] transition-all"
+              style={{ width: `${pct(perStatus.diajukan)}%` }}
+              title={`Diajukan: ${perStatus.diajukan}`}
+            />
+          )}
+          {perStatus.revisi > 0 && (
+            <div
+              className="bg-linear-to-r from-[#f97316] to-[#ea580c] transition-all"
+              style={{ width: `${pct(perStatus.revisi)}%` }}
+              title={`Revisi: ${perStatus.revisi}`}
+            />
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[#059669]" />
+            <span className="font-bold text-[#065f46]">
+              {perStatus.teregistrasi}
+            </span>
+            <span className="text-[#7a8899]">Teregistrasi</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[#2563eb]" />
+            <span className="font-bold text-[#1d4ed8]">
+              {perStatus.diajukan}
+            </span>
+            <span className="text-[#7a8899]">Diajukan</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[#ea580c]" />
+            <span className="font-bold text-[#9a3412]">{perStatus.revisi}</span>
+            <span className="text-[#7a8899]">Revisi</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Mobile Card (compact) ─── */
 const PengajuanRowCardMobile: React.FC<{
   p: FormulirPenghapusanPiutangOPDRecord;
   no: number;
   onLihatNominatif: () => void;
 }> = ({ p, no, onLihatNominatif }) => (
-  <div className="space-y-2.5 p-4">
+  <div className="space-y-2 p-3">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
-        <div className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
+        <div className="font-mono text-[10.5px] font-bold whitespace-nowrap text-[#1a4e8f]">
           #{no} · {nomorTampilan(p)}
         </div>
-        <div className="mt-0.5 truncate text-[14px] font-semibold text-[#1a1a2e]">
+        <div className="mt-0.5 truncate text-[13px] font-semibold text-[#1a1a2e]">
           {p.namaOPD}
         </div>
-        <div className="mt-px truncate text-[11px] text-[#7a8899]">
+        <div className="truncate text-[10.5px] text-[#7a8899]">
           {p.namaPenanggungJawab}
         </div>
       </div>
       <div className="shrink-0">
-        <StatusBadge status={p.status} reviuStatus={p.reviuInspektoratStatus} />
+        <StatusBadge
+          status={p.status}
+          reviuStatus={p.reviuInspektoratStatus}
+          compact
+        />
       </div>
     </div>
-
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[13px] font-bold text-[#1a1a2e]">
+      <span className="text-[12.5px] font-bold text-[#1a1a2e]">
         {formatRupiah(p.totalNilaiPiutang)}
       </span>
-      <JenisPenghapusanBadge jenis={p.jenisPenghapusan} />
+      <JenisPenghapusanBadge jenis={p.jenisPenghapusan} compact />
     </div>
-
-    <div className="flex items-center justify-between gap-2 text-[11px] text-[#7a8899]">
+    <div className="flex items-center justify-between gap-2 text-[10.5px] text-[#7a8899]">
       <span className="truncate">{labelJenisPiutang(p.jenisPiutang)}</span>
-      <span className="shrink-0">{formatTanggal(p.tanggalSurat)}</span>
+      <span className="shrink-0">{formatTanggalSingkat(p.tanggalSurat)}</span>
     </div>
-
-    <div className="flex gap-2">
-      {p.daftarNominatifPiutang && (
-        <button
-          onClick={onLihatNominatif}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white py-2 text-xs font-semibold text-[#1a4e8f] transition hover:bg-[#f7f8fa]"
-        >
-          <IconEye />
-          Lihat Nominatif
-        </button>
-      )}
-    </div>
+    {p.daftarNominatifPiutang && (
+      <button
+        onClick={onLihatNominatif}
+        className="flex w-full items-center justify-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white py-1.5 text-[11px] font-semibold text-[#1a4e8f] transition hover:bg-[#f7f8fa]"
+      >
+        <IconEye /> Lihat Nominatif
+      </button>
+    )}
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
-
+/* ─── Main Component ─── */
 interface RegisterDigitalProps {
-  /**
-   * Opsional — override sumber data (mis. untuk testing/storybook).
-   * Kalau tidak diisi, komponen ambil langsung dari usePengajuanStore()
-   * supaya selalu sinkron dengan data yang sama dipakai ModalLacak
-   * (homepage) & panel VerifikasiPengajuan — bukan data acak/mock lokal.
-   */
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
 }
-
-// Urutan prioritas status dipakai untuk mengurutkan pengajuan DI DALAM
-// satu grup OPD (Teregistrasi dulu, lalu Revisi, lalu Diajukan), bukan lagi
-// untuk membentuk grup itu sendiri — grup sekarang berdasarkan nama OPD.
 const STATUS_SORT_ORDER: StatusFormulir[] = [
   "teregistrasi",
   "revisi",
   "diajukan",
 ];
-
 const STATUS_PRIORITY: Record<StatusFormulir, number> = Object.fromEntries(
   STATUS_SORT_ORDER.map((status, idx) => [status, idx]),
 ) as Record<StatusFormulir, number>;
@@ -739,16 +887,10 @@ interface PengajuanGroup {
 }
 
 function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
-  // Sumber data tunggal: pengajuan-store (localStorage + in-memory),
-  // sama seperti yang dipakai VerifikasiPengajuan & ModalLacak. Prop
-  // semuaPengajuan (kalau diisi) menang duluan sebagai override manual.
   const { data: dataStore } = usePengajuanStore();
 
   const daftarPengajuan = useMemo(() => {
     const sumber = semuaPengajuan ?? dataStore;
-    // Urutan dasar sebelum dikelompokkan per OPD: nama OPD (A-Z), lalu di
-    // dalam OPD yang sama urutkan berdasarkan prioritas status dan terakhir
-    // diperbarui — dipakai juga sebagai urutan baris di dalam tiap grup.
     return [...sumber].sort((a, b) => {
       const opdDiff = a.namaOPD.localeCompare(b.namaOPD, "id");
       if (opdDiff !== 0) return opdDiff;
@@ -764,14 +906,9 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
   const [filterStatus, setFilterStatus] = useState<StatusFormulir | "">("");
   const [selected, setSelected] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
-  // Preview PDF Daftar Nominatif Piutang langsung dari menu aksi tabel/kartu,
-  // tanpa perlu masuk ke halaman detail dulu.
   const [previewNominatif, setPreviewNominatif] =
     useState<UploadedFileRef | null>(null);
 
-  // Daftar opsi OPD unik untuk dropdown filter, diambil dari seluruh data
-  // (bukan dari hasil filter) supaya opsi tidak berubah-ubah saat difilter,
-  // diurutkan A-Z.
   const daftarOPD = useMemo(() => {
     const set = new Set<string>();
     daftarPengajuan.forEach((p) => {
@@ -781,7 +918,6 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
   }, [daftarPengajuan]);
 
   const isFilterAktif = Boolean(search || filterOPD || filterStatus);
-
   const resetFilter = () => {
     setSearch("");
     setFilterOPD("");
@@ -790,15 +926,8 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
 
   const filtered = useMemo(() => {
     let hasil = daftarPengajuan;
-
-    if (filterOPD) {
-      hasil = hasil.filter((p) => p.namaOPD === filterOPD);
-    }
-
-    if (filterStatus) {
-      hasil = hasil.filter((p) => p.status === filterStatus);
-    }
-
+    if (filterOPD) hasil = hasil.filter((p) => p.namaOPD === filterOPD);
+    if (filterStatus) hasil = hasil.filter((p) => p.status === filterStatus);
     if (search) {
       const q = search.toLowerCase();
       hasil = hasil.filter(
@@ -811,14 +940,9 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
           p.namaPenanggungJawab.toLowerCase().includes(q),
       );
     }
-
     return hasil;
   }, [daftarPengajuan, search, filterOPD, filterStatus]);
 
-  // Pengelompokan berdasarkan nama OPD, urutan grup mengikuti urutan
-  // kemunculan di `filtered` (yang sudah A-Z karena disortir di
-  // `daftarPengajuan`). Saat sedang mencari, OPD yang tidak match otomatis
-  // tidak muncul karena filter sudah dilakukan sebelumnya.
   const groupedPengajuan = useMemo<PengajuanGroup[]>(() => {
     const map = new Map<string, FormulirPenghapusanPiutangOPDRecord[]>();
     filtered.forEach((p) => {
@@ -829,25 +953,19 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
     return Array.from(map.entries()).map(([opd, items]) => ({ opd, items }));
   }, [filtered]);
 
-  // Status expand/collapse per grup OPD — default semua grup terbuka.
-  // Key-nya dinamis (nama OPD), jadi disimpan sebagai Record<string, boolean>
-  // dan grup yang belum pernah di-toggle otomatis dianggap terbuka (false).
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<string, boolean>
   >({});
-
   const toggleGroup = (opd: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [opd]: !prev[opd] }));
   };
 
-  // ── Render: panel detail (read-only) ──────────────────────────────────────
   if (selected) {
     return (
       <PanelDetail pengajuan={selected} onBack={() => setSelected(null)} />
     );
   }
 
-  // ── Render: daftar pengajuan ───────────────────────────────────────────────
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
       {previewNominatif && (
@@ -858,18 +976,22 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
         />
       )}
 
-      {/* ── Search bar ── */}
-      <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] sm:flex-row sm:items-center">
-        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:min-w-40 sm:flex-1">
+      {/* ✨ SUMMARY HEADER (ROMBAK) */}
+      <SummaryHeader pengajuan={daftarPengajuan} />
+
+      {/* ✨ FILTER BAR — status kembali ke dropdown */}
+      <div className="mb-3 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-2.5 sm:flex-row sm:items-center">
+        {/* Search */}
+        <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.5 sm:min-w-40 sm:flex-1">
           <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
           <input
             type="text"
-            placeholder="Cari Nomor Registrasi, Nomor Surat, nama OPD, atau penanggung jawab…"
+            placeholder="Cari nomor registrasi, nomor surat, atau nama OPD…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full min-w-0 border-none bg-transparent text-[13px] text-[#1a1a2e] outline-none"
+            className="w-full min-w-0 border-none bg-transparent text-[12.5px] text-[#1a1a2e] outline-none"
           />
           {search && (
             <button
@@ -881,11 +1003,11 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
           )}
         </div>
 
-        {/* Filter OPD */}
+        {/* OPD Filter */}
         <select
           value={filterOPD}
           onChange={(e) => setFilterOPD(e.target.value)}
-          className="w-full shrink-0 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.75 text-[13px] text-[#1a1a2e] outline-none sm:w-auto sm:min-w-40"
+          className="w-full shrink-0 cursor-pointer rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.5 text-[12.5px] text-[#1a1a2e] outline-none sm:w-auto sm:min-w-36"
         >
           <option value="">Semua OPD</option>
           {daftarOPD.map((opd) => (
@@ -895,34 +1017,35 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
           ))}
         </select>
 
-        {/* Filter Status */}
+        {/* ✨ Status Filter — kembali ke dropdown */}
         <select
           value={filterStatus}
           onChange={(e) =>
             setFilterStatus(e.target.value as StatusFormulir | "")
           }
-          className="w-full shrink-0 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.75 text-[13px] text-[#1a1a2e] outline-none sm:w-auto sm:min-w-36"
+          className="w-full shrink-0 cursor-pointer rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-2.5 py-1.5 text-[12.5px] text-[#1a1a2e] outline-none sm:w-auto sm:min-w-32"
         >
           <option value="">Semua Status</option>
+          <option value="teregistrasi">Teregistrasi</option>
           <option value="diajukan">Diajukan</option>
           <option value="revisi">Revisi</option>
-          <option value="teregistrasi">Teregistrasi</option>
         </select>
 
-        <button
-          onClick={resetFilter}
-          disabled={!isFilterAktif}
-          className="shrink-0 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.75 text-xs font-semibold whitespace-nowrap text-[#7a8899] transition enabled:hover:border-[#a0bdec] enabled:hover:bg-[#e8f0fb] enabled:hover:text-[#1a4e8f] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Reset Filter
-        </button>
+        {isFilterAktif && (
+          <button
+            onClick={resetFilter}
+            className="shrink-0 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-[#7a8899] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+          >
+            Reset
+          </button>
+        )}
 
-        <div className="shrink-0 text-xs text-[#7a8899]">
-          {filtered.length} dari {daftarPengajuan.length} pengajuan
+        <div className="shrink-0 text-[11.5px] whitespace-nowrap text-[#7a8899]">
+          {filtered.length} / {daftarPengajuan.length}
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* COMPACT TABLE */}
       <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 p-[56px_24px] text-[#7a8899]">
@@ -942,7 +1065,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
           </div>
         ) : (
           <>
-            {/* Kartu — tampilan mobile (< sm), dikelompokkan per OPD */}
+            {/* Mobile */}
             <div className="sm:hidden">
               {groupedPengajuan.map((group) => {
                 const isCollapsed = collapsedGroups[group.opd];
@@ -953,191 +1076,179 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                   >
                     <button
                       onClick={() => toggleGroup(group.opd)}
-                      className="flex w-full items-center gap-2.5 bg-[#f7f8fa] px-4 py-3 text-left"
+                      className="flex w-full items-center gap-2 bg-[#f7f8fa] px-3 py-2 text-left"
                     >
                       <span
-                        className={`shrink-0 text-[#7a8899] transition-transform duration-150 ${
-                          isCollapsed ? "-rotate-90" : ""
-                        }`}
+                        className={`shrink-0 text-[#7a8899] transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
                       >
                         <IconChevronDown />
                       </span>
-                      <span className="min-w-0 truncate text-[13px] font-bold text-[#1a1a2e]">
+                      <span className="min-w-0 truncate text-[12px] font-bold text-[#1a1a2e]">
                         {group.opd}
                       </span>
-                      <span className="ml-auto shrink-0 text-xs font-semibold text-[#7a8899]">
-                        {group.items.length}
-                      </span>
                     </button>
-
-                    {!isCollapsed &&
-                      (group.items.length === 0 ? (
-                        <div className="px-4 py-5 text-center text-xs text-[#b0bac5]">
-                          Tidak ada pengajuan.
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-[#e2e8f2]">
-                          {group.items.map((p, idx) => (
-                            <PengajuanRowCardMobile
-                              key={p.id}
-                              p={p}
-                              no={idx + 1}
-                              onLihatNominatif={() =>
-                                p.daftarNominatifPiutang &&
-                                setPreviewNominatif(p.daftarNominatifPiutang)
-                              }
-                            />
-                          ))}
-                        </div>
-                      ))}
+                    {!isCollapsed && (
+                      <div className="divide-y divide-[#e2e8f2]">
+                        {group.items.map((p, idx) => (
+                          <PengajuanRowCardMobile
+                            key={p.id}
+                            p={p}
+                            no={idx + 1}
+                            onLihatNominatif={() =>
+                              p.daftarNominatifPiutang &&
+                              setPreviewNominatif(p.daftarNominatifPiutang)
+                            }
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
 
-            {/* Tabel — tampilan tablet & desktop (>= sm), dikelompokkan per OPD */}
+            {/* Desktop — compact, 6 kolom */}
             <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
+              <table className="w-full border-collapse text-[12px]">
+                <thead className="sticky top-0 z-10">
                   <tr className="border-b border-[#e2e8f2] bg-[#263e6e]">
-                    {[
-                      "No",
-                      "Pengajuan",
-                      "Piutang & Nominal",
-                      "Status",
-                      "Nomor Pengajuan",
-                      "No Register",
-                      "Aksi",
-                    ].map((label, idx) => (
-                      <th
-                        key={idx}
-                        className="p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] whitespace-nowrap text-slate-100 uppercase"
-                      >
-                        {label}
-                      </th>
-                    ))}
+                    <th className="w-8 px-2.5 py-2 text-left text-[9.5px] font-bold tracking-wider text-slate-100 uppercase">
+                      #
+                    </th>
+                    <th className="px-2.5 py-2 text-left text-[9.5px] font-bold tracking-wider text-slate-100 uppercase">
+                      Pengajuan
+                    </th>
+                    <th className="w-44 px-2.5 py-2 text-left text-[9.5px] font-bold tracking-wider text-slate-100 uppercase">
+                      Nilai Piutang
+                    </th>
+                    <th className="w-32 px-2.5 py-2 text-left text-[9.5px] font-bold tracking-wider text-slate-100 uppercase">
+                      Status
+                    </th>
+                    <th className="w-48 px-2.5 py-2 text-left text-[9.5px] font-bold tracking-wider text-slate-100 uppercase">
+                      No. Registrasi / Tgl
+                    </th>
+                    <th className="w-16 px-2.5 py-2 text-right text-[9.5px] font-bold tracking-wider text-slate-100 uppercase">
+                      Aksi
+                    </th>
                   </tr>
                 </thead>
                 {groupedPengajuan.map((group) => {
                   const isCollapsed = collapsedGroups[group.opd];
                   return (
                     <tbody key={group.opd}>
-                      {/* Header grup — bisa diklik untuk collapse/expand */}
-                      <tr className="border-b border-[#e2e8f2] bg-[#f0f4fb]">
-                        <td colSpan={7} className="p-0">
+                      {/* ✨ Group header — BERSIH: hanya chevron + nama OPD */}
+                      <tr className="sticky top-[33px] z-9 border-y border-[#dbe6f7] bg-[#f0f4fb]">
+                        <td colSpan={6} className="p-0">
                           <button
                             onClick={() => toggleGroup(group.opd)}
-                            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-[#e8f0fb]"
+                            className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-[#e8f0fb]"
                           >
                             <span
-                              className={`shrink-0 text-[#7a8899] transition-transform duration-150 ${
-                                isCollapsed ? "-rotate-90" : ""
-                              }`}
+                              className={`shrink-0 text-[#7a8899] transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
                             >
                               <IconChevronDown />
                             </span>
-                            <span className="min-w-0 truncate text-[13px] font-bold text-[#1a1a2e]">
+                            <span className="min-w-0 truncate text-[12px] font-bold text-[#1a4e8f]">
                               {group.opd}
-                            </span>
-                            <span className="shrink-0 text-xs font-semibold text-[#7a8899]">
-                              {group.items.length} pengajuan
                             </span>
                           </button>
                         </td>
                       </tr>
 
                       {!isCollapsed &&
-                        (group.items.length === 0 ? (
-                          <tr>
-                            <td
-                              colSpan={7}
-                              className="py-5 text-center text-xs text-[#b0bac5]"
+                        group.items.map((p, idx) => {
+                          const isLastInGroup = idx === group.items.length - 1;
+                          const isEven = idx % 2 === 0;
+                          return (
+                            <tr
+                              key={p.id}
+                              className={`transition-colors duration-100 hover:bg-[#f0f6fd] ${
+                                isEven ? "bg-white" : "bg-[#fafbfc]"
+                              } ${isLastInGroup ? "" : "border-b border-[#eef1f5]"}`}
                             >
-                              Tidak ada pengajuan.
-                            </td>
-                          </tr>
-                        ) : (
-                          group.items.map((p, idx) => {
-                            const isLastInGroup =
-                              idx === group.items.length - 1;
-                            return (
-                              <tr
-                                key={p.id}
-                                className={`transition-colors duration-150 hover:bg-[#fafbfc] ${
-                                  isLastInGroup
-                                    ? ""
-                                    : "border-b border-[#e2e8f2]"
-                                }`}
-                              >
-                                {/* No */}
-                                <td className="w-8 p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
-                                  {idx + 1}
-                                </td>
+                              {/* No */}
+                              <td className="px-2.5 py-2 align-top text-[11px] font-semibold text-[#7a8899]">
+                                {idx + 1}
+                              </td>
 
-                                {/* Kolom Pengajuan: jumlah debitur */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
-                                  <div className="text-[13px] font-bold text-[#1a1a2e]">
-                                    {p.jumlahDebitur || "-"}
-                                  </div>
-                                  <div className="mt-0.5 text-[11px] text-[#7a8899]">
-                                    Debitur
-                                  </div>
-                                </td>
-
-                                {/* Kolom gabungan: Jenis + Nominal + Jenis Penghapusan */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[13px] font-bold text-[#1a1a2e]">
-                                      {formatRupiah(p.totalNilaiPiutang)}
-                                    </span>
-                                    <JenisPenghapusanBadge
-                                      jenis={p.jenisPenghapusan}
-                                    />
-                                  </div>
-                                  <div className="mt-0.5 text-xs text-[#5a6474]">
-                                    {labelJenisPiutang(p.jenisPiutang)}
-                                  </div>
-                                </td>
-
-                                {/* Status */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
-                                  <StatusBadge
-                                    status={p.status}
-                                    reviuStatus={p.reviuInspektoratStatus}
-                                  />
-                                </td>
-
-                                {/* Nomor Pengajuan */}
-                                <td className="p-[12px_14px] font-mono text-xs whitespace-nowrap text-[#7a8899]">
+                              {/* Pengajuan */}
+                              <td className="px-2.5 py-2 align-top">
+                                <div className="font-mono text-[11px] font-bold text-[#1a4e8f]">
                                   {p.nomorPengajuan}
-                                </td>
+                                </div>
+                                <div className="mt-0.5 truncate text-[11.5px] text-[#3a4454]">
+                                  {p.namaPenanggungJawab}
+                                  <span className="text-[#b0bac5]"> · </span>
+                                  <span className="font-semibold text-[#7a8899]">
+                                    {p.jumlahDebitur} debitur
+                                  </span>
+                                </div>
+                              </td>
 
-                                {/* No Register */}
-                                <td className="p-[12px_14px] font-mono text-xs font-semibold whitespace-nowrap text-[#1a4e8f]">
-                                  {p.nomorRegistrasi || "-"}
-                                </td>
+                              {/* Nilai Piutang */}
+                              <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                                <div className="text-[12px] font-bold text-[#1a1a2e]">
+                                  {formatRupiah(p.totalNilaiPiutang)}
+                                </div>
+                                <div className="mt-0.5 flex items-center gap-1.5">
+                                  <JenisPenghapusanBadge
+                                    jenis={p.jenisPenghapusan}
+                                    compact
+                                  />
+                                  <span className="truncate text-[10.5px] text-[#7a8899]">
+                                    {labelJenisPiutang(p.jenisPiutang)}
+                                  </span>
+                                </div>
+                              </td>
 
-                                {/* Tombol Aksi — Lihat Nominatif (modal PDF) */}
-                                <td className="p-[12px_14px] whitespace-nowrap">
-                                  {p.daftarNominatifPiutang && (
-                                    <button
-                                      onClick={() =>
-                                        setPreviewNominatif(
-                                          p.daftarNominatifPiutang!,
-                                        )
-                                      }
-                                      className="flex items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
-                                      title="Lihat Daftar Nominatif Piutang"
-                                    >
-                                      <IconEye />
-                                      Lihat
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ))}
+                              {/* Status */}
+                              <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                                <StatusBadge
+                                  status={p.status}
+                                  reviuStatus={p.reviuInspektoratStatus}
+                                  compact
+                                />
+                              </td>
+
+                              {/* No. Registrasi / Tgl */}
+                              <td className="px-2.5 py-2 align-top whitespace-nowrap">
+                                {p.nomorRegistrasi ? (
+                                  <div className="font-mono text-[11px] font-bold text-[#0f9b6e]">
+                                    {p.nomorRegistrasi}
+                                  </div>
+                                ) : (
+                                  <div className="text-[10.5px] text-[#b0bac5] italic">
+                                    Belum terbit
+                                  </div>
+                                )}
+                                <div className="mt-0.5 text-[10.5px] text-[#7a8899]">
+                                  Surat: {formatTanggalSingkat(p.tanggalSurat)}
+                                </div>
+                              </td>
+
+                              {/* Aksi */}
+                              <td className="px-2.5 py-2 text-right align-top whitespace-nowrap">
+                                {p.daftarNominatifPiutang ? (
+                                  <button
+                                    onClick={() =>
+                                      setPreviewNominatif(
+                                        p.daftarNominatifPiutang!,
+                                      )
+                                    }
+                                    title="Lihat Daftar Nominatif Piutang"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+                                  >
+                                    <IconEye />
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-[#b0bac5] italic">
+                                    —
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   );
                 })}
