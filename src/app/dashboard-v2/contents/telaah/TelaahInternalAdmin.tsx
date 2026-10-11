@@ -1,13 +1,14 @@
 "use client";
 
 /* ------------------------------------------------------------------ */
-/*  TelaahInternalAdmin.tsx (Compact Version)                          */
-/*  Menu "Telaah Internal" untuk admin — 3 tab + filter OPD.           */
-/*                                                                      */
-/*  Kartu design compact: 2 baris utama + action button di kanan.      */
-/*   - Baris 1: nomor + badge + nominal (kanan)
-/*   - Baris 2: OPD · PJ · debitur                                        */
-/*   - Baris 3 (khusus Dalam Proses/Selesai): meta tambahan              */
+/*  TelaahInternalAdmin.tsx                                            */
+/*  Menu "Telaah Internal" untuk admin.                                */
+/*  3 tab:                                                             */
+/*   - "Belum Diajukan" → pengajuan teregistrasi tanpa telaah doc     */
+/*                        ATAU telaah doc yang sudah direvisi & OPD    */
+/*                        sudah submit (siap diajukan ulang).          */
+/*   - "Dalam Proses"   → telaah yang belum selesai.                   */
+/*   - "Selesai"        → telaah yang sudah final.                     */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
@@ -120,6 +121,25 @@ const IconPlus = () => (
     strokeWidth="2"
   >
     <path d="M7 2.5v9M2.5 7h9" strokeLinecap="round" />
+  </svg>
+);
+
+const IconRotate = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
+    <path d="M3.5 8A4.5 4.5 0 1111 12" strokeLinecap="round" />
+    <path
+      d="M11.5 3v3h-3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      transform="translate(1.5 0)"
+    />
   </svg>
 );
 
@@ -253,6 +273,10 @@ function labelPemegangTahap(tahap: TelaahTahap): string | null {
   if (tahap === "MENUNGGU_TELAAH_KASUBBID") return "Kasubbid";
   if (tahap === "MENUNGGU_TELAAH_KABID") return "Kabid";
   if (tahap === "MENUNGGU_TELAAH_SEKBAN") return "Sekban";
+  if (tahap === "MENUNGGU_REVISI_KABID") return "Kabid (teruskan)";
+  if (tahap === "MENUNGGU_REVISI_KASUBBID") return "Kasubbid (teruskan)";
+  if (tahap === "MENUNGGU_ADMIN_KIRIM_REVISI") return "Admin (kirim ke OPD)";
+  if (tahap === "MENUNGGU_REVISI_OPD") return "OPD";
   return null;
 }
 
@@ -300,7 +324,7 @@ const StatCard: React.FC<{
   </div>
 );
 
-/* ==================== Progress Bar (compact) ==================== */
+/* ==================== Progress Bar ==================== */
 
 const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
   const selesai = stepSelesai(tahap);
@@ -355,24 +379,39 @@ const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
   );
 };
 
-/* ==================== Kartu: Belum Diajukan ==================== */
+/* ==================== Kartu: Belum Diajukan / Ajukan Ulang ==================== */
+
 const KartuBelumDiajukan: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
+  variant: "baru" | "ulang";
+  siklusBerikutnya?: number;
   onAjukan: () => void;
-}> = ({ pengajuan, onAjukan }) => {
+}> = ({ pengajuan, variant, siklusBerikutnya, onAjukan }) => {
   const identitas = pengajuan.nomorRegistrasi || pengajuan.nomorPengajuan;
+  const isUlang = variant === "ulang";
 
   return (
-    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#dbe6f7] bg-white pl-3.5 transition-all duration-150 hover:border-[#1a4e8f]/40 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3">
-      {/* Accent bar kiri */}
-      <div className="absolute inset-y-0 left-0 w-0.75 bg-[#1a4e8f]" />
+    <div
+      className={`group relative flex flex-col gap-3 overflow-hidden rounded-sm border bg-white pl-3.5 transition-all duration-150 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3 ${
+        isUlang
+          ? "border-[#fde68a] hover:border-[#f59e0b]/50"
+          : "border-[#dbe6f7] hover:border-[#1a4e8f]/40"
+      }`}
+    >
+      <div
+        className={`absolute inset-y-0 left-0 w-0.75 ${isUlang ? "bg-[#f59e0b]" : "bg-[#1a4e8f]"}`}
+      />
 
-      {/* ═══ Kolom 1: Icon (align top) ═══ */}
-      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#eff6ff] text-[#1a4e8f] sm:flex">
+      <div
+        className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm sm:flex ${
+          isUlang
+            ? "bg-[#fffbeb] text-[#b45309]"
+            : "bg-[#eff6ff] text-[#1a4e8f]"
+        }`}
+      >
         <IconBuilding />
       </div>
 
-      {/* ═══ Kolom 2: Nomor + OPD + PJ ═══ */}
       <div className="min-w-0 flex-1 p-3.5 sm:p-0">
         <div className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
           {identitas}
@@ -385,11 +424,27 @@ const KartuBelumDiajukan: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 3: Badge Siap Ditelaah + Jumlah Debitur (align top) ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
-        <span className="inline-block rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
-          Siap Ditelaah
+        <span
+          className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide uppercase ${
+            isUlang
+              ? "border-[#fde68a] bg-[#fffbeb] text-[#b45309]"
+              : "border-[#dbe6f7] bg-[#eff6ff] text-[#1a4e8f]"
+          }`}
+        >
+          {isUlang ? (
+            <>
+              <IconRotate /> Revisi Siap Ditelaah Ulang
+            </>
+          ) : (
+            "Siap Ditelaah"
+          )}
         </span>
+        {isUlang && siklusBerikutnya && (
+          <div className="mt-1 text-[10.5px] font-bold text-[#b45309]">
+            Siklus ke-{siklusBerikutnya}
+          </div>
+        )}
         <div className="mt-1 text-[11px] text-[#7a8899]">
           <span className="font-semibold text-[#5a6474]">
             {pengajuan.jumlahDebitur}
@@ -398,7 +453,6 @@ const KartuBelumDiajukan: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 4: Nominal (align top) ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:min-w-32.5 sm:border-t-0 sm:p-0 sm:pt-0.5 sm:text-right">
         <div className="text-[10px] font-bold tracking-wider text-[#7a8899] uppercase sm:text-right">
           Nilai Piutang
@@ -408,14 +462,17 @@ const KartuBelumDiajukan: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 5: Tombol Ajukan (align top) ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
         <button
           onClick={onAjukan}
-          className="flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#1a4e8f] px-3.5 py-2 text-[12px] font-semibold whitespace-nowrap text-white shadow-sm transition hover:bg-[#2d63a8] hover:shadow-md sm:w-auto"
+          className={`flex w-full items-center justify-center gap-1.5 rounded-sm px-3.5 py-2 text-[12px] font-semibold whitespace-nowrap text-white shadow-sm transition hover:shadow-md sm:w-auto ${
+            isUlang
+              ? "bg-[#f59e0b] hover:bg-[#d97706]"
+              : "bg-[#1a4e8f] hover:bg-[#2d63a8]"
+          }`}
         >
-          <IconPlus />
-          Ajukan Telaah
+          {isUlang ? <IconRotate /> : <IconPlus />}
+          {isUlang ? "Ajukan Telaah Ulang" : "Ajukan Telaah"}
           <IconArrowRight />
         </button>
       </div>
@@ -433,6 +490,7 @@ const KartuDalamProses: React.FC<{
   totalNilaiPiutang?: string;
   tahapSaatIni: TelaahTahap;
   diajukanPada: string;
+  siklusKe: number;
   onLihat: () => void;
 }> = ({
   nomorRegistrasi,
@@ -442,23 +500,36 @@ const KartuDalamProses: React.FC<{
   totalNilaiPiutang,
   tahapSaatIni,
   diajukanPada,
+  siklusKe,
   onLihat,
 }) => {
   const identitas = nomorRegistrasi || nomorPengajuan;
   const pemegang = labelPemegangTahap(tahapSaatIni);
   const durasi = formatDurasi(diajukanPada);
+  const isTurun =
+    tahapSaatIni.startsWith("MENUNGGU_REVISI_") ||
+    tahapSaatIni === "MENUNGGU_ADMIN_KIRIM_REVISI";
+  const accentColor = isTurun ? "bg-[#f59e0b]" : "bg-[#1a4e8f]";
+  const borderColor = isTurun ? "border-[#fde68a]" : "border-[#dbe6f7]";
+  const iconBg = isTurun
+    ? "bg-[#fffbeb] text-[#b45309]"
+    : "bg-[#eff6ff] text-[#1a4e8f]";
+  const badgeColor = isTurun
+    ? "border-[#fde68a] bg-[#fffbeb] text-[#b45309]"
+    : "border-[#fde68a] bg-[#fffbeb] text-[#b45309]";
 
   return (
-    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#fde68a] bg-white pl-3.5 transition-all duration-150 hover:border-[#f59e0b]/50 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3">
-      {/* Accent bar kiri */}
-      <div className="absolute inset-y-0 left-0 w-0.75 bg-[#f59e0b]" />
+    <div
+      className={`group relative flex flex-col gap-3 overflow-hidden rounded-sm border bg-white pl-3.5 transition-all duration-150 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3 ${borderColor}`}
+    >
+      <div className={`absolute inset-y-0 left-0 w-0.75 ${accentColor}`} />
 
-      {/* ═══ Kolom 1: Icon (align top) ═══ */}
-      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#fffbeb] text-[#b45309] sm:flex">
+      <div
+        className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm sm:flex ${iconBg}`}
+      >
         <IconHourglass />
       </div>
 
-      {/* ═══ Kolom 2: Nomor + OPD + PJ (align top) ═══ */}
       <div className="min-w-0 shrink-0 p-3.5 sm:max-w-60 sm:p-0">
         <div className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
           {identitas}
@@ -471,21 +542,35 @@ const KartuDalamProses: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 3: Badge + Progress + Date/Duration (align top) ═══ */}
       <div className="-mt-1 min-w-0 flex-1 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0">
-        <span className="inline-block rounded-sm border border-[#fde68a] bg-[#fffbeb] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#b45309] uppercase">
-          Dalam Proses
-        </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className={`inline-block rounded-sm border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide uppercase ${badgeColor}`}
+          >
+            {isTurun ? "Revisi Berjenjang" : "Dalam Proses"}
+          </span>
+          {siklusKe > 1 && (
+            <span className="inline-block rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
+              Siklus {siklusKe}
+            </span>
+          )}
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <ProgressTelaah tahap={tahapSaatIni} />
           {pemegang && (
             <span className="inline-flex items-center gap-1 text-[10.5px] text-[#7a8899]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#f59e0b]" />
-              di <span className="font-bold text-[#b45309]">{pemegang}</span>
+              <span
+                className={`h-1.5 w-1.5 animate-pulse rounded-full ${isTurun ? "bg-[#f59e0b]" : "bg-[#1a4e8f]"}`}
+              />
+              di{" "}
+              <span
+                className={`font-bold ${isTurun ? "text-[#b45309]" : "text-[#1a4e8f]"}`}
+              >
+                {pemegang}
+              </span>
             </span>
           )}
         </div>
-        {/* Date-time kiri · Duration kanan — sejajar satu baris */}
         <div className="mt-1.5 flex items-center gap-3 text-[10.5px] text-[#7a8899]">
           <span className="inline-flex items-center gap-1">
             <IconClock />
@@ -498,7 +583,6 @@ const KartuDalamProses: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 4: Nominal (align top, right) ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:min-w-32.5 sm:border-t-0 sm:p-0 sm:text-right">
         <div className="text-[10px] font-bold tracking-wider text-[#7a8899] uppercase sm:text-right">
           Nilai Piutang
@@ -508,7 +592,6 @@ const KartuDalamProses: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 5: Tombol (align top) ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0">
         <button
           onClick={onLihat}
@@ -532,6 +615,7 @@ const KartuSelesai: React.FC<{
   diajukanPada: string;
   selesaiPada: string | null;
   riwayatCount: number;
+  siklusKe: number;
   onLihat: () => void;
 }> = ({
   nomorRegistrasi,
@@ -542,6 +626,7 @@ const KartuSelesai: React.FC<{
   diajukanPada,
   selesaiPada,
   riwayatCount,
+  siklusKe,
   onLihat,
 }) => {
   const identitas = nomorRegistrasi || nomorPengajuan;
@@ -549,15 +634,12 @@ const KartuSelesai: React.FC<{
 
   return (
     <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#a7f3d0] bg-white pl-3.5 transition-all duration-150 hover:border-[#0f9b6e]/40 hover:shadow-md sm:flex-row sm:items-start sm:gap-4 sm:p-3">
-      {/* Accent bar kiri */}
       <div className="absolute inset-y-0 left-0 w-0.75 bg-[#0f9b6e]" />
 
-      {/* ═══ Kolom 1: Icon (align top) ═══ */}
       <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-[#ecfdf5] text-[#0f6e56] sm:flex">
         <IconCheckBig />
       </div>
 
-      {/* ═══ Kolom 2: Nomor + OPD + PJ ═══ */}
       <div className="min-w-0 shrink-0 p-3.5 sm:max-w-60 sm:p-0 sm:pt-0.5">
         <div className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
           {identitas}
@@ -570,11 +652,17 @@ const KartuSelesai: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 3: Badge + Meta inline ═══ */}
       <div className="min-w-0 flex-1 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
-        <span className="inline-flex items-center gap-1 rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#065f46] uppercase">
-          <IconCheck /> Selesai
-        </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#065f46] uppercase">
+            <IconCheck /> Selesai
+          </span>
+          {siklusKe > 1 && (
+            <span className="inline-block rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
+              Siklus {siklusKe}
+            </span>
+          )}
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-[#7a8899]">
           <span className="inline-flex items-center gap-1">
             <IconClock />
@@ -593,7 +681,6 @@ const KartuSelesai: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 4: Nominal ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:min-w-32.5 sm:border-t-0 sm:p-0 sm:pt-0.5 sm:text-right">
         <div className="text-[10px] font-bold tracking-wider text-[#7a8899] uppercase sm:text-right">
           Nilai Piutang
@@ -603,7 +690,6 @@ const KartuSelesai: React.FC<{
         </div>
       </div>
 
-      {/* ═══ Kolom 5: Tombol ═══ */}
       <div className="shrink-0 border-t border-[#f1f5f9] p-3.5 sm:border-t-0 sm:p-0 sm:pt-0.5">
         <button
           onClick={onLihat}
@@ -639,14 +725,21 @@ const EmptyState: React.FC<{
 export default function TelaahInternalAdmin() {
   const { user } = useAuth();
   const { data: semuaPengajuan, getPengajuanById } = usePengajuanStore();
-  const { data: semuaTelaah, ajukanTelaah } = useTelaahInternalStore();
+  const {
+    data: semuaTelaah,
+    ajukanTelaah,
+    ajukanTelaahUlang,
+  } = useTelaahInternalStore();
 
   const [tab, setTab] = useState<TabKey>("belum");
   const [search, setSearch] = useState("");
   const [filterOPD, setFilterOPD] = useState<string>("");
   const [selectedTelaahId, setSelectedTelaahId] = useState<string | null>(null);
-  const [pendingAjukan, setPendingAjukan] =
-    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+  const [pendingAjukan, setPendingAjukan] = useState<{
+    pengajuan: FormulirPenghapusanPiutangOPDRecord;
+    variant: "baru" | "ulang";
+    siklusBerikutnya?: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -658,14 +751,45 @@ export default function TelaahInternalAdmin() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
   }, [semuaPengajuan]);
 
+  /* ── Daftar "Belum Diajukan" ── */
+  // 2 kasus:
+  // 1. Belum ada telaah doc sama sekali
+  // 2. Sudah ada telaah doc, tapi state MENUNGGU_REVISI_OPD & pengajuan.revisiTelaahInternal
+  //    sudah null (OPD sudah submit perbaikan) → siap diajukan ulang
   const daftarBelum = useMemo(() => {
-    const telaahIds = new Set(semuaTelaah.map((t) => t.pengajuanId));
-    return semuaPengajuan
-      .filter((p) => p.status === "teregistrasi" && !telaahIds.has(p.id))
-      .sort(
-        (a, b) =>
-          new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-      );
+    const telaahByPengajuanId = new Map(
+      semuaTelaah.map((t) => [t.pengajuanId, t]),
+    );
+    const result: {
+      pengajuan: FormulirPenghapusanPiutangOPDRecord;
+      variant: "baru" | "ulang";
+      siklusBerikutnya?: number;
+    }[] = [];
+
+    for (const p of semuaPengajuan) {
+      if (p.status !== "teregistrasi") continue;
+      const telaah = telaahByPengajuanId.get(p.id);
+      if (!telaah) {
+        // Kasus 1: belum ada telaah doc
+        result.push({ pengajuan: p, variant: "baru" });
+      } else if (
+        telaah.tahapSaatIni === "MENUNGGU_REVISI_OPD" &&
+        !p.revisiTelaahInternal?.aktif
+      ) {
+        // Kasus 2: OPD sudah submit perbaikan, siap diajukan ulang
+        result.push({
+          pengajuan: p,
+          variant: "ulang",
+          siklusBerikutnya: (telaah.siklusKe ?? 1) + 1,
+        });
+      }
+    }
+
+    return result.sort(
+      (a, b) =>
+        new Date(a.pengajuan.updatedAt).getTime() -
+        new Date(b.pengajuan.updatedAt).getTime(),
+    );
   }, [semuaPengajuan, semuaTelaah]);
 
   const daftarProses = useMemo(
@@ -716,7 +840,7 @@ export default function TelaahInternalAdmin() {
   };
 
   const belumFiltered = useMemo(
-    () => daftarBelum.filter(matchFilter),
+    () => daftarBelum.filter((x) => matchFilter(x.pengajuan)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [daftarBelum, search, filterOPD],
   );
@@ -733,7 +857,7 @@ export default function TelaahInternalAdmin() {
 
   const stats = useMemo(() => {
     const belum = filterOPD
-      ? daftarBelum.filter((p) => p.namaOPD === filterOPD).length
+      ? daftarBelum.filter((x) => x.pengajuan.namaOPD === filterOPD).length
       : daftarBelum.length;
     const proses = filterOPD
       ? daftarProses.filter((t) => t.namaOPD === filterOPD).length
@@ -756,16 +880,21 @@ export default function TelaahInternalAdmin() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      await ajukanTelaah(
-        {
-          id: pendingAjukan.id,
-          nomorPengajuan: pendingAjukan.nomorPengajuan,
-          nomorRegistrasi: pendingAjukan.nomorRegistrasi ?? null,
-          namaOPD: pendingAjukan.namaOPD,
-          namaPenanggungJawab: pendingAjukan.namaPenanggungJawab,
-        },
-        user.username,
-      );
+      const { pengajuan, variant } = pendingAjukan;
+      if (variant === "baru") {
+        await ajukanTelaah(
+          {
+            id: pengajuan.id,
+            nomorPengajuan: pengajuan.nomorPengajuan,
+            nomorRegistrasi: pengajuan.nomorRegistrasi ?? null,
+            namaOPD: pengajuan.namaOPD,
+            namaPenanggungJawab: pengajuan.namaPenanggungJawab,
+          },
+          user.username,
+        );
+      } else {
+        await ajukanTelaahUlang(pengajuan.id, user.username);
+      }
       setPendingAjukan(null);
       setTab("proses");
     } catch (err) {
@@ -797,9 +926,9 @@ export default function TelaahInternalAdmin() {
     <div className="mx-auto w-full max-w-400">
       {pendingAjukan && (
         <ModalKonfirmasiAjukan
-          nomorRegistrasi={pendingAjukan.nomorRegistrasi ?? ""}
-          nomorPengajuan={pendingAjukan.nomorPengajuan}
-          namaOPD={pendingAjukan.namaOPD}
+          nomorRegistrasi={pendingAjukan.pengajuan.nomorRegistrasi ?? ""}
+          nomorPengajuan={pendingAjukan.pengajuan.nomorPengajuan}
+          namaOPD={pendingAjukan.pengajuan.namaOPD}
           onConfirm={handleKonfirmasiAjukan}
           onClose={() => {
             if (!isSubmitting) {
@@ -809,6 +938,8 @@ export default function TelaahInternalAdmin() {
           }}
           isSubmitting={isSubmitting}
           errorMessage={errorMsg}
+          variant={pendingAjukan.variant}
+          siklusBerikutnya={pendingAjukan.siklusBerikutnya}
         />
       )}
 
@@ -957,12 +1088,14 @@ export default function TelaahInternalAdmin() {
             />
           ) : (
             <div className="space-y-2">
-              {belumFiltered.map((p) => (
+              {belumFiltered.map((item) => (
                 <KartuBelumDiajukan
-                  key={p.id}
-                  pengajuan={p}
+                  key={item.pengajuan.id}
+                  pengajuan={item.pengajuan}
+                  variant={item.variant}
+                  siklusBerikutnya={item.siklusBerikutnya}
                   onAjukan={() => {
-                    setPendingAjukan(p);
+                    setPendingAjukan(item);
                     setErrorMsg(null);
                   }}
                 />
@@ -1002,6 +1135,7 @@ export default function TelaahInternalAdmin() {
                     totalNilaiPiutang={pengajuan?.totalNilaiPiutang}
                     tahapSaatIni={t.tahapSaatIni}
                     diajukanPada={t.diajukanPada}
+                    siklusKe={t.siklusKe ?? 1}
                     onLihat={() => setSelectedTelaahId(t.id)}
                   />
                 );
@@ -1042,6 +1176,7 @@ export default function TelaahInternalAdmin() {
                     diajukanPada={t.diajukanPada}
                     selesaiPada={t.selesaiPada}
                     riwayatCount={t.riwayat.length}
+                    siklusKe={t.siklusKe ?? 1}
                     onLihat={() => setSelectedTelaahId(t.id)}
                   />
                 );

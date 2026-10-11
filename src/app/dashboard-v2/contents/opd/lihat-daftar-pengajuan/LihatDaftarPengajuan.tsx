@@ -15,6 +15,7 @@ import type {
 import {
   JENIS_PENGHAPUSAN_OPTIONS,
   JENIS_PIUTANG_OPTIONS,
+  TELAAH_LEVEL_SUMBER_CATATAN_LABEL,
   getOpdBySlug,
 } from "@/types/types";
 import { usePengajuanStore, useRiwayatRevisi } from "@/store/pengajuan-store";
@@ -34,9 +35,10 @@ import {
   IconTrash,
   IconFile,
 } from "./icons";
+import ModalEditRevisiTelaah from "./ModalEditRevisiTelaah";
 
-// Ikon kecil khusus dipakai di dalam file ini (edit/upload) — tidak ada di
-// ./icons, jadi didefinisikan lokal saja.
+// ────────────────────────────── IKON LOKAL ──────────────────────────────────
+
 const IconPencil = () => (
   <svg
     width="14"
@@ -119,7 +121,27 @@ const IconUpload = () => (
   </svg>
 );
 
+const IconRotate = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
+    <path d="M3.5 8A4.5 4.5 0 1111 12" strokeLinecap="round" />
+    <path
+      d="M11.5 3v3h-3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      transform="translate(1.5 0)"
+    />
+  </svg>
+);
+
 // ────────────────────────────── HELPERS ─────────────────────────────────────
+
 function formatRupiah(angka: string): string {
   const num = parseInt(angka, 10);
   return isNaN(num) ? "Rp 0" : "Rp " + num.toLocaleString("id-ID");
@@ -151,7 +173,15 @@ function formatTanggalWaktu(iso: string): string {
   );
 }
 
+/** True kalau pengajuan sedang dalam status revisi telaah internal aktif. */
+function hasRevisiTelaahAktif(
+  record: FormulirPenghapusanPiutangOPDRecord,
+): boolean {
+  return Boolean(record.revisiTelaahInternal?.aktif);
+}
+
 // ────────────────────────────── STATUS CONFIG ───────────────────────────────
+
 const STATUS_CONFIG: Record<
   StatusFormulir,
   { label: string; badgeClass: string; dotClass: string }
@@ -173,19 +203,17 @@ const STATUS_CONFIG: Record<
   },
 };
 
-/** Badge config untuk status Reviu Inspektorat (display-only, mengoverride
- *  badge "Teregistrasi" saat `reviuInspektoratStatus === "MENUNGGU_REVIU"`). */
-const REVIU_BADGE_CONFIG = {
-  label: "Menunggu Reviu Inspektorat",
-  badgeClass: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
-  dotClass: "bg-[#7c3aed]",
+/** Badge khusus untuk revisi telaah internal — orange. */
+const REVISI_TELAAH_BADGE = {
+  label: "Revisi Telaah Internal",
+  badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+  dotClass: "bg-[#ea580c]",
 } as const;
 
-// Urutan grup status pada daftar: teregistrasi (teregistrasi verifikasi) paling
-// atas, lalu revisi, lalu yang masih diajukan / menunggu verifikasi.
 const STATUS_ORDER: StatusFormulir[] = ["teregistrasi", "revisi", "diajukan"];
 
 // ──────────────────────── SORT INDICATOR ────────────────────────────────────
+
 const SortIndicator: React.FC<{
   sortKey: string;
   currentKey: string;
@@ -200,6 +228,7 @@ const SortIndicator: React.FC<{
 };
 
 // ──────────────────── STATUS GROUP HEADER ───────────────────────────────────
+
 const StatusGroupHeader: React.FC<{
   status: StatusFormulir;
   count: number;
@@ -221,6 +250,7 @@ const StatusGroupHeader: React.FC<{
 };
 
 // ──────────────────── STAT CARD ─────────────────────────────────────
+
 const StatCard: React.FC<{
   label: string;
   value: number | string;
@@ -248,13 +278,18 @@ const StatCard: React.FC<{
 );
 
 // ───────────────────────── STATUS BADGE ─────────────────────────────────────
+
 const StatusBadge: React.FC<{
   status: StatusFormulir;
   reviuStatus?: "MENUNGGU_REVIU" | null;
 }> = ({ status, reviuStatus }) => {
   const cfg =
     reviuStatus === "MENUNGGU_REVIU"
-      ? REVIU_BADGE_CONFIG
+      ? {
+          label: "Menunggu Reviu Inspektorat",
+          badgeClass: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
+          dotClass: "bg-[#7c3aed]",
+        }
       : STATUS_CONFIG[status];
   return (
     <span
@@ -266,7 +301,20 @@ const StatusBadge: React.FC<{
   );
 };
 
-// ──────────────────── IDENTIFIER CHIP (NO. PENGAJUAN / NO. REGISTRASI + SALIN) ─
+/** Badge khusus revisi telaah internal — dipakai di samping badge status. */
+const RevisiTelaahBadge: React.FC = () => (
+  <span
+    className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${REVISI_TELAAH_BADGE.badgeClass}`}
+  >
+    <span
+      className={`h-1.5 w-1.5 shrink-0 rounded-full ${REVISI_TELAAH_BADGE.dotClass}`}
+    />
+    {REVISI_TELAAH_BADGE.label}
+  </span>
+);
+
+// ──────────────────── IDENTIFIER CHIP ───────────────────────────────────────
+
 const IdentifierChip: React.FC<{
   status: StatusFormulir;
   nomorPengajuan: string;
@@ -288,7 +336,7 @@ const IdentifierChip: React.FC<{
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API tidak tersedia — abaikan secara diam-diam.
+      // Clipboard API tidak tersedia — abaikan
     }
   };
 
@@ -323,7 +371,8 @@ const IdentifierChip: React.FC<{
   );
 };
 
-// ──────────────────── MODAL PREVIEW PDF (FULLSCREEN DENGAN PADDING KECIL) ────
+// ──────────────────── PDF PREVIEW MODAL ────────────────────────────────────
+
 const PdfPreviewModal: React.FC<{
   url: string;
   title: string;
@@ -362,13 +411,13 @@ const PdfPreviewModal: React.FC<{
   );
 };
 
-// ──────────────── HASIL VERIFIKASI (beda tampilan revisi vs teregistrasi) ──────────
+// ──────────────── HASIL VERIFIKASI ────────────────
+
 const HasilVerifikasiSection: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
 }> = ({ record }) => {
   const { status, catatanVerifikasi, tanggalVerifikasi } = record;
 
-  // Belum diverifikasi — tidak ada apa pun untuk ditampilkan di sini.
   if (status === "diajukan") return null;
 
   const isRevisi = status === "revisi";
@@ -414,7 +463,6 @@ const HasilVerifikasiSection: React.FC<{
             </div>
           </div>
 
-          {/* Keterangan / alasan revisi dari BPKAD */}
           <div className="p-4">
             <div className="mb-1.5 text-[11px] font-semibold tracking-wide text-[#7a1f1f] uppercase">
               Keterangan dari BPKAD
@@ -483,10 +531,77 @@ const HasilVerifikasiSection: React.FC<{
   );
 };
 
-// ──────────────────── GROUP CAPTION (penanda kelompok: teks vs berkas) ─────
-// Label kecil di atas tiap grid supaya langsung terlihat apakah isinya data
-// isian formulir (teks) atau berkas PDF yang diunggah — tanpa perlu
-// menebak dari tampilan kartunya saja.
+// ──────────────────── REVISI TELAAH SECTION (untuk ModalDetail) ────────
+
+const RevisiTelaahSection: React.FC<{
+  record: FormulirPenghapusanPiutangOPDRecord;
+}> = ({ record }) => {
+  const info = record.revisiTelaahInternal;
+  if (!info?.aktif) return null;
+
+  return (
+    <div className="mb-6">
+      <h3 className="mb-3 text-xs font-bold tracking-widest text-[#ea580c] uppercase">
+        Revisi Telaah Internal
+      </h3>
+      <div className="overflow-hidden rounded-lg border border-[#fdba74] bg-linear-to-br from-[#fff7ed] to-white shadow-sm">
+        <div className="flex items-start gap-3 border-b border-[#fdba74]/70 p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffedd5] text-[#ea580c]">
+            <IconRotate />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-[#9a3412]">
+              Pengajuan dikembalikan untuk revisi telaah internal
+            </div>
+            <p className="mt-0.5 text-[11px] text-[#b45309]">
+              Dikirim oleh {info.dikirimOleh} pada{" "}
+              {formatTanggalWaktu(info.dikirimPada)}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2 p-4">
+          <div className="mb-2 text-[11px] font-semibold tracking-wide text-[#7a1f1f] uppercase">
+            Catatan Berjenjang ({info.catatanPerLevel.length})
+          </div>
+          {info.catatanPerLevel.length === 0 ? (
+            <p className="text-[12px] text-[#7a8899] italic">
+              Tidak ada catatan khusus — pengajuan dikembalikan untuk revisi.
+            </p>
+          ) : (
+            info.catatanPerLevel.map((c, idx) => (
+              <div
+                key={idx}
+                className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-3"
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="inline-flex items-center rounded-sm border border-[#fdba74] bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[#9a3412] uppercase">
+                    {TELAAH_LEVEL_SUMBER_CATATAN_LABEL[c.olehLevel]}
+                  </span>
+                  <span className="text-[10.5px] text-[#7a8899]">
+                    {formatTanggalWaktu(c.timestamp)}
+                  </span>
+                </div>
+                {c.catatan.trim() ? (
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed whitespace-pre-line text-[#3a4454]">
+                    {c.catatan}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11.5px] text-[#b0bac5] italic">
+                    (tanpa catatan)
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ──────────────────── GROUP CAPTION ────────────────────────────────────────
+
 const GroupCaption: React.FC<{ variant: "teks" | "berkas" }> = ({
   variant,
 }) => {
@@ -514,10 +629,8 @@ const GroupCaption: React.FC<{ variant: "teks" | "berkas" }> = ({
   );
 };
 
-// ──────────────────── INFO ROW (label/value, dipakai di grid ringkasan) ────
-// Gaya netral (abu-abu, tanpa aksen biru) — sengaja dibuat kontras dengan
-// DocumentCard di bawah supaya "data teks" dan "berkas PDF" tidak tertukar
-// secara visual sekilas pandang.
+// ──────────────────── INFO ROW ─────────────────────────────────────────────
+
 const InfoRow: React.FC<{
   icon?: React.ReactNode;
   uraian: string;
@@ -540,9 +653,8 @@ const InfoRow: React.FC<{
   </div>
 );
 
-// ──────────────────── DOCUMENT CARD (dipakai di semua daftar dokumen) ──────
-// Gaya "attachment": aksen garis biru di kiri + badge "PDF" eksplisit,
-// supaya langsung terbaca sebagai berkas terunggah, bukan data teks biasa.
+// ──────────────────── DOCUMENT CARD ────────────────────────────────────────
+
 const DocumentCard: React.FC<{
   label: string;
   file: UploadedFileRef | null | undefined;
@@ -609,7 +721,8 @@ const DocumentCard: React.FC<{
   );
 };
 
-// ──────────────────── LEGEND BOX (kelompok dokumen dg judul bingkai) ───────
+// ──────────────────── LEGEND BOX ───────────────────────────────────────────
+
 const LegendBox: React.FC<{
   title: string;
   children: React.ReactNode;
@@ -625,11 +738,8 @@ const LegendBox: React.FC<{
   </div>
 );
 
-// ──────────────────────── MODAL DETAIL ──────────────────────────
-// Label tampilan untuk key field yang muncul di snapshot riwayat revisi
-// (dataSebelum). Field yang tidak ada di map ini ditampilkan apa adanya
-// (fallback ke key mentahnya) — supaya field dokumen atau field baru yang
-// belum sempat dilabeli tidak bikin bagian ini error.
+// ──────────────────────── MODAL DETAIL ─────────────────────────────────────
+
 const LABEL_FIELD_REVISI: Partial<Record<string, string>> = {
   namaPenanggungJawab: "Nama Penanggung Jawab",
   jabatan: "Jabatan",
@@ -655,11 +765,6 @@ function formatNilaiRevisi(key: string, value: unknown): string {
   return String(value);
 }
 
-// Menampilkan histori data SEBELUM tiap kali OPD "Edit & Ajukan Ulang" —
-// dibaca real-time dari subcollection Firestore
-// "pengajuan/{id}/riwayatRevisi" (lihat ajukanUlangPengajuan() di
-// lib/pengajuan.ts). Data lama tidak pernah tertimpa: setiap revisi cuma
-// menambah satu dokumen baru di sini, bukan mengubah yang sebelumnya.
 const RiwayatRevisiSection: React.FC<{ pengajuanId: string }> = ({
   pengajuanId,
 }) => {
@@ -762,12 +867,13 @@ const ModalDetail: React.FC<{
   const refDokumen = useRef<HTMLDivElement>(null);
   const refSubstantif = useRef<HTMLDivElement>(null);
   const refVerifikasi = useRef<HTMLDivElement>(null);
+  const refRevisiTelaah = useRef<HTMLDivElement>(null);
 
-  // Handler stabil — refs baru dibaca (.current) saat tombol benar-benar
-  // diklik, bukan saat render. Data yang dirender (navItems) hanya berisi
-  // id string, tidak menyimpan objek ref sama sekali.
   const handleNavClick = useCallback(
-    (id: "verifikasi" | "dokumen" | "substantif" | "identitas") => {
+    (
+      id:
+        "verifikasi" | "dokumen" | "substantif" | "identitas" | "revisi-telaah",
+    ) => {
       const targetRef =
         id === "verifikasi"
           ? refVerifikasi
@@ -775,7 +881,9 @@ const ModalDetail: React.FC<{
             ? refDokumen
             : id === "substantif"
               ? refSubstantif
-              : refIdentitas;
+              : id === "revisi-telaah"
+                ? refRevisiTelaah
+                : refIdentitas;
       targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     [],
@@ -786,6 +894,7 @@ const ModalDetail: React.FC<{
     ? record.nomorRegistrasi
     : record.nomorPengajuan;
   const labelNomor = isRegistered ? "No. Registrasi" : "No. Pengajuan";
+  const adaRevisiTelaah = hasRevisiTelaahAktif(record);
 
   const handleCopyNomor = async () => {
     if (!nomorAktif) return;
@@ -794,7 +903,7 @@ const ModalDetail: React.FC<{
       setCopiedNomor(true);
       window.setTimeout(() => setCopiedNomor(false), 1500);
     } catch {
-      // Clipboard API tidak tersedia — abaikan secara diam-diam.
+      // abaikan
     }
   };
 
@@ -945,6 +1054,14 @@ const ModalDetail: React.FC<{
   ];
 
   const navItems = [
+    ...(adaRevisiTelaah
+      ? [
+          {
+            id: "revisi-telaah" as const,
+            label: "Revisi Telaah Internal",
+          },
+        ]
+      : []),
     ...(record.status !== "diajukan"
       ? [
           {
@@ -973,7 +1090,7 @@ const ModalDetail: React.FC<{
           className="animate-scale-in flex h-full w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-md"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header ringkas */}
+          {/* Header */}
           <div className="shrink-0 bg-linear-to-r from-[#1a4e8f] to-[#0e3b6e] px-4 py-3 text-white sm:px-6">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -985,6 +1102,7 @@ const ModalDetail: React.FC<{
                     status={record.status}
                     reviuStatus={record.reviuInspektoratStatus}
                   />
+                  {adaRevisiTelaah && <RevisiTelaahBadge />}
                 </div>
                 <p className="truncate text-sm text-blue-100">
                   {record.namaOPD}
@@ -1014,7 +1132,7 @@ const ModalDetail: React.FC<{
             </div>
           </div>
 
-          {/* Navigasi cepat antar-bagian — disesuaikan urutan */}
+          {/* Navigasi cepat */}
           {navItems.length > 0 && (
             <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[#e2e8f2] bg-[#f7f8fa] px-4 py-2 sm:px-6">
               {navItems.map((item) => (
@@ -1022,7 +1140,11 @@ const ModalDetail: React.FC<{
                   key={item.id}
                   type="button"
                   onClick={() => handleNavClick(item.id)}
-                  className="shrink-0 cursor-pointer rounded-full border border-[#e2e8f2] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[#5a6474] transition-colors hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                  className={`shrink-0 cursor-pointer rounded-full border px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                    item.id === "revisi-telaah"
+                      ? "border-[#fdba74] bg-[#fff7ed] text-[#9a3412] hover:border-[#ea580c] hover:bg-[#ffedd5]"
+                      : "border-[#e2e8f2] bg-white text-[#5a6474] hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                  }`}
                 >
                   {item.label}
                 </button>
@@ -1030,7 +1152,7 @@ const ModalDetail: React.FC<{
             </div>
           )}
 
-          {/* Body dengan scroll - URUTAN BARU */}
+          {/* Body */}
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             {/* 1. Identitas Usulan */}
             <div ref={refIdentitas} className="mb-6 scroll-mt-3">
@@ -1049,19 +1171,26 @@ const ModalDetail: React.FC<{
               </div>
             </div>
 
-            {/* 2. Hasil Verifikasi BPKAD — DIPINDAHKAN KE ATAS, DI BAWAH IDENTITAS */}
+            {/* 2. Revisi Telaah Internal — muncul kalau aktif */}
+            {adaRevisiTelaah && (
+              <div ref={refRevisiTelaah} className="scroll-mt-3">
+                <RevisiTelaahSection record={record} />
+              </div>
+            )}
+
+            {/* 3. Hasil Verifikasi BPKAD */}
             {record.status !== "diajukan" && (
               <div ref={refVerifikasi} className="scroll-mt-3">
                 <HasilVerifikasiSection record={record} />
               </div>
             )}
 
-            {/* 2b. Riwayat Revisi — hanya muncul kalau pernah direvisi. */}
+            {/* 4. Riwayat Revisi verifikasi BPKAD */}
             {Boolean(record.jumlahRevisi) && (
               <RiwayatRevisiSection pengajuanId={record.id} />
             )}
 
-            {/* 3. Dokumen Administrasi */}
+            {/* 5. Dokumen Administrasi */}
             <div ref={refDokumen} className="mb-6 scroll-mt-3">
               <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
                 Dokumen Administrasi
@@ -1090,7 +1219,7 @@ const ModalDetail: React.FC<{
               </LegendBox>
             </div>
 
-            {/* 4. Checklist Persyaratan Substantif */}
+            {/* 6. Checklist Persyaratan Substantif */}
             <div ref={refSubstantif} className="mb-6 scroll-mt-3">
               {substantifDokumen.length > 0 && (
                 <div className="mb-3">
@@ -1124,7 +1253,6 @@ const ModalDetail: React.FC<{
         </div>
       </div>
 
-      {/* Animasi */}
       <style jsx>{`
         @keyframes fade-in {
           from {
@@ -1155,10 +1283,7 @@ const ModalDetail: React.FC<{
   );
 };
 
-// ──────────────────── SLOT FILE (upload ulang / hapus) DI FORM EDIT ────────
-// Mendukung 3 aksi per dokumen: Ganti (pilih file baru), Hapus (hapus file
-// lama tanpa ganti — dipakai kalau dokumen ternyata tidak relevan/salah
-// unggah), dan Batalkan (balik ke keadaan semula sebelum diedit).
+// ──────────────────── EDIT FILE SLOT ──────────────────────────────────────
 
 const EditFileSlot: React.FC<{
   label: string;
@@ -1261,10 +1386,6 @@ const EditFileSlot: React.FC<{
               Batal
             </button>
           )}
-          {/* Hapus file lama (tanpa ganti) — cuma muncul kalau ada file lama,
-              belum pilih file baru, dan belum ditandai hapus. Tidak muncul
-              kalau dokumen wajib (required) supaya OPD tidak bisa
-              mengosongkan dokumen yang harus ada. */}
           {!required && adaFileLama && !newFile && !dihapus && onHapus && (
             <button
               type="button"
@@ -1289,12 +1410,7 @@ const EditFileSlot: React.FC<{
   );
 };
 
-// ──────────────────────── MODAL EDIT (KHUSUS STATUS REVISI) ────────────────
-// Daftar dokumen di sini SENGAJA disamakan persis (nomor, label, keterangan,
-// dan field-nya) dengan checklist yang dipakai BPKAD di panel verifikasi
-// (lihat buildDokumenTampilan di LihatDaftarPengajuanAdmin.tsx) — supaya
-// OPD memperbaiki dokumen yang sama persis dengan yang dinilai BPKAD, dan
-// tidak ada field yang salah alamat.
+// ──────────────────────── MODAL EDIT REVISI (verifikasi BPKAD) ────────────
 
 const BUKTI_TIDAK_MAMPU_ITEMS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
@@ -1316,8 +1432,6 @@ const BUKTI_TIDAK_MAMPU_ITEMS: {
   },
 ];
 
-// Grup 6: "Surat tagihan telah diterbitkan" — 4 kemungkinan bukti, sama
-// persis dengan anak grup nomor 6 di buildDokumenTampilan (BPKAD).
 const SURAT_TAGIHAN_ITEMS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
@@ -1345,7 +1459,6 @@ function formatRupiahInput(value: string): string {
 const parseRupiahInput = (value: string): string =>
   value.replace(/[^0-9]/g, "");
 
-// Section wrapper kecil supaya tiap bagian formulir konsisten tampilannya.
 const EditSection: React.FC<{ title: string; children: React.ReactNode }> = ({
   title,
   children,
@@ -1366,7 +1479,6 @@ const ModalEditRevisi: React.FC<{
     updates: Partial<FormulirPenghapusanPiutangOPDRecord>,
   ) => void;
 }> = ({ record, onClose, onSimpan }) => {
-  // ── Data Pengajuan ──────────────────────────────────────────────────────
   const [namaPenanggungJawab, setNamaPenanggungJawab] = useState(
     record.namaPenanggungJawab,
   );
@@ -1382,7 +1494,6 @@ const ModalEditRevisi: React.FC<{
     record.jenisPenghapusan,
   );
 
-  // ── File: dua map terpisah, "file baru" (ganti) dan "ditandai hapus" ──
   const [fileBaru, setFileBaru] = useState<
     Partial<Record<string, File | null>>
   >({});
@@ -1418,19 +1529,7 @@ const ModalEditRevisi: React.FC<{
     setIsSaving(true);
     setSaveError(null);
     try {
-      const fieldBaru: Partial<
-        Pick<
-          FormulirPenghapusanPiutangOPDRecord,
-          | "namaPenanggungJawab"
-          | "jabatan"
-          | "nomorSurat"
-          | "tanggalSurat"
-          | "jumlahDebitur"
-          | "totalNilaiPiutang"
-          | "jenisPiutang"
-          | "jenisPenghapusan"
-        >
-      > = {
+      const fieldBaru = {
         namaPenanggungJawab,
         jabatan,
         nomorSurat,
@@ -1441,9 +1540,6 @@ const ModalEditRevisi: React.FC<{
         jenisPenghapusan,
       };
 
-      // Map field dokumen -> File baru (diupload) | null (ditandai hapus,
-      // tidak diganti) — field yang tidak disentuh sama sekali TIDAK
-      // dimasukkan supaya dokumen lama di Firestore tidak ikut tertimpa.
       const fileUpdates: Partial<Record<string, File | null>> = {};
       (Object.keys(fileBaru) as string[]).forEach((key) => {
         if (fileBaru[key]) fileUpdates[key] = fileBaru[key];
@@ -1452,9 +1548,6 @@ const ModalEditRevisi: React.FC<{
         if (fileDihapus[key] && !fileBaru[key]) fileUpdates[key] = null;
       });
 
-      // Upload sungguhan ke Cloudinary + simpan snapshot data lama ke
-      // riwayatRevisi + timpa dokumen utama — semua di dalam satu fungsi
-      // supaya data lama tidak pernah hilang (lihat lib/pengajuan.ts).
       await ajukanUlangPengajuan(
         record.id,
         fieldBaru,
@@ -1476,10 +1569,6 @@ const ModalEditRevisi: React.FC<{
     }
   };
 
-  // Helper render slot dokumen — bungkus EditFileSlot supaya tiap
-  // pemanggilan tidak perlu tulis ulang state hapus/batal. `key` HARUS
-  // persis nama field di FormulirPenghapusanPiutangOPDRecord (types.ts)
-  // supaya tidak salah alamat saat disimpan.
   const renderSlot = (
     key: keyof FormulirPenghapusanPiutangOPDRecord,
     label: string,
@@ -1522,7 +1611,6 @@ const ModalEditRevisi: React.FC<{
         className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-md"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 bg-linear-to-r from-[#c0392b] to-[#9a2e22] px-4 py-3 text-white sm:px-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -1542,7 +1630,6 @@ const ModalEditRevisi: React.FC<{
           </button>
         </div>
 
-        {/* Catatan revisi BPKAD */}
         {record.catatanVerifikasi && (
           <div className="shrink-0 border-b border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[12.5px] text-[#7a1f1f] sm:px-6">
             <span className="font-bold">Catatan BPKAD: </span>
@@ -1550,7 +1637,6 @@ const ModalEditRevisi: React.FC<{
           </div>
         )}
 
-        {/* Body scrollable */}
         <div className="flex-1 space-y-7 overflow-y-auto px-4 py-5 sm:px-6">
           <p className="rounded-md border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1d4ed8]">
             Perbaiki bagian mana pun sesuai catatan BPKAD di atas — input data,
@@ -1558,7 +1644,6 @@ const ModalEditRevisi: React.FC<{
             relevan. Dokumen yang tidak disentuh akan tetap memakai file lama.
           </p>
 
-          {/* Data Pengajuan */}
           <EditSection title="Data Pengajuan">
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div className="space-y-1">
@@ -1673,8 +1758,6 @@ const ModalEditRevisi: React.FC<{
             {renderSlot("fileSurat", "Surat Pengantar (Surat Utama)")}
           </EditSection>
 
-          {/* Dokumen Pendukung — nomor, label, dan field SAMA PERSIS dengan
-              checklist yang dipakai BPKAD di panel verifikasi. */}
           <EditSection title="Dokumen Pendukung">
             {renderSlot("suratPengantarUsulan", "1. Surat Pengantar Usulan")}
             {renderSlot(
@@ -1694,7 +1777,6 @@ const ModalEditRevisi: React.FC<{
               "Upload neraca awal terjadinya piutang",
             )}
 
-            {/* 5. Tidak mempunyai kemampuan untuk menyelesaikan utang */}
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[12.5px] font-semibold text-[#3a4454]">
@@ -1738,7 +1820,6 @@ const ModalEditRevisi: React.FC<{
               </div>
             </div>
 
-            {/* 6. Surat tagihan telah diterbitkan */}
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[12.5px] font-semibold text-[#3a4454]">
@@ -1797,7 +1878,6 @@ const ModalEditRevisi: React.FC<{
           </EditSection>
         </div>
 
-        {/* Footer aksi */}
         <div className="flex shrink-0 flex-col-reverse gap-2.5 border-t border-[#e2e8f2] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
           {saveError && (
             <p className="w-full text-left text-[12px] font-medium text-[#c0392b] sm:mr-auto sm:w-auto">
@@ -1826,96 +1906,143 @@ const ModalEditRevisi: React.FC<{
   );
 };
 
-// ─────────────────── KARTU PENGAJUAN (TAMPILAN MOBILE, PENGGANTI TABEL) ─────
+// ─────────────────── KARTU MOBILE ───────────────────────────────────────
+
 const RecordCardMobile: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
   nomor: number;
   onLihatDetail: () => void;
   onEditRevisi: () => void;
-}> = ({ record, nomor, onLihatDetail, onEditRevisi }) => (
-  <div className="rounded-md border border-[#e2e8f2] bg-white p-3.5">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <span className="text-[11px] font-semibold text-[#b0bac5]">
-          #{nomor}
-        </span>
-        <div className="mt-1 truncate text-[13px] font-semibold text-[#1a1a2e]">
-          {record.namaPenanggungJawab}
+  onPerbaikiRevisiTelaah: () => void;
+}> = ({
+  record,
+  nomor,
+  onLihatDetail,
+  onEditRevisi,
+  onPerbaikiRevisiTelaah,
+}) => {
+  const adaRevisiTelaah = hasRevisiTelaahAktif(record);
+
+  return (
+    <div
+      className={`rounded-md border bg-white p-3.5 ${
+        adaRevisiTelaah ? "border-[#fdba74]" : "border-[#e2e8f2]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-[11px] font-semibold text-[#b0bac5]">
+            #{nomor}
+          </span>
+          <div className="mt-1 truncate text-[13px] font-semibold text-[#1a1a2e]">
+            {record.namaPenanggungJawab}
+          </div>
+          <div className="truncate text-[11px] text-[#7a8899]">
+            {record.jabatan}
+          </div>
+          <IdentifierChip
+            status={record.status}
+            nomorPengajuan={record.nomorPengajuan}
+            nomorRegistrasi={record.nomorRegistrasi}
+          />
         </div>
-        <div className="truncate text-[11px] text-[#7a8899]">
-          {record.jabatan}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            onClick={onLihatDetail}
+            title="Lihat Detail"
+            className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+          >
+            <IconEye /> Lihat
+          </button>
+          {record.status === "revisi" && (
+            <button
+              onClick={onEditRevisi}
+              title="Edit Pengajuan"
+              className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
+            >
+              <IconPencil /> Edit
+            </button>
+          )}
         </div>
-        <IdentifierChip
-          status={record.status}
-          nomorPengajuan={record.nomorPengajuan}
-          nomorRegistrasi={record.nomorRegistrasi}
-        />
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <button
-          onClick={onLihatDetail}
-          title="Lihat Detail"
-          className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-        >
-          <IconEye /> Lihat
-        </button>
+
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#f1f5f9] pt-3 text-xs">
+        <div>
+          <div className="text-[10px] tracking-wide text-[#b0bac5] uppercase">
+            Tanggal Surat
+          </div>
+          <div className="mt-0.5 text-[#5a6474]">
+            {formatTanggal(record.tanggalSurat)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] tracking-wide text-[#b0bac5] uppercase">
+            Debitur
+          </div>
+          <div className="mt-0.5 text-[#5a6474]">
+            {record.jumlahDebitur} orang
+          </div>
+        </div>
+        <div className="col-span-2">
+          <div className="text-[10px] tracking-wide text-[#b0bac5] uppercase">
+            Total Piutang
+          </div>
+          <div className="mt-0.5 font-bold text-[#1a4e8f]">
+            {formatRupiah(record.totalNilaiPiutang)}
+          </div>
+        </div>
+      </div>
+
+      {/* Badge Revisi Telaah Internal */}
+      {adaRevisiTelaah && (
+        <div className="mt-3 rounded-md border border-[#fdba74] bg-[#fff7ed] p-2.5">
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ea580c] text-white">
+              <IconRotate />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11.5px] font-bold text-[#9a3412]">
+                Perlu Revisi Telaah Internal
+              </p>
+              <p className="mt-0.5 text-[10.5px] text-[#b45309]">
+                Dari {record.revisiTelaahInternal?.dikirimOleh} ·{" "}
+                {record.revisiTelaahInternal?.catatanPerLevel.length} catatan
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onPerbaikiRevisiTelaah}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#ea580c] py-2 text-[11.5px] font-semibold text-white transition hover:bg-[#c2410c]"
+          >
+            <IconRotate />
+            Perbaiki Revisi Telaah
+          </button>
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#f1f5f9] pt-3">
+        <div className="flex flex-wrap gap-1.5">
+          <StatusBadge
+            status={record.status}
+            reviuStatus={record.reviuInspektoratStatus}
+          />
+          {adaRevisiTelaah && <RevisiTelaahBadge />}
+        </div>
         {record.status === "revisi" && (
           <button
-            onClick={onEditRevisi}
-            title="Edit Pengajuan"
-            className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
+            onClick={onLihatDetail}
+            className="cursor-pointer text-[11px] font-semibold text-[#c0392b] hover:underline"
           >
-            <IconPencil /> Edit
+            Lihat catatan revisi →
           </button>
         )}
       </div>
     </div>
+  );
+};
 
-    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-[#f1f5f9] pt-3 text-xs">
-      <div>
-        <div className="text-[10px] tracking-wide text-[#b0bac5] uppercase">
-          Tanggal Surat
-        </div>
-        <div className="mt-0.5 text-[#5a6474]">
-          {formatTanggal(record.tanggalSurat)}
-        </div>
-      </div>
-      <div>
-        <div className="text-[10px] tracking-wide text-[#b0bac5] uppercase">
-          Debitur
-        </div>
-        <div className="mt-0.5 text-[#5a6474]">
-          {record.jumlahDebitur} orang
-        </div>
-      </div>
-      <div className="col-span-2">
-        <div className="text-[10px] tracking-wide text-[#b0bac5] uppercase">
-          Total Piutang
-        </div>
-        <div className="mt-0.5 font-bold text-[#1a4e8f]">
-          {formatRupiah(record.totalNilaiPiutang)}
-        </div>
-      </div>
-    </div>
+// ──────────────────────────── MAIN COMPONENT ────────────────────────────────
 
-    <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#f1f5f9] pt-3">
-      <StatusBadge
-        status={record.status}
-        reviuStatus={record.reviuInspektoratStatus}
-      />
-      {record.status === "revisi" && (
-        <button
-          onClick={onLihatDetail}
-          className="cursor-pointer text-[11px] font-semibold text-[#c0392b] hover:underline"
-        >
-          Lihat catatan revisi →
-        </button>
-      )}
-    </div>
-  </div>
-);
-
-// ──────────────────────────── MAIN COMPONENT ─────────────────────────────────
 export default function DaftarPengajuanOPDBaru({
   data: dataProp,
   namaOPDAktif,
@@ -1927,11 +2054,6 @@ export default function DaftarPengajuanOPDBaru({
     namaOPDAktif ?? getOpdBySlug("disdagkopukm")?.nama ?? "";
 
   const { data: dataStore, isLoading } = usePengajuanStore();
-  // `overrides` HANYA dipakai saat komponen dipakai dengan `data` prop
-  // manual (mis. cerita/preview tanpa Firestore) — kalau ambil dari
-  // dataStore, onSnapshot di PengajuanProvider sudah otomatis membawa
-  // perubahan real-time setelah ajukanUlangPengajuan() berhasil, jadi
-  // tidak perlu (dan tidak boleh) di-override manual lagi di sini.
   const [overrides, setOverrides] = useState<
     Record<string, Partial<FormulirPenghapusanPiutangOPDRecord>>
   >({});
@@ -1956,11 +2078,9 @@ export default function DaftarPengajuanOPDBaru({
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
   const [editRecord, setEditRecord] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
+  const [editTelaahRecord, setEditTelaahRecord] =
+    useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
 
-  // Dipanggil ModalEditRevisi SETELAH ajukanUlangPengajuan() sukses simpan
-  // ke Firestore. Untuk mode dataStore (real), tidak perlu apa-apa lagi di
-  // sini — onSnapshot yang urus refresh tampilan. `overrides` cuma dipakai
-  // untuk mode `data` prop manual (lihat komentar di atas).
   const handleSimpanEdit = (
     id: string,
     updates: Partial<FormulirPenghapusanPiutangOPDRecord>,
@@ -2046,6 +2166,13 @@ export default function DaftarPengajuanOPDBaru({
           record={editRecord}
           onClose={() => setEditRecord(null)}
           onSimpan={handleSimpanEdit}
+        />
+      )}
+
+      {editTelaahRecord && (
+        <ModalEditRevisiTelaah
+          record={editTelaahRecord}
+          onClose={() => setEditTelaahRecord(null)}
         />
       )}
 
@@ -2224,7 +2351,7 @@ export default function DaftarPengajuanOPDBaru({
         </div>
       ) : (
         <>
-          {/* Tampilan mobile */}
+          {/* Mobile */}
           <div className="space-y-4 md:hidden">
             {(() => {
               let counter = 0;
@@ -2243,6 +2370,9 @@ export default function DaftarPengajuanOPDBaru({
                         nomor={counter}
                         onLihatDetail={() => setSelectedRecord(record)}
                         onEditRevisi={() => setEditRecord(record)}
+                        onPerbaikiRevisiTelaah={() =>
+                          setEditTelaahRecord(record)
+                        }
                       />
                     );
                   })}
@@ -2251,7 +2381,7 @@ export default function DaftarPengajuanOPDBaru({
             })()}
           </div>
 
-          {/* Tampilan desktop */}
+          {/* Desktop */}
           <div className="hidden overflow-x-auto rounded-md border border-[#e2e8f2] bg-white md:block">
             <table className="w-full min-w-180 border-collapse text-[13px]">
               <thead>
@@ -2287,10 +2417,10 @@ export default function DaftarPengajuanOPDBaru({
                   <th className="w-20 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
                     Debitur
                   </th>
-                  <th className="w-32.5 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  <th className="w-40 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
                     Status
                   </th>
-                  <th className="w-18 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
+                  <th className="w-32 p-[10px_14px] text-left text-[11px] font-bold tracking-[0.06em] text-slate-100 uppercase select-none">
                     Aksi
                   </th>
                 </tr>
@@ -2324,10 +2454,15 @@ export default function DaftarPengajuanOPDBaru({
                           counter += 1;
                           const isLastRow =
                             idxInGroup === group.items.length - 1;
+                          const adaRevisiTelaah = hasRevisiTelaahAktif(record);
                           return (
                             <tr
                               key={record.id}
-                              className={`transition-colors duration-150 hover:bg-[#fafbfc] ${isLastRow ? "" : "border-b border-[#e2e8f2]"}`}
+                              className={`transition-colors duration-150 ${
+                                adaRevisiTelaah
+                                  ? "bg-[#fff7ed] hover:bg-[#ffedd5]"
+                                  : "hover:bg-[#fafbfc]"
+                              } ${isLastRow ? "" : "border-b border-[#e2e8f2]"}`}
                             >
                               <td className="p-[12px_14px] text-xs font-semibold whitespace-nowrap text-[#7a8899]">
                                 {counter}
@@ -2354,11 +2489,14 @@ export default function DaftarPengajuanOPDBaru({
                               <td className="p-[12px_14px] text-xs whitespace-nowrap text-[#5a6474]">
                                 {record.jumlahDebitur} orang
                               </td>
-                              <td className="p-[12px_14px] whitespace-nowrap">
-                                <StatusBadge
-                                  status={record.status}
-                                  reviuStatus={record.reviuInspektoratStatus}
-                                />
+                              <td className="p-[12px_14px]">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <StatusBadge
+                                    status={record.status}
+                                    reviuStatus={record.reviuInspektoratStatus}
+                                  />
+                                  {adaRevisiTelaah && <RevisiTelaahBadge />}
+                                </div>
                                 {record.status === "revisi" && (
                                   <button
                                     onClick={() => setSelectedRecord(record)}
@@ -2367,9 +2505,17 @@ export default function DaftarPengajuanOPDBaru({
                                     Lihat catatan revisi →
                                   </button>
                                 )}
+                                {adaRevisiTelaah && (
+                                  <button
+                                    onClick={() => setSelectedRecord(record)}
+                                    className="mt-1 block cursor-pointer text-[11px] font-semibold text-[#ea580c] hover:underline"
+                                  >
+                                    Lihat catatan telaah →
+                                  </button>
+                                )}
                               </td>
                               <td className="p-[12px_14px] whitespace-nowrap">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex flex-col gap-1.5">
                                   <button
                                     onClick={() => setSelectedRecord(record)}
                                     title="Lihat Detail"
@@ -2384,6 +2530,17 @@ export default function DaftarPengajuanOPDBaru({
                                       className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
                                     >
                                       <IconPencil /> Edit
+                                    </button>
+                                  )}
+                                  {adaRevisiTelaah && (
+                                    <button
+                                      onClick={() =>
+                                        setEditTelaahRecord(record)
+                                      }
+                                      title="Perbaiki Revisi Telaah Internal"
+                                      className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fdba74] bg-[#fff7ed] px-2 text-[11px] font-semibold whitespace-nowrap text-[#9a3412] transition-colors duration-150 hover:border-[#ea580c] hover:bg-[#ffedd5]"
+                                    >
+                                      <IconRotate /> Perbaiki
                                     </button>
                                   )}
                                 </div>

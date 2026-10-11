@@ -2,25 +2,20 @@
 
 /* ------------------------------------------------------------------ */
 /*  TelaahSayaInternal.tsx                                             */
-/*  "Ruang Telaah" untuk user INTERNAL_STRUKTURAL                      */
-/*  (Kasubbid / Kabid / Sekban).                                       */
-/*                                                                      */
+/*  "Ruang Telaah" untuk user INTERNAL_STRUKTURAL.                     */
 /*  2 tab:                                                             */
-/*   - "Antrean Saya"  → telaah yang tahapSaatIni === tahap user.      */
-/*   - "Riwayat Telaah" → telaah yang riwayat-nya mengandung entry      */
-/*     dari user ini.                                                  */
-/*                                                                      */
-/*  Filter: Search + Filter OPD + Filter status chips.                 */
+/*   - "Antrean Saya"   → telaah yang menunggu aksi user (naik/turun). */
+/*   - "Riwayat Telaah" → telaah yang pernah di-aksi oleh user.        */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
 import { useAuth } from "@/store/auth-store";
 import { useTelaahInternalStore } from "@/store/telaah-internal-store";
 import {
-  TELAAH_TAHAP_BY_LEVEL,
-  TELAAH_TAHAP_LABEL,
   TELAAH_LEVEL_LABEL,
   TELAAH_LEVEL_SUBTITLE,
+  TELAAH_TAHAP_LABEL,
+  getAksiTelaah,
   type TelaahInternalRecord,
 } from "@/types/telaah-internal";
 import { formatTanggalWaktu } from "./TelaahDokumenShared";
@@ -283,20 +278,17 @@ function ambilEntryTerakhirSaya(
   return null;
 }
 
-/* ==================== Stat Card (dengan indicator) ==================== */
+/* ==================== Stat Card ==================== */
 
 const StatCard: React.FC<{
   icon: React.ReactNode;
   label: string;
   value: number;
-  /** Angka pembanding untuk indicator "X dari Y". */
   total?: number;
-  /** Label setelah angka total — mis. "telaah" atau "ditelaah Anda". */
   totalLabel?: string;
   accentClass: string;
   bgClass: string;
   borderClass: string;
-  /** Warna progress bar. */
   progressColor: string;
 }> = ({
   icon,
@@ -317,7 +309,6 @@ const StatCard: React.FC<{
 
   return (
     <div className={`rounded-sm border ${bgClass} ${borderClass} p-4`}>
-      {/* Row 1: icon + value + label */}
       <div className="flex items-center gap-3">
         <div
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm text-white ${accentClass}`}
@@ -334,7 +325,6 @@ const StatCard: React.FC<{
         </div>
       </div>
 
-      {/* Row 2: indicator "X dari Y" + progress bar */}
       {hasIndicator && (
         <div className="mt-3 border-t border-current/10 pt-2.5">
           <div className="flex items-center justify-between gap-2 text-[10.5px] text-[#7a8899]">
@@ -359,19 +349,40 @@ const StatCard: React.FC<{
   );
 };
 
-/* ==================== Kartu: Antrean Saya ==================== */
+/* ==================== Kartu: Antrean ==================== */
 
 const KartuAntrean: React.FC<{
   telaah: TelaahInternalRecord;
+  level: "kasubbid" | "kabid" | "sekban";
   onTelaah: () => void;
-}> = ({ telaah, onTelaah }) => {
+}> = ({ telaah, level, onTelaah }) => {
   const identitas = telaah.nomorRegistrasi || telaah.nomorPengajuan;
+  const aksi = getAksiTelaah(telaah.tahapSaatIni, level);
+  const isTeruskan = aksi === "teruskan";
+
+  const accentColor = isTeruskan ? "bg-[#f59e0b]" : "bg-[#1a4e8f]";
+  const borderColor = isTeruskan ? "border-[#fde68a]" : "border-[#dbe6f7]";
+  const iconBg = isTeruskan
+    ? "bg-[#fffbeb] text-[#b45309]"
+    : "bg-[#eff6ff] text-[#1a4e8f]";
+  const badgeClass = isTeruskan
+    ? "border-[#fde68a] bg-[#fffbeb] text-[#b45309]"
+    : "border-[#dbe6f7] bg-[#eff6ff] text-[#1a4e8f]";
+  const badgeText = isTeruskan ? "Teruskan Revisi" : "Menunggu Anda";
+  const buttonClass = isTeruskan
+    ? "bg-[#f59e0b] hover:bg-[#d97706]"
+    : "bg-[#1a4e8f] hover:bg-[#2d63a8]";
+  const buttonText = isTeruskan ? "Teruskan Sekarang" : "Telaah Sekarang";
 
   return (
-    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-sm border border-[#dbe6f7] bg-white transition-all duration-150 hover:border-[#1a4e8f]/40 hover:shadow-md sm:flex-row sm:items-center sm:gap-4 sm:p-4">
-      <div className="absolute inset-y-0 left-0 w-0.75 bg-[#1a4e8f]" />
+    <div
+      className={`group relative flex flex-col gap-3 overflow-hidden rounded-sm border bg-white transition-all duration-150 hover:shadow-md sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${borderColor}`}
+    >
+      <div className={`absolute inset-y-0 left-0 w-0.75 ${accentColor}`} />
 
-      <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-[#eff6ff] text-[#1a4e8f] sm:flex">
+      <div
+        className={`hidden h-12 w-12 shrink-0 items-center justify-center rounded-sm sm:flex ${iconBg}`}
+      >
         <IconBuilding />
       </div>
 
@@ -380,9 +391,16 @@ const KartuAntrean: React.FC<{
           <span className="font-mono text-[11.5px] font-bold tracking-tight text-[#1a4e8f]">
             {identitas}
           </span>
-          <span className="rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
-            Menunggu Anda
+          <span
+            className={`rounded-sm border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide uppercase ${badgeClass}`}
+          >
+            {badgeText}
           </span>
+          {(telaah.siklusKe ?? 1) > 1 && (
+            <span className="rounded-sm border border-[#dbe6f7] bg-white px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#5a6474] uppercase">
+              Siklus {telaah.siklusKe}
+            </span>
+          )}
         </div>
         <div className="mt-1.5 truncate text-[15px] leading-tight font-bold text-[#1a1a2e]">
           {telaah.namaOPD}
@@ -395,15 +413,23 @@ const KartuAntrean: React.FC<{
             <IconClock />
             Diajukan {formatTanggalWaktu(telaah.diajukanPada)}
           </span>
+          {isTeruskan && (
+            <>
+              <span className="text-[#d0d7de]">·</span>
+              <span className="text-[#b45309]">
+                {TELAAH_TAHAP_LABEL[telaah.tahapSaatIni]}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
       <div className="shrink-0 border-t border-[#f1f5f9] p-4 sm:border-t-0 sm:p-0">
         <button
           onClick={onTelaah}
-          className="flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#1a4e8f] px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-sm transition hover:bg-[#2d63a8] hover:shadow-md sm:w-auto"
+          className={`flex w-full items-center justify-center gap-1.5 rounded-sm px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-sm transition hover:shadow-md sm:w-auto ${buttonClass}`}
         >
-          Telaah Sekarang
+          {buttonText}
           <IconArrowRight />
         </button>
       </div>
@@ -460,6 +486,11 @@ const KartuRiwayat: React.FC<{
           ) : (
             <span className="inline-flex items-center gap-1 rounded-sm border border-[#fde68a] bg-[#fffbeb] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#b45309] uppercase">
               <IconHourglass /> Diproses
+            </span>
+          )}
+          {(telaah.siklusKe ?? 1) > 1 && (
+            <span className="rounded-sm border border-[#dbe6f7] bg-white px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#5a6474] uppercase">
+              Siklus {telaah.siklusKe}
             </span>
           )}
         </div>
@@ -551,7 +582,6 @@ export default function TelaahSayaInternal() {
   const level = user?.telaahLevel ?? null;
   const username = user?.username ?? null;
 
-  /* ── Daftar OPD unik — dari semua telaah ── */
   const daftarOPD = useMemo(() => {
     const set = new Set<string>();
     data.forEach((t) => {
@@ -561,11 +591,14 @@ export default function TelaahSayaInternal() {
   }, [data]);
 
   /* ── Data tab "Antrean Saya" ── */
+  // Termasuk state naik (telaah) & turun (teruskan revisi).
   const daftarAntrean = useMemo(() => {
     if (!level) return [];
-    const tahapTarget = TELAAH_TAHAP_BY_LEVEL[level];
     return data
-      .filter((t) => !t.selesai && t.tahapSaatIni === tahapTarget)
+      .filter(
+        (t) =>
+          !t.selesai && getAksiTelaah(t.tahapSaatIni, level) !== "lihat_saja",
+      )
       .sort(
         (a, b) =>
           new Date(a.diajukanPada).getTime() -
@@ -584,7 +617,6 @@ export default function TelaahSayaInternal() {
       );
   }, [data, username]);
 
-  /* ── Filter chips untuk tab "Riwayat" ── */
   const daftarRiwayatFiltered = useMemo(() => {
     if (filterStatus === "semua") return daftarRiwayat;
     if (filterStatus === "selesai")
@@ -592,7 +624,6 @@ export default function TelaahSayaInternal() {
     return daftarRiwayat.filter((t) => !t.selesai);
   }, [daftarRiwayat, filterStatus]);
 
-  /* ── Filter generic — search + OPD ── */
   const matchFilter = (t: TelaahInternalRecord): boolean => {
     if (filterOPD && t.namaOPD !== filterOPD) return false;
     if (search.trim()) {
@@ -618,7 +649,6 @@ export default function TelaahSayaInternal() {
     [daftarRiwayatFiltered, search, filterOPD],
   );
 
-  /* ── Stats (menghormati filter OPD) ── */
   const stats = useMemo(() => {
     const menunggu = filterOPD
       ? daftarAntrean.filter((t) => t.namaOPD === filterOPD).length
@@ -629,8 +659,6 @@ export default function TelaahSayaInternal() {
     const selesaiFinal = filterOPD
       ? daftarRiwayat.filter((t) => t.namaOPD === filterOPD && t.selesai).length
       : daftarRiwayat.filter((t) => t.selesai).length;
-    // Total telaah keseluruhan (untuk indicator "X dari Y") — juga
-    // menghormati filter OPD supaya indikator tetap relevan.
     const totalTelaah = filterOPD
       ? data.filter((t) => t.namaOPD === filterOPD).length
       : data.length;
@@ -644,14 +672,12 @@ export default function TelaahSayaInternal() {
     setFilterOPD("");
   };
 
-  /* ── Render: detail ── */
   if (selectedId) {
     return (
       <DetailTelaah telaahId={selectedId} onBack={() => setSelectedId(null)} />
     );
   }
 
-  /* ── Guard: user tidak punya telaahLevel ── */
   if (!level) {
     return (
       <div className="mx-auto w-full max-w-4xl">
@@ -665,7 +691,6 @@ export default function TelaahSayaInternal() {
     );
   }
 
-  /* ── Tab config ── */
   const tabs: { key: TabKey; label: string; count: number }[] = [
     { key: "antrean", label: "Antrean Saya", count: stats.menunggu },
     { key: "riwayat", label: "Riwayat Telaah", count: stats.sudah },
@@ -673,7 +698,7 @@ export default function TelaahSayaInternal() {
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      {/* ══════════ HEADER ══════════ */}
+      {/* Header */}
       <div className="mb-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -701,12 +726,11 @@ export default function TelaahSayaInternal() {
         </p>
       </div>
 
-      {/* ══════════ STAT CARDS ══════════ */}
+      {/* Stat cards */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {/* Card 1 — Menunggu Ditelaah Anda */}
         <StatCard
           icon={<IconInbox />}
-          label="Menunggu Ditelaah Anda"
+          label="Menunggu Anda"
           value={stats.menunggu}
           total={stats.totalTelaah}
           totalLabel="telaah"
@@ -715,11 +739,9 @@ export default function TelaahSayaInternal() {
           borderClass="border-[#d0e0f5]"
           progressColor="bg-[#1a4e8f]"
         />
-
-        {/* Card 2 — Sudah Ditelaah Anda */}
         <StatCard
           icon={<IconCheckCircle />}
-          label="Sudah Ditelaah Anda"
+          label="Sudah Anda Telaah"
           value={stats.sudah}
           total={stats.totalTelaah}
           totalLabel="telaah"
@@ -728,8 +750,6 @@ export default function TelaahSayaInternal() {
           borderClass="border-[#fde68a]"
           progressColor="bg-[#f59e0b]"
         />
-
-        {/* Card 3 — Telaah Telah Selesai */}
         <StatCard
           icon={<IconTrophy />}
           label="Telaah Telah Selesai"
@@ -743,7 +763,7 @@ export default function TelaahSayaInternal() {
         />
       </div>
 
-      {/* ══════════ TAB BAR ══════════ */}
+      {/* Tab bar */}
       <div className="mb-3.5 flex flex-wrap gap-1.5 border-b border-[#e2e8f2]">
         {tabs.map((t) => {
           const isActive = tab === t.key;
@@ -772,7 +792,7 @@ export default function TelaahSayaInternal() {
         })}
       </div>
 
-      {/* ══════════ FILTER BAR ══════════ */}
+      {/* Filter bar */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] lg:flex-row lg:items-center">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 lg:min-w-40 lg:flex-1">
           <span className="shrink-0 text-[#7a8899]">
@@ -829,7 +849,7 @@ export default function TelaahSayaInternal() {
         </div>
       </div>
 
-      {/* ══════════ FILTER CHIPS (khusus "Riwayat Telaah") ══════════ */}
+      {/* Filter chips khusus Riwayat */}
       {tab === "riwayat" && (
         <div className="mb-3.5 flex flex-wrap gap-1.5">
           {(
@@ -868,25 +888,23 @@ export default function TelaahSayaInternal() {
         </div>
       )}
 
-      {/* ══════════ ERROR ══════════ */}
       {error && (
         <div className="mb-3.5 rounded-sm border border-[#fed7aa] bg-[#fff7ed] px-4 py-2.5 text-[13px] font-medium text-[#9a3412]">
           Gagal memuat data telaah: {error}
         </div>
       )}
 
-      {/* ══════════ KONTEN PER TAB ══════════ */}
+      {/* Konten */}
       {isLoading ? (
         <div className="flex items-center justify-center rounded-sm border border-dashed border-[#e2e8f2] bg-white py-16 text-sm text-[#7a8899]">
           Memuat data telaah…
         </div>
       ) : tab === "antrean" ? (
-        /* ═══ Tab 1: Antrean Saya ═══ */
         daftarAntrean.length === 0 ? (
           <EmptyState
             icon={<IconCheckBig />}
             title="Antrean Anda kosong"
-            subtitle="Tidak ada pengajuan yang menunggu telaah Anda saat ini. Antrean akan muncul otomatis setelah tahap sebelumnya selesai."
+            subtitle="Tidak ada pengajuan yang menunggu telaah Anda saat ini."
           />
         ) : antreanFiltered.length === 0 ? (
           <EmptyState
@@ -900,17 +918,17 @@ export default function TelaahSayaInternal() {
               <KartuAntrean
                 key={t.id}
                 telaah={t}
+                level={level}
                 onTelaah={() => setSelectedId(t.id)}
               />
             ))}
           </div>
         )
-      ) : /* ═══ Tab 2: Riwayat Telaah ═══ */
-      daftarRiwayat.length === 0 ? (
+      ) : daftarRiwayat.length === 0 ? (
         <EmptyState
           icon={<IconTrophy />}
           title="Belum ada riwayat telaah"
-          subtitle="Setelah Anda melakukan approve pada suatu pengajuan, riwayat akan muncul di sini."
+          subtitle="Setelah Anda melakukan approve/revisi pada suatu pengajuan, riwayat akan muncul di sini."
         />
       ) : riwayatFiltered.length === 0 ? (
         <EmptyState

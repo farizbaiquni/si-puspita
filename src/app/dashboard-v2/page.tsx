@@ -14,8 +14,9 @@ import Image from "next/image";
 // ── Modul Telaah Internal Struktural ──
 import TelaahInternalAdmin from "./contents/telaah/TelaahInternalAdmin";
 import TelaahSayaInternal from "./contents/telaah/TelaahSayaInternal";
+import KirimRevisiTelaahInternal from "./contents/telaah/KirimRevisiTelaahInternal";
 
-// ── Modul Reviu Inspektorat (additive) ──
+// ── Modul Reviu Inspektorat ──
 import ReviuInspektoratAdmin from "./contents/reviu-inspektorat/ReviuInspektoratAdmin";
 
 import {
@@ -48,12 +49,6 @@ import type { NotifikasiInternalRecord } from "@/types/telaah-internal";
 
 type UserRole = "OPD" | "ADMIN" | "INTERNAL_STRUKTURAL";
 
-// Tampilan sidebar/menu dibagi 6:
-//  - "OPD"            → role "OPD"
-//  - "BPKAD_ADMIN"    → role "ADMIN" DAN opdSlug === "bpkad" (read-only)
-//  - "OTHER_ADMIN"    → role "ADMIN" (admin generik, akses penuh)
-//  - "TELAAH_KASUBBID" / "TELAAH_KABID" / "TELAAH_SEKBAN"
-//                     → role "INTERNAL_STRUKTURAL", per sub-level
 type TampilanRole =
   | "OPD"
   | "BPKAD_ADMIN"
@@ -69,6 +64,7 @@ type AdminMenuKey =
   | "lihat-daftar-pengajuan-admin"
   | "register-digital"
   | "telaah-internal"
+  | "kirim-revisi-telaah"
   | "reviu-inspektorat";
 
 type BPKADAdminMenuKey = "lihat-daftar-pengajuan-bpkad";
@@ -77,7 +73,7 @@ type TelaahMenuKey = "telaah-saya";
 
 type MenuKey = OPDMenuKey | AdminMenuKey | BPKADAdminMenuKey | TelaahMenuKey;
 
-// ── Ikon lokal tambahan ──────────────────────────────────────────────────────
+// ── Ikon lokal ──
 
 const IconShield = () => (
   <svg
@@ -97,7 +93,24 @@ const IconShield = () => (
   </svg>
 );
 
-// ── Menu configs per role ─────────────────────────────────────────────────────
+const IconSend = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M2.5 10L17.5 3l-7 7.5-2 6.5-2.5-4.5-3.5-2.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// ── Menu configs per role ──
 
 type MenuItem = {
   key: MenuKey;
@@ -139,6 +152,11 @@ const ADMIN_MENUS: MenuItem[] = [
     key: "telaah-internal",
     icon: <IconChecklist />,
     label: "Telaah Internal",
+  },
+  {
+    key: "kirim-revisi-telaah",
+    icon: <IconSend />,
+    label: "Kirim Revisi Telaah Internal ke OPD",
   },
   {
     key: "reviu-inspektorat",
@@ -200,6 +218,11 @@ const PAGE_META: Record<
     subtitle:
       "Ajukan pengajuan teregistrasi ke telaah substantif berjenjang (Kasubbid → Kabid → Sekban).",
   },
+  "kirim-revisi-telaah": {
+    title: "Kirim Revisi Telaah Internal ke OPD",
+    subtitle:
+      "Kirim revisi dari telaah internal ke OPD setelah diteruskan Kasubbid/Kabid.",
+  },
   "telaah-saya": {
     title: "Ruang Telaah",
     subtitle: "Kelola pengajuan yang menunggu telaah Anda.",
@@ -211,7 +234,6 @@ const PAGE_META: Record<
   },
 };
 
-// Inisial pendek untuk avatar Header, per slug OPD.
 const OPD_BADGE_BY_SLUG: Record<string, string> = {
   rsud: "RS",
   dishub: "DH",
@@ -221,7 +243,6 @@ const OPD_BADGE_BY_SLUG: Record<string, string> = {
   dpmptsp: "DP",
 };
 
-// Singkatan resmi OPD (dipakai sebagai nama utama di Header/ProfileDropdown).
 const OPD_SINGKATAN_BY_SLUG: Record<string, string> = {
   rsud: "RSUD",
   dishub: "Dishub",
@@ -231,7 +252,7 @@ const OPD_SINGKATAN_BY_SLUG: Record<string, string> = {
   dpmptsp: "DPMPTSP",
 };
 
-// ── Logo ─────────────────────────────────────────────────────────────────────
+// ── Logo ──
 
 const SiPuspitaLogo = () => (
   <div className="relative">
@@ -249,7 +270,7 @@ const SiPuspitaLogo = () => (
   </div>
 );
 
-// ── NavItem ──────────────────────────────────────────────────────────────────
+// ── NavItem ──
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -288,7 +309,7 @@ const NavItem: React.FC<NavItemProps> = ({
   </div>
 );
 
-// ── Sidebar ──────────────────────────────────────────────────────────────────
+// ── Sidebar ──
 
 interface SidebarProps {
   tampilan: TampilanRole;
@@ -376,7 +397,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 };
 
-// ── Profile Dropdown ──────────────────────────────────────────────────────────
+// ── Profile Dropdown ──
 
 interface ProfileDropdownProps {
   name: string;
@@ -452,7 +473,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
   );
 };
 
-// ── Notifikasi ───────────────────────────────────────────────────────────────
+// ── Helper waktu ──
 
 function formatWaktuRelatif(iso: string): string {
   const detik = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -469,6 +490,24 @@ function formatWaktuRelatif(iso: string): string {
     year: "numeric",
   });
 }
+
+// ── Notification Dropdown (OPD) — dengan pembeda tipe ──
+
+const NOTIFIKASI_TIPE_AKSEN: Record<
+  "verifikasi" | "telaah_internal",
+  { dot: string; badge: string; badgeText: string }
+> = {
+  verifikasi: {
+    dot: "bg-[#1a4e8f]",
+    badge: "border-[#dbe6f7] bg-[#eff6ff] text-[#1a4e8f]",
+    badgeText: "Verifikasi",
+  },
+  telaah_internal: {
+    dot: "bg-[#ea580c]",
+    badge: "border-[#fed7aa] bg-[#fff7ed] text-[#9a3412]",
+    badgeText: "Revisi Telaah",
+  },
+};
 
 const NOTIFIKASI_STATUS_COLOR: Record<string, string> = {
   teregistrasi: "bg-emerald-500",
@@ -543,36 +582,49 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                 Belum ada notifikasi.
               </p>
             ) : (
-              data.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => !n.dibaca && onTandaiDibaca(n.id)}
-                  className={`flex w-full items-start gap-2.5 border-b border-[#f5f5f5] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f7f8fa] ${
-                    n.dibaca ? "" : "bg-[#f0f4fb]/60"
-                  }`}
-                >
-                  <span
-                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                      n.dibaca
-                        ? "bg-transparent"
-                        : (NOTIFIKASI_STATUS_COLOR[n.status] ?? "bg-[#1a4e8f]")
+              data.map((n) => {
+                const tipe = n.tipe ?? "verifikasi";
+                const aksen = NOTIFIKASI_TIPE_AKSEN[tipe];
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => !n.dibaca && onTandaiDibaca(n.id)}
+                    className={`flex w-full items-start gap-2.5 border-b border-[#f5f5f5] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#f7f8fa] ${
+                      n.dibaca ? "" : "bg-[#f0f4fb]/60"
                     }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate text-sm ${n.dibaca ? "font-medium text-slate-700" : "font-semibold text-slate-900"}`}
-                    >
-                      {n.judul}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
-                      {n.pesan}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[#b0bac5]">
-                      {formatWaktuRelatif(n.createdAt)}
-                    </p>
-                  </div>
-                </button>
-              ))
+                  >
+                    <span
+                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                        n.dibaca
+                          ? "bg-transparent"
+                          : tipe === "telaah_internal"
+                            ? aksen.dot
+                            : (NOTIFIKASI_STATUS_COLOR[n.status] ?? aksen.dot)
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`shrink-0 rounded-sm border px-1 py-px text-[9px] font-bold tracking-wide uppercase ${aksen.badge}`}
+                        >
+                          {aksen.badgeText}
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-1 truncate text-sm ${n.dibaca ? "font-medium text-slate-700" : "font-semibold text-slate-900"}`}
+                      >
+                        {n.judul}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                        {n.pesan}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[#b0bac5]">
+                        {formatWaktuRelatif(n.createdAt)}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
@@ -581,13 +633,20 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   );
 };
 
-// ── Dropdown notifikasi untuk user INTERNAL_STRUKTURAL & Admin ──
+// ── Notification Dropdown (Internal) ──
 
 const MILESTONE_NOTIF_COLOR: Record<string, string> = {
   DIAJUKAN: "bg-[#1a4e8f]",
   SUDAH_TELAAH_KASUBBID: "bg-emerald-500",
   SUDAH_TELAAH_KABID: "bg-purple-500",
   SUDAH_TELAAH_SEKBAN: "bg-rose-500",
+  REVISI_DARI_KASUBBID: "bg-orange-500",
+  REVISI_DARI_KABID: "bg-orange-500",
+  REVISI_DARI_SEKBAN: "bg-orange-500",
+  DITERUSKAN_KASUBBID: "bg-amber-500",
+  DITERUSKAN_KABID: "bg-amber-500",
+  DIKIRIM_KE_OPD: "bg-amber-600",
+  SIKLUS_BARU_DIMULAI: "bg-[#1a4e8f]",
 };
 
 interface NotificationDropdownInternalProps {
@@ -695,7 +754,7 @@ const NotificationDropdownInternal: React.FC<
   );
 };
 
-// ── Header ───────────────────────────────────────────────────────────────────
+// ── Header ──
 
 interface HeaderProps {
   tampilan: TampilanRole;
@@ -837,7 +896,7 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-// ── Empty content placeholder ─────────────────────────────────────────────────
+// ── Empty content ──
 
 const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#d8e4f5] bg-white/60">
@@ -858,7 +917,7 @@ const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-// ── Main content area ─────────────────────────────────────────────────────────
+// ── Main content ──
 
 interface MainContentProps {
   activeMenu: MenuKey;
@@ -917,6 +976,8 @@ const MainContent: React.FC<MainContentProps> = ({
         />
       ) : activeMenu === "telaah-internal" ? (
         <TelaahInternalAdmin />
+      ) : activeMenu === "kirim-revisi-telaah" ? (
+        <KirimRevisiTelaahInternal />
       ) : activeMenu === "telaah-saya" ? (
         <TelaahSayaInternal />
       ) : activeMenu === "reviu-inspektorat" ? (
@@ -928,7 +989,7 @@ const MainContent: React.FC<MainContentProps> = ({
   );
 };
 
-// ── Menu default per role ──────────────────────────────────────────────────────
+// ── Default menu per role ──
 
 const DEFAULT_MENU_BY_TAMPILAN: Record<TampilanRole, MenuKey> = {
   OPD: "ajukan-permohonan",
@@ -939,57 +1000,29 @@ const DEFAULT_MENU_BY_TAMPILAN: Record<TampilanRole, MenuKey> = {
   TELAAH_SEKBAN: "telaah-saya",
 };
 
-// ── Page root ─────────────────────────────────────────────────────────────────
+// ── Page root ──
 
 const DashboardContent: React.FC = () => {
   const router = useRouter();
-
   const { user, isLoading: authLoading, logout } = useAuth();
 
-  // ── Guard: baca session langsung dari localStorage ──
-  // TIDAK pakai `user` dari useAuth() karena nilainya masih null saat
-  // hydration pertama (race condition dengan useSyncExternalStore).
-  // Baca localStorage langsung menghilangkan race condition ini.
+  // Guard: baca localStorage langsung untuk hindari race condition
   useEffect(() => {
     const raw = window.localStorage.getItem("si-puspita-session");
-
-    // Belum login sama sekali → ke homepage
     if (!raw) {
       router.replace("/homepage");
       return;
     }
-
     try {
       const session = JSON.parse(raw) as { role?: string };
-
-      // User internal → redirect ke /dashboard-v2/telaah
       if (session.role === "INTERNAL_STRUKTURAL") {
         router.replace("/dashboard-v2/telaah");
       }
-      // Kalau bukan internal → biarkan halaman render (guard tidak redirect)
     } catch {
-      // Session corrupt → anggap tidak valid
       router.replace("/homepage");
     }
   }, [router]);
 
-  // Auto-redirect user INTERNAL_STRUKTURAL ke /dashboard-v2/telaah.
-  // Baca dari localStorage langsung untuk menghindari race condition
-  // dengan useSyncExternalStore (user baru terisi setelah hydration).
-  useEffect(() => {
-    const raw = window.localStorage.getItem("si-puspita-session");
-    if (!raw) return;
-    try {
-      const session = JSON.parse(raw) as { role?: string };
-      if (session.role === "INTERNAL_STRUKTURAL") {
-        router.replace("/dashboard-v2/telaah");
-      }
-    } catch {
-      // session corrupt → biarkan guard utama yang handle
-    }
-  }, [router]);
-
-  // Role dari sesi login.
   const role: UserRole =
     user?.role === "ADMIN"
       ? "ADMIN"
@@ -1016,7 +1049,6 @@ const DashboardContent: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Reset activeMenu saat tampilan berubah (login user lain di tab sama).
   const [prevTampilan, setPrevTampilan] = useState(tampilan);
   if (tampilan !== prevTampilan) {
     setPrevTampilan(tampilan);
@@ -1031,14 +1063,12 @@ const DashboardContent: React.FC = () => {
     getPengajuanById,
   } = usePengajuanStore();
 
-  // Notifikasi OPD (existing)
   const opdId =
     role === "OPD" && user?.opdSlug
       ? String(getOpdBySlug(user.opdSlug)?.id ?? "")
       : undefined;
   const notifikasiOpd = useNotifikasiOPD(opdId || undefined);
 
-  // Notifikasi internal (untuk INTERNAL_STRUKTURAL + ADMIN)
   const notifikasiInternal = useNotifikasiInternal(
     role === "INTERNAL_STRUKTURAL" || role === "ADMIN"
       ? user?.username

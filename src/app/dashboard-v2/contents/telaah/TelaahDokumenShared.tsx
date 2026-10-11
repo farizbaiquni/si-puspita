@@ -3,29 +3,15 @@
 /* ------------------------------------------------------------------ */
 /*  TelaahDokumenShared.tsx                                            */
 /*  Komponen & helper yang DIPAKAI BERSAMA di modul telaah internal.   */
-/*                                                                      */
-/*  ⚠️ File ini adalah COPY dari VerifikasiPengajuan.tsx (bukan import!)*/
-/*  Alasan copy, bukan import:                                          */
-/*   1. Fungsi/komponen di VerifikasiPengajuan.tsx bersifat private     */
-/*      (tidak di-export) — untuk pakai, kita harus MENGUBAH file       */
-/*      existing, yang bertentangan dengan prinsip non-destructive.     */
-/*   2. Kalau existing di-refactor, telaah tidak ikut rusak.            */
-/*   3. Kalau nanti mau konsolidasi ke shared/, tinggal pindah 1 file.  */
-/*                                                                      */
-/*  Yang di-copy:                                                       */
-/*   - buildDokumenTampilan() (checklist 1-8 sesuai SOP)                */
-/*   - flattenDokumenTampilan()                                         */
-/*   - Komponen <DokumenItem />                                          */
-/*   - Komponen <ModalPreviewPDF />                                      */
-/*   - Helper format (formatRupiah, formatTanggal, formatUkuran, dll)    */
 /* ------------------------------------------------------------------ */
 
-import React, { useMemo, useState } from "react";
+import React from "react";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   JenisPiutang,
   UploadedFileRef,
 } from "@/types/types";
+import type { TelaahLevel, TelaahLogEntry } from "@/types/telaah-internal";
 
 /* ==================== Helper format ==================== */
 
@@ -73,6 +59,31 @@ export function labelJenisPiutang(j: JenisPiutang | ""): string {
     "Piutang Lainnya": "Lainnya",
   };
   return j ? map[j] : "-";
+}
+
+/* ==================== Helper: cari entry terakhir per level ============ */
+
+/**
+ * Cari entry TERAKHIR dari level tertentu di riwayat.
+ *
+ * BEDA dari versi lama (yang cari by milestone "SUDAH_TELAAH_X"), versi
+ * ini lebih fleksibel — bisa menemukan entry:
+ *  - SUDAH_TELAAH_*    (approve — semua dokumen "sesuai")
+ *  - REVISI_DARI_*     (reject — ada dokumen "belum_sesuai")
+ *  - DITERUSKAN_*      (teruskan — tanpa checklistDokumen)
+ *
+ * Dipakai untuk menampilkan sub-line "telaah sebelumnya" di bawah tiap
+ * dokumen — supaya baik status approve maupun reject dari level
+ * sebelumnya bisa ditampilkan dengan tepat.
+ */
+export function findEntryByLevel(
+  riwayat: TelaahLogEntry[],
+  level: TelaahLevel,
+): TelaahLogEntry | null {
+  for (let i = riwayat.length - 1; i >= 0; i--) {
+    if (riwayat[i].olehTelaahLevel === level) return riwayat[i];
+  }
+  return null;
 }
 
 /* ==================== Ikon ==================== */
@@ -127,17 +138,9 @@ export const IconClose = () => (
 export interface DokumenEntry {
   key: string;
   label: string;
-  /** null = dokumen ini tidak/belum diupload OPD. */
   file: UploadedFileRef | null;
 }
 
-/**
- * Struktur tampilan daftar dokumen pendukung — mengatur URUTAN dan
- * PENGELOMPOKAN sesuai checklist persyaratan substantif resmi (1-8):
- *  - "single": item bernomor dengan satu file.
- *  - "group": item bernomor TANPA file sendiri (cuma judul syarat),
- *    dengan beberapa sub-dokumen di bawahnya (mis. 5, 6).
- */
 export type DokumenTampilanEntry =
   | {
       type: "single";
@@ -157,7 +160,6 @@ export type DokumenTampilanEntry =
 
 /* ==================== Helper internal ==================== */
 
-/** Ambil UploadedFileRef dari field record (atau null kalau belum diupload). */
 function ambilFile(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
   key: keyof FormulirPenghapusanPiutangOPDRecord,
@@ -168,7 +170,6 @@ function ambilFile(
     : null;
 }
 
-/** Label tampilan untuk opsiRiwayatPenagihan. */
 export function labelOpsiRiwayatPenagihanTampilan(
   opsi: FormulirPenghapusanPiutangOPDRecord["opsiRiwayatPenagihan"],
 ): string {
@@ -177,7 +178,6 @@ export function labelOpsiRiwayatPenagihanTampilan(
   return "-";
 }
 
-/** 5 kemungkinan bukti "tidak mampu bayar" — OPD cukup upload SALAH SATU. */
 export const BUKTI_TIDAK_MAMPU_LABELS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
@@ -201,7 +201,6 @@ export const BUKTI_TIDAK_MAMPU_LABELS: {
   },
 ];
 
-/** Cari mana dari 5 bukti "tidak mampu bayar" yang benar-benar diupload. */
 export function labelBuktiTidakMampuTerupload(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
 ): string {
@@ -211,18 +210,6 @@ export function labelBuktiTidakMampuTerupload(
   return terupload ? terupload.label : "-";
 }
 
-/**
- * Bangun daftar tampilan dokumen pendukung sesuai urutan checklist
- * persyaratan substantif resmi:
- *  1. Surat Pengantar Usulan *
- *  2. Daftar Nominatif Usulan Piutang SKPD *
- *  3. Piutang telah berstatus macet dengan usia piutang > 3 tahun *
- *  4. Usia pencatatan piutang telah memenuhi ketentuan
- *  5. Tidak mempunyai kemampuan untuk menyelesaikan utang * (grup, min. 1)
- *  6. Surat tagihan telah diterbitkan * (grup)
- *  7. Telah dilakukan upaya optimal sesuai ketentuan (opsional)
- *  8. Telah dilakukan kerja sama penagihan pihak ketiga (> Rp 1 Milyar)
- */
 export function buildDokumenTampilan(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
 ): DokumenTampilanEntry[] {
@@ -335,7 +322,6 @@ export function buildDokumenTampilan(
   ];
 }
 
-/** Ratakan struktur tampilan jadi daftar file datar. */
 export function flattenDokumenTampilan(
   tampilan: DokumenTampilanEntry[],
 ): DokumenEntry[] {
@@ -365,7 +351,6 @@ export const ModalPreviewPDF: React.FC<{
       }}
     >
       <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:rounded-sm">
-        {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e2e8f2] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
@@ -378,7 +363,6 @@ export const ModalPreviewPDF: React.FC<{
               <p className="text-[13px] text-[#7a8899]">Preview Dokumen PDF</p>
             </div>
           </div>
-
           <div className="flex shrink-0 items-center gap-2">
             <a
               href={url}
@@ -399,8 +383,6 @@ export const ModalPreviewPDF: React.FC<{
             </button>
           </div>
         </div>
-
-        {/* PDF viewer */}
         <div className="flex-1 overflow-hidden bg-[#f1f3f5] p-2">
           <iframe
             src={url}
@@ -413,7 +395,7 @@ export const ModalPreviewPDF: React.FC<{
   );
 };
 
-/* ==================== Komponen: DokumenItem ==================== */
+/* ==================== Komponen: DokumenItem (read-only, dipakai verifikasi) ===== */
 
 export const DokumenItem: React.FC<{
   nomor: number | null;
@@ -423,7 +405,6 @@ export const DokumenItem: React.FC<{
   keterangan?: string;
 }> = ({ nomor, dok, onPreview, wajib, keterangan }) => {
   const belumUpload = !dok.file;
-
   return (
     <div
       className={`flex items-center gap-3 rounded-sm border px-3 py-2.5 ${
@@ -478,101 +459,6 @@ export const DokumenItem: React.FC<{
           <IconEye />
           Lihat PDF
         </button>
-      )}
-    </div>
-  );
-};
-
-/* ==================== Komponen: DaftarDokumenLengkap ==================== */
-
-/**
- * Komponen gabungan yang menampilkan SELURUH dokumen pendukung
- * (checklist 1-8) dengan sub-grup yang benar, plus state modal
- * preview PDF internal. Dipakai di DetailTelaah supaya tidak perlu
- * ulang menulis kode render + modal.
- *
- * Props:
- *  - pengajuan: record lengkap pengajuan (dari usePengajuanStore).
- *  - judul: judul section (mis. "Dokumen Pendukung").
- */
-export const DaftarDokumenLengkap: React.FC<{
-  pengajuan: FormulirPenghapusanPiutangOPDRecord;
-  judul?: string;
-}> = ({ pengajuan, judul = "Dokumen Pendukung" }) => {
-  const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
-
-  const dokumenTampilan = useMemo(
-    () => buildDokumenTampilan(pengajuan),
-    [pengajuan],
-  );
-  const dokumen = useMemo(
-    () => flattenDokumenTampilan(dokumenTampilan),
-    [dokumenTampilan],
-  );
-
-  return (
-    <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-      {previewDoc?.file && (
-        <ModalPreviewPDF
-          namaFile={previewDoc.file.namaFile}
-          url={previewDoc.file.url}
-          onClose={() => setPreviewDoc(null)}
-        />
-      )}
-
-      <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-        {judul} ({dokumen.filter((d) => d.file).length}/{dokumen.length}{" "}
-        terupload)
-      </div>
-
-      {dokumen.length === 0 ? (
-        <div className="rounded-sm border border-dashed border-[#e2e8f2] py-6 text-center text-[13px] text-[#7a8899]">
-          Tidak ada dokumen yang dilampirkan.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {dokumenTampilan.map((d) =>
-            d.type === "single" ? (
-              <DokumenItem
-                key={d.entry.key}
-                nomor={d.nomor}
-                dok={d.entry}
-                wajib={d.wajib}
-                keterangan={d.keterangan}
-                onPreview={() => setPreviewDoc(d.entry)}
-              />
-            ) : (
-              <div key={`grup-${d.nomor}`} className="space-y-2">
-                {/* Judul syarat grup — tanpa file sendiri */}
-                <div className="flex items-baseline gap-2 px-1 pt-1">
-                  <span className="text-sm font-normal text-gray-500">
-                    {d.nomor}.
-                  </span>
-                  <div className="text-sm leading-snug font-normal text-[#1a1a2e]">
-                    {d.label}
-                    {d.wajib && <span className="text-red-500"> *</span>}
-                    {d.keterangan && (
-                      <span className="ml-1 text-xs font-normal text-[#7a8899]">
-                        (<span className="italic">{d.keterangan}</span>)
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {/* Sub-dokumen menjorok ke kanan */}
-                <div className="ml-6 space-y-2 border-l-2 border-[#e2e8f2] pl-3">
-                  {d.anak.map((entry) => (
-                    <DokumenItem
-                      key={entry.key}
-                      nomor={null}
-                      dok={entry}
-                      onPreview={() => setPreviewDoc(entry)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ),
-          )}
-        </div>
       )}
     </div>
   );

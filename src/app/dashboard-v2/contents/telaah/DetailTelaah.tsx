@@ -4,11 +4,10 @@
 /*  DetailTelaah.tsx                                                   */
 /*  Panel detail satu siklus telaah internal.                          */
 /*                                                                      */
-/*  LAYOUT:                                                            */
-/*   - Kiri (2/3): identity card + dokumen checklist                   */
-/*   - Kanan (1/3): form telaah + timeline riwayat                     */
-/*                                                                      */
-/*  Timeline pakai angka urut (bukan icon centang) untuk milestone.    */
+/*  Aksi dinamis sesuai state:                                          */
+/*   - Naik  : Approve (semua Sesuai) atau Revisi (ada Belum Sesuai)   */
+/*   - Turun : Teruskan                                                 */
+/*   - Lain  : Lihat saja                                               */
 /* ------------------------------------------------------------------ */
 
 import { useState } from "react";
@@ -17,7 +16,7 @@ import {
   TELAAH_MILESTONE_LABEL,
   TELAAH_TAHAP_LABEL,
   TELAAH_TAHAP_BY_LEVEL,
-  bolehApprove,
+  getAksiTelaah,
   type TelaahLevel,
 } from "@/types/telaah-internal";
 import { useTelaahInternalStore } from "@/store/telaah-internal-store";
@@ -68,6 +67,32 @@ const IconCheck = () => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
+  </svg>
+);
+
+const IconX = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
+  </svg>
+);
+
+const IconArrowRight = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -270,6 +295,12 @@ function labelTombolApprove(level: TelaahLevel): string {
   return "Approve Final";
 }
 
+function labelTombolTeruskan(level: TelaahLevel): string {
+  if (level === "kasubbid") return "Teruskan ke Admin";
+  if (level === "kabid") return "Teruskan ke Kasubbid";
+  return "Teruskan";
+}
+
 /* ==================== Sub-komponen: Field dengan icon ==================== */
 
 const Field: React.FC<{
@@ -292,146 +323,145 @@ const Field: React.FC<{
   </div>
 );
 
-/* ==================== Timeline Riwayat (dengan angka urut) ==================== */
+/* ==================== Timeline Riwayat ==================== */
 
 const TimelineRiwayat: React.FC<{
   riwayat: import("@/types/telaah-internal").TelaahLogEntry[];
-}> = ({ riwayat }) => (
-  <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-    <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-      Riwayat Telaah ({riwayat.length} langkah)
-    </div>
-    <div className="space-y-4">
-      {riwayat.map((entry, idx) => {
-        const isLast = idx === riwayat.length - 1;
-        const isCurrent = isLast && entry.milestone !== "SUDAH_TELAAH_SEKBAN";
-        return (
-          <div key={idx} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              <div
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
-                  isCurrent
-                    ? "bg-[#f59e0b] text-white"
-                    : "bg-[#1a4e8f] text-white"
-                }`}
-              >
-                {idx + 1}
-              </div>
-              {!isLast && (
-                <div
-                  className={`my-1 w-px flex-1 ${
-                    isCurrent ? "bg-[#fde68a]" : "bg-[#e2e8f2]"
-                  }`}
-                />
-              )}
-            </div>
+}> = ({ riwayat }) => {
+  const MILESTONE_COLOR: Record<string, string> = {
+    DIAJUKAN: "bg-[#1a4e8f]",
+    SUDAH_TELAAH_KASUBBID: "bg-emerald-500",
+    SUDAH_TELAAH_KABID: "bg-purple-500",
+    SUDAH_TELAAH_SEKBAN: "bg-rose-500",
+    REVISI_DARI_KASUBBID: "bg-orange-500",
+    REVISI_DARI_KABID: "bg-orange-500",
+    REVISI_DARI_SEKBAN: "bg-orange-500",
+    DITERUSKAN_KASUBBID: "bg-amber-500",
+    DITERUSKAN_KABID: "bg-amber-500",
+    DIKIRIM_KE_OPD: "bg-amber-600",
+    SIKLUS_BARU_DIMULAI: "bg-[#1a4e8f]",
+  };
 
-            <div className="min-w-0 flex-1 pb-1">
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-[13px] font-semibold text-[#1a1a2e]">
-                  {TELAAH_MILESTONE_LABEL[entry.milestone]}
-                </span>
-                <span className="text-[11px] text-[#7a8899]">
-                  · {formatTanggalWaktu(entry.timestamp)}
-                </span>
-              </div>
-              <div className="mt-0.5 text-[11.5px] text-[#7a8899]">
-                oleh{" "}
-                <span className="font-mono font-medium text-[#5a6474]">
-                  {entry.olehUsername}
-                </span>{" "}
-                (
-                {entry.olehTelaahLevel === "admin"
-                  ? "Admin"
-                  : TELAAH_LEVEL_LABEL[entry.olehTelaahLevel]}
-                )
-              </div>
-              {entry.catatan && (
-                <div className="mt-2 rounded-sm border border-[#eef1f5] bg-[#f7f8fa] px-3 py-2 text-[12.5px] leading-relaxed whitespace-pre-line text-[#3a4454]">
-                  {entry.catatan}
+  return (
+    <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
+      <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+        Riwayat Telaah ({riwayat.length} langkah)
+      </div>
+      <div className="space-y-4">
+        {riwayat.map((entry, idx) => {
+          const isLast = idx === riwayat.length - 1;
+          const colorClass = MILESTONE_COLOR[entry.milestone] ?? "bg-[#1a4e8f]";
+          return (
+            <div key={idx} className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${colorClass}`}
+                >
+                  {idx + 1}
                 </div>
-              )}
+                {!isLast && <div className="my-1 w-px flex-1 bg-[#e2e8f2]" />}
+              </div>
+
+              <div className="min-w-0 flex-1 pb-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-[13px] font-semibold text-[#1a1a2e]">
+                    {TELAAH_MILESTONE_LABEL[entry.milestone]}
+                  </span>
+                  <span className="text-[11px] text-[#7a8899]">
+                    · {formatTanggalWaktu(entry.timestamp)}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-[#7a8899]">
+                  oleh{" "}
+                  <span className="font-mono font-medium text-[#5a6474]">
+                    {entry.olehUsername}
+                  </span>{" "}
+                  (
+                  {entry.olehTelaahLevel === "admin"
+                    ? "Admin"
+                    : TELAAH_LEVEL_LABEL[entry.olehTelaahLevel]}
+                  )
+                </div>
+                {entry.catatan && (
+                  <div className="mt-2 rounded-sm border border-[#eef1f5] bg-[#f7f8fa] px-3 py-2 text-[12.5px] leading-relaxed whitespace-pre-line text-[#3a4454]">
+                    {entry.catatan}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ==================== Progress Checklist (sidebar) ==================== */
 
 const ProgressChecklist: React.FC<{
   total: number;
-  checked: number;
-}> = ({ total, checked }) => {
-  const isComplete = total > 0 && checked === total;
+  sesuai: number;
+  belumSesuai: number;
+}> = ({ total, sesuai, belumSesuai }) => {
+  const belumDitelaah = total - sesuai - belumSesuai;
+  const adaBelumSesuai = belumSesuai > 0;
+  const isComplete = total > 0 && belumDitelaah === 0 && !adaBelumSesuai;
   const isEmpty = total === 0;
-  const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+  const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100);
+
+  const cardClass = isEmpty
+    ? "border-[#e2e8f2] bg-[#f7f8fa]"
+    : adaBelumSesuai
+      ? "border-[#fecaca] bg-[#fef2f2]"
+      : isComplete
+        ? "border-[#a7f3d0] bg-[#ecfdf5]"
+        : "border-[#fde68a] bg-[#fffbeb]";
+
+  const textClass = isEmpty
+    ? "text-[#7a8899]"
+    : adaBelumSesuai
+      ? "text-[#991b1b]"
+      : isComplete
+        ? "text-[#0f6e56]"
+        : "text-[#b45309]";
+
+  const message = isEmpty
+    ? "Tidak ada dokumen yang diupload."
+    : adaBelumSesuai
+      ? `${belumSesuai} dokumen Belum Sesuai — klik Revisi.`
+      : isComplete
+        ? "Semua dokumen Sesuai. Siap approve."
+        : `${belumDitelaah} dokumen belum ditelaah.`;
 
   return (
-    <div
-      className={`rounded-sm border px-3 py-2.5 ${
-        isEmpty
-          ? "border-[#e2e8f2] bg-[#f7f8fa]"
-          : isComplete
-            ? "border-[#a7f3d0] bg-[#ecfdf5]"
-            : "border-[#fde68a] bg-[#fffbeb]"
-      }`}
-    >
+    <div className={`rounded-sm border px-3 py-2.5 ${cardClass}`}>
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span
-          className={`text-[11.5px] font-bold tracking-wide uppercase ${
-            isEmpty
-              ? "text-[#7a8899]"
-              : isComplete
-                ? "text-[#0f6e56]"
-                : "text-[#b45309]"
-          }`}
+          className={`text-[11.5px] font-bold tracking-wide uppercase ${textClass}`}
         >
           Checklist Dokumen
         </span>
-        <span
-          className={`text-[12.5px] font-bold ${
-            isEmpty
-              ? "text-[#7a8899]"
-              : isComplete
-                ? "text-[#0f6e56]"
-                : "text-[#b45309]"
-          }`}
-        >
-          {checked}/{total}
+        <span className={`text-[12.5px] font-bold ${textClass}`}>
+          {sesuai + belumSesuai}/{total}
         </span>
       </div>
 
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
-        <div
-          className={`h-full transition-all duration-300 ${
-            isEmpty
-              ? "bg-[#d0d7de]"
-              : isComplete
-                ? "bg-[#0f9b6e]"
-                : "bg-[#f59e0b]"
-          }`}
-          style={{ width: `${percent}%` }}
-        />
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-white">
+        {sesuai > 0 && (
+          <div
+            className="h-full bg-[#0f9b6e] transition-all duration-300"
+            style={{ width: `${pct(sesuai)}%` }}
+          />
+        )}
+        {belumSesuai > 0 && (
+          <div
+            className="h-full bg-[#c0392b] transition-all duration-300"
+            style={{ width: `${pct(belumSesuai)}%` }}
+          />
+        )}
       </div>
 
-      <p
-        className={`mt-1.5 text-[10.5px] ${
-          isEmpty
-            ? "text-[#7a8899]"
-            : isComplete
-              ? "text-[#0f6e56]"
-              : "text-[#b45309]"
-        }`}
-      >
-        {isEmpty
-          ? "Tidak ada dokumen yang diupload — tidak perlu checklist."
-          : isComplete
-            ? "Semua dokumen sudah dicek. Siap approve."
-            : `${total - checked} dokumen belum dicek.`}
-      </p>
+      <p className={`mt-1.5 text-[10.5px] ${textClass}`}>{message}</p>
     </div>
   );
 };
@@ -450,7 +480,12 @@ export default function DetailTelaah({
   mode = "internal",
 }: DetailTelaahProps) {
   const { user } = useAuth();
-  const { getTelaahByPengajuanId, approveTelaah } = useTelaahInternalStore();
+  const {
+    getTelaahByPengajuanId,
+    approveTelaah,
+    revisiTelaah,
+    teruskanRevisi,
+  } = useTelaahInternalStore();
   const { getPengajuanById } = usePengajuanStore();
 
   const [catatan, setCatatan] = useState("");
@@ -495,26 +530,29 @@ export default function DetailTelaah({
   }
 
   const level = user?.telaahLevel ?? null;
-  const bolehApproveIni =
+  const aksi = level ? getAksiTelaah(telaah.tahapSaatIni, level) : "lihat_saja";
+
+  // Aksi hanya bisa dilakukan saat mode "internal" & bukan state SELESAI /
+  // MENUNGGU_REVISI_OPD.
+  const bisaAksi =
     mode === "internal" &&
     level !== null &&
     !telaah.selesai &&
-    bolehApprove(telaah.tahapSaatIni, level);
+    (aksi === "telaah" || aksi === "teruskan");
 
   const dokumenFlat = flattenDokumenTampilan(buildDokumenTampilan(pengajuan));
   const dokumenUploaded = dokumenFlat.filter((d) => d.file !== null);
-  const checklistStats = (() => {
-    let checked = 0;
-    const missing: string[] = [];
+
+  // Statistik checklist untuk sidebar & progress.
+  const stats = (() => {
+    let sesuai = 0;
+    let belumSesuai = 0;
     for (const d of dokumenUploaded) {
       const item = checklistDokumen[d.key];
-      if (item?.checked) {
-        checked++;
-      } else {
-        missing.push(d.label);
-      }
+      if (item?.status === "sesuai") sesuai++;
+      else if (item?.status === "belum_sesuai") belumSesuai++;
     }
-    return { total: dokumenUploaded.length, checked, missing };
+    return { total: dokumenUploaded.length, sesuai, belumSesuai };
   })();
 
   const handleChecklistChange = (
@@ -523,24 +561,47 @@ export default function DetailTelaah({
   ) => {
     setChecklistDokumen((prev) => {
       const current: ChecklistItem = prev[docKey] ?? {
-        checked: false,
+        status: null,
         catatan: "",
       };
       return { ...prev, [docKey]: { ...current, ...value } };
     });
-    if (error && error.startsWith("Dokumen belum dicek")) {
-      setError(null);
-    }
+    if (error) setError(null);
   };
 
-  const handleApprove = async () => {
-    if (!level || !user?.username) return;
-    if (isSubmitting) return;
+  // Validasi & submit untuk aksi "telaah" (approve/revisi).
+  const handleSubmitTelaah = async () => {
+    if (!level || !user?.username || isSubmitting) return;
 
-    if (checklistStats.missing.length > 0) {
-      const list = checklistStats.missing.map((l) => `• ${l}`).join("\n");
+    const missing: string[] = [];
+    const missingCatatan: string[] = [];
+
+    for (const d of dokumenUploaded) {
+      const item = checklistDokumen[d.key];
+      if (!item || item.status === null) {
+        missing.push(d.label);
+      } else if (
+        item.status === "belum_sesuai" &&
+        item.catatan.trim().length < 5
+      ) {
+        missingCatatan.push(d.label);
+      }
+    }
+
+    if (missing.length > 0) {
       setError(
-        `Dokumen belum dicek (${checklistStats.missing.length} dari ${checklistStats.total}):\n${list}`,
+        `Masih ada dokumen yang belum ditelaah (${missing.length}):\n${missing
+          .map((l) => `• ${l}`)
+          .join("\n")}`,
+      );
+      return;
+    }
+
+    if (missingCatatan.length > 0) {
+      setError(
+        `Dokumen berstatus "Belum Sesuai" wajib diberi catatan (min. 5 karakter):\n${missingCatatan
+          .map((l) => `• ${l}`)
+          .join("\n")}`,
       );
       return;
     }
@@ -548,31 +609,58 @@ export default function DetailTelaah({
     setIsSubmitting(true);
     setError(null);
 
-    const dokumenUploadedKeys = new Set(dokumenUploaded.map((d) => d.key));
-    const checklistToSend: Record<
-      string,
-      { checked: boolean; catatan: string }
-    > = {};
+    // Kirim hanya item yang upload-nya ada (buang yang null).
+    const uploadedKeys = new Set(dokumenUploaded.map((d) => d.key));
+    const checklistToSend: ChecklistMap = {};
     for (const [key, value] of Object.entries(checklistDokumen)) {
-      if (dokumenUploadedKeys.has(key)) {
+      if (uploadedKeys.has(key)) {
         checklistToSend[key] = {
-          checked: value.checked,
+          status: value.status,
           catatan: value.catatan.trim(),
         };
       }
     }
 
     try {
-      await approveTelaah(
-        telaah.id,
-        level,
-        user.username,
-        catatan,
-        checklistToSend,
-      );
+      const adaBelumSesuai = stats.belumSesuai > 0;
+      if (adaBelumSesuai) {
+        await revisiTelaah(
+          telaah.id,
+          level,
+          user.username,
+          catatan,
+          checklistToSend,
+        );
+      } else {
+        await approveTelaah(
+          telaah.id,
+          level,
+          user.username,
+          catatan,
+          checklistToSend,
+        );
+      }
       onBack();
     } catch (err) {
-      console.error("Gagal approve telaah:", err);
+      console.error("Gagal submit telaah:", err);
+      setError(
+        err instanceof Error ? err.message : "Gagal menyimpan. Coba lagi.",
+      );
+      setIsSubmitting(false);
+    }
+  };
+
+  // Submit untuk aksi "teruskan".
+  const handleTeruskan = async () => {
+    if (!level || !user?.username || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await teruskanRevisi(telaah.id, level, user.username, catatan);
+      onBack();
+    } catch (err) {
+      console.error("Gagal meneruskan revisi:", err);
       setError(
         err instanceof Error ? err.message : "Gagal menyimpan. Coba lagi.",
       );
@@ -581,10 +669,15 @@ export default function DetailTelaah({
   };
 
   const identitasUtama = telaah.nomorRegistrasi || telaah.nomorPengajuan;
+  const siklusKe = telaah.siklusKe ?? 1;
+
+  // Progress info
+  const belumDitelaah = stats.total - stats.sesuai - stats.belumSesuai;
+  const semuaSesuai = stats.total > 0 && stats.sesuai === stats.total;
+  const adaBelumSesuai = stats.belumSesuai > 0;
 
   return (
     <div className="mx-auto w-full max-w-400">
-      {/* Back */}
       <button
         onClick={onBack}
         className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-[#1a4e8f] hover:underline"
@@ -595,9 +688,8 @@ export default function DetailTelaah({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ══════════════════ KOLOM KIRI ══════════════════ */}
         <div className="space-y-4 lg:col-span-2">
-          {/* ══════════════ CARD IDENTITAS ══════════════ */}
+          {/* Card identitas */}
           <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
-            {/* Top bar gradient navy */}
             <div className="bg-linear-to-r from-[#1a4e8f] to-[#2d63a8] px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -617,14 +709,20 @@ export default function DetailTelaah({
                   </div>
                 </div>
 
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-white/25 bg-white/15 px-3 py-1.5 text-[11px] font-bold tracking-wide text-white uppercase backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#fbbf24]" />
-                  {TELAAH_TAHAP_LABEL[telaah.tahapSaatIni]}
-                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-sm border border-white/25 bg-white/15 px-3 py-1.5 text-[11px] font-bold tracking-wide text-white uppercase backdrop-blur-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#fbbf24]" />
+                    {TELAAH_TAHAP_LABEL[telaah.tahapSaatIni]}
+                  </span>
+                  {siklusKe > 1 && (
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-[#fbbf24]/40 bg-[#fbbf24]/20 px-2 py-0.5 text-[10px] font-bold tracking-wide text-[#fbbf24] uppercase">
+                      Siklus ke-{siklusKe}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Grid field info */}
             <div className="grid grid-cols-1 gap-2.5 p-4 sm:grid-cols-2">
               <Field
                 icon={<IconBuilding />}
@@ -683,7 +781,6 @@ export default function DetailTelaah({
               />
             </div>
 
-            {/* Penanggung jawab OPD */}
             <div className="border-t border-[#eef1f5] bg-[#f9fafc] px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eff6ff] text-[#1a4e8f]">
@@ -706,8 +803,8 @@ export default function DetailTelaah({
             </div>
           </div>
 
-          {/* ── Dokumen + Checklist ── */}
-          {mode === "internal" && bolehApproveIni && level ? (
+          {/* Daftar dokumen — interaktif kalau aksi="telaah", read-only kalau selain itu */}
+          {bisaAksi && aksi === "telaah" && level ? (
             <DaftarDokumenDenganChecklist
               pengajuan={pengajuan}
               riwayat={telaah.riwayat}
@@ -721,13 +818,10 @@ export default function DetailTelaah({
               riwayat={telaah.riwayat}
             />
           )}
-
-          {/* ⚡ TimelineRiwayat DIPINDAH ke kolom kanan (lihat di bawah) */}
         </div>
 
         {/* ══════════════════ KOLOM KANAN ══════════════════ */}
         <div className="space-y-4 lg:col-span-1">
-          {/* ── Form Telaah / Status ── */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             {telaah.selesai ? (
               <div>
@@ -751,40 +845,49 @@ export default function DetailTelaah({
                     </div>
                   </div>
                 </div>
-                <p className="mt-3 text-[12px] leading-relaxed text-[#7a8899]">
-                  Telaah internal sudah selesai. Tidak ada aksi lanjutan yang
-                  perlu dilakukan — seluruh tahapan (Kasubbid, Kabid, Sekban)
-                  telah terlewati.
-                </p>
               </div>
-            ) : bolehApproveIni ? (
+            ) : telaah.tahapSaatIni === "MENUNGGU_REVISI_OPD" ? (
               <div>
                 <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-                  Form Telaah — {level ? TELAAH_LEVEL_LABEL[level] : ""}
+                  Status Telaah
+                </div>
+                <div className="rounded-sm border border-[#fed7aa] bg-[#fff7ed] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffedd5] text-[#b45309]">
+                      <IconAlert />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-[#9a3412]">
+                        Menunggu Revisi OPD
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-[#b45309]">
+                        Revisi sudah dikirim ke OPD. Menunggu OPD submit
+                        perbaikan.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : bisaAksi && aksi === "teruskan" && level ? (
+              <div>
+                <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                  Teruskan Revisi — {TELAAH_LEVEL_LABEL[level]}
                 </div>
 
-                <div className="mb-3 rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1e40af]">
-                  Tahap Anda:{" "}
-                  <span className="font-semibold">
-                    {TELAAH_TAHAP_LABEL[TELAAH_TAHAP_BY_LEVEL[level!]]}
-                  </span>
-                </div>
-
-                <div className="mb-3">
-                  <ProgressChecklist
-                    total={checklistStats.total}
-                    checked={checklistStats.checked}
-                  />
+                <div className="mb-3 rounded-sm border border-[#fed7aa] bg-[#fff7ed] px-3 py-2 text-[12px] text-[#9a3412]">
+                  Anda menerima <span className="font-semibold">revisi</span>{" "}
+                  dari level atas. Silakan tambah catatan (opsional) lalu
+                  teruskan ke jenjang berikutnya.
                 </div>
 
                 <label className="mb-1.5 block text-[12px] font-bold text-gray-500">
-                  CATATAN UMUM (opsional)
+                  CATATAN (opsional)
                 </label>
                 <textarea
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
-                  rows={5}
-                  placeholder="Kesimpulan telaah (boleh dikosongkan)..."
+                  rows={4}
+                  placeholder="Tambahkan catatan bila perlu…"
                   className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-gray-50 p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec] focus:bg-white"
                 />
 
@@ -798,18 +901,99 @@ export default function DetailTelaah({
                 )}
 
                 <button
-                  onClick={handleApprove}
+                  onClick={handleTeruskan}
                   disabled={isSubmitting}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-sm bg-[#1a4e8f] py-2.5 text-sm font-semibold text-white transition hover:cursor-pointer hover:bg-[#2d63a8] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-sm bg-[#f59e0b] py-2.5 text-sm font-semibold text-white transition hover:cursor-pointer hover:bg-[#d97706] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <IconCheck />
+                  <IconArrowRight />
+                  {isSubmitting ? "Menyimpan…" : labelTombolTeruskan(level)}
+                </button>
+                <button
+                  onClick={onBack}
+                  disabled={isSubmitting}
+                  className="mt-2 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:cursor-pointer hover:bg-[#f7f8fa] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Batal
+                </button>
+              </div>
+            ) : bisaAksi && aksi === "telaah" && level ? (
+              <div>
+                <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                  Form Telaah — {TELAAH_LEVEL_LABEL[level]}
+                </div>
+
+                <div className="mb-3 rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1e40af]">
+                  Tahap Anda:{" "}
+                  <span className="font-semibold">
+                    {TELAAH_TAHAP_LABEL[TELAAH_TAHAP_BY_LEVEL[level]]}
+                  </span>
+                </div>
+
+                <div className="mb-3">
+                  <ProgressChecklist
+                    total={stats.total}
+                    sesuai={stats.sesuai}
+                    belumSesuai={stats.belumSesuai}
+                  />
+                </div>
+
+                <label className="mb-1.5 block text-[12px] font-bold text-gray-500">
+                  CATATAN UMUM (opsional)
+                </label>
+                <textarea
+                  value={catatan}
+                  onChange={(e) => setCatatan(e.target.value)}
+                  rows={4}
+                  placeholder="Kesimpulan telaah (boleh dikosongkan)…"
+                  className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-gray-50 p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec] focus:bg-white"
+                />
+
+                {error && (
+                  <div className="mt-2 flex items-start gap-2 rounded-sm border border-[#fecaca] bg-[#fef2f2] p-2.5 text-[12px] font-medium text-[#c0392b]">
+                    <span className="mt-0.5 shrink-0">
+                      <IconAlert />
+                    </span>
+                    <span className="whitespace-pre-line">{error}</span>
+                  </div>
+                )}
+
+                {/* Info aksi */}
+                {belumDitelaah > 0 ? (
+                  <div className="mt-3 rounded-sm border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[11.5px] text-[#b45309]">
+                    Masih ada {belumDitelaah} dokumen yang belum ditelaah.
+                  </div>
+                ) : adaBelumSesuai ? (
+                  <div className="mt-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[11.5px] text-[#991b1b]">
+                    Ada {stats.belumSesuai} dokumen{" "}
+                    <span className="font-semibold">Belum Sesuai</span> — klik{" "}
+                    <span className="font-semibold">Revisi</span> untuk
+                    mengembalikan ke jenjang bawah.
+                  </div>
+                ) : semuaSesuai ? (
+                  <div className="mt-3 rounded-sm border border-[#a7f3d0] bg-[#ecfdf5] px-3 py-2 text-[11.5px] text-[#065f46]">
+                    Semua dokumen <span className="font-semibold">Sesuai</span>.
+                    Siap approve.
+                  </div>
+                ) : null}
+
+                <button
+                  onClick={handleSubmitTelaah}
+                  disabled={isSubmitting || belumDitelaah > 0}
+                  className={`mt-4 flex w-full items-center justify-center gap-2 rounded-sm py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    adaBelumSesuai
+                      ? "bg-[#c0392b] hover:bg-[#a63225]"
+                      : "bg-[#1a4e8f] hover:bg-[#2d63a8]"
+                  }`}
+                >
+                  {adaBelumSesuai ? <IconX /> : <IconCheck />}
                   {isSubmitting
                     ? "Menyimpan…"
-                    : level
-                      ? labelTombolApprove(level)
-                      : "Approve"}
+                    : adaBelumSesuai
+                      ? "Revisi"
+                      : level
+                        ? labelTombolApprove(level)
+                        : "Approve"}
                 </button>
-
                 <button
                   onClick={onBack}
                   disabled={isSubmitting}
@@ -853,13 +1037,18 @@ export default function DetailTelaah({
                       Jumlah Langkah
                     </div>
                     <div className="text-[13px] text-[#1a1a2e]">
-                      {telaah.riwayat.length} dari 4
+                      {telaah.riwayat.length} langkah
                     </div>
+                  </div>
+                  <div>
+                    <div className="mb-0.5 text-[10.5px] font-semibold tracking-wider text-[#7a8899] uppercase">
+                      Siklus ke-
+                    </div>
+                    <div className="text-[13px] text-[#1a1a2e]">{siklusKe}</div>
                   </div>
                 </div>
                 <p className="mt-4 rounded-sm border border-dashed border-[#e2e8f2] bg-[#f9fafc] p-3 text-[11.5px] leading-relaxed text-[#7a8899]">
-                  Anda login sebagai Admin — hanya bisa melihat detail. Approve
-                  dilakukan oleh Kasubbid, Kabid, atau Sekban.
+                  Anda login sebagai Admin — hanya bisa melihat detail.
                 </p>
               </div>
             ) : (
@@ -886,7 +1075,6 @@ export default function DetailTelaah({
             )}
           </div>
 
-          {/* ⚡ Timeline Riwayat — DIPINDAH dari kolom kiri ke sini */}
           <TimelineRiwayat riwayat={telaah.riwayat} />
         </div>
       </div>

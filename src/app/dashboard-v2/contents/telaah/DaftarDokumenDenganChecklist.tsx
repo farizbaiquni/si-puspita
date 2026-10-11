@@ -2,13 +2,8 @@
 
 /* ------------------------------------------------------------------ */
 /*  DaftarDokumenDenganChecklist.tsx                                   */
-/*  Layout Opsi E — Tabel dengan Info Row Tipis.                       */
-/*                                                                      */
-/*  Tabel 4 kolom: NO | DOKUMEN | AKSI | CATATAN                       */
-/*   - NO: plain text (tanpa bulatan)                                  */
-/*   - DOKUMEN: label saja (tanpa filename)                            */
-/*   - AKSI: [Lihat] (teks) + [✓ Centang]                              */
-/*   - CATATAN: textarea                                               */
+/*  Tabel telaah dengan RADIO "Sesuai"/"Belum Sesuai" per dokumen.     */
+/*  Textarea catatan hanya muncul jika "Belum Sesuai" (wajib, min 5 ch).*/
 /* ------------------------------------------------------------------ */
 
 import { Fragment, useMemo, useState } from "react";
@@ -21,13 +16,20 @@ import { TELAAH_LEVEL_LABEL } from "@/types/telaah-internal";
 import {
   buildDokumenTampilan,
   flattenDokumenTampilan,
+  findEntryByLevel,
   ModalPreviewPDF,
   type DokumenEntry,
 } from "./TelaahDokumenShared";
 
 /* ==================== Tipe publik ==================== */
 
-export type ChecklistItem = { checked: boolean; catatan: string };
+export type StatusDokumenTelaah = "sesuai" | "belum_sesuai" | null;
+
+export type ChecklistItem = {
+  status: StatusDokumenTelaah;
+  catatan: string;
+};
+
 export type ChecklistMap = Record<string, ChecklistItem>;
 
 interface DaftarDokumenDenganChecklistProps {
@@ -58,14 +60,14 @@ const IconPdfDoc: React.FC<{ muted?: boolean }> = ({ muted = false }) => (
   </svg>
 );
 
-const IconCheck = () => (
+const IconCheckCircle = () => (
   <svg
-    width="13"
-    height="13"
+    width="14"
+    height="14"
     viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2.4"
+    strokeWidth="2"
   >
     <path
       d="M3 8l3.5 3.5L13 4.5"
@@ -75,21 +77,43 @@ const IconCheck = () => (
   </svg>
 );
 
-const IconAlert = () => (
+const IconXCircle = () => (
   <svg
-    width="13"
-    height="13"
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+  </svg>
+);
+
+const IconArrowRight = () => (
+  <svg
+    width="11"
+    height="11"
     viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
     strokeWidth="1.8"
   >
-    <path
-      d="M8 2.5l6 11H2l6-11z"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M8 6.5v3.5M8 12v.5" strokeLinecap="round" />
+    <path d="M6 3.5l4 4.5-4 4.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconUserBadge = () => (
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+  >
+    <circle cx="8" cy="5.5" r="2.5" />
+    <path d="M3 14c0-2.7 2.2-5 5-5s5 2.3 5 5" strokeLinecap="round" />
   </svg>
 );
 
@@ -111,48 +135,18 @@ const IconClipboard = () => (
   </svg>
 );
 
-const IconUserBadge = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-  >
-    <circle cx="8" cy="5.5" r="2.5" />
-    <path d="M3 14c0-2.7 2.2-5 5-5s5 2.3 5 5" strokeLinecap="round" />
-  </svg>
-);
+/* ==================== Helper prev entry ==================== */
 
-/* ==================== Helper ==================== */
-
-function fileOf(dok: DokumenEntry): UploadedFileRef | null {
-  return dok.file;
-}
-
-function findChecklistByLevel(
-  riwayat: TelaahLogEntry[],
-  level: TelaahLevel,
-): { username: string; timestamp: string; checklist: ChecklistMap } | null {
-  const milestone =
-    level === "kasubbid"
-      ? "SUDAH_TELAAH_KASUBBID"
-      : level === "kabid"
-        ? "SUDAH_TELAAH_KABID"
-        : "SUDAH_TELAAH_SEKBAN";
-
-  for (let i = riwayat.length - 1; i >= 0; i--) {
-    const r = riwayat[i];
-    if (r.milestone === milestone) {
-      return {
-        username: r.olehUsername,
-        timestamp: r.timestamp,
-        checklist: r.checklistDokumen ?? {},
-      };
-    }
-  }
-  return null;
+interface PrevLevelInfo {
+  level: TelaahLevel;
+  levelLabel: string;
+  timestamp: string;
+  /** Item checklist untuk dokumen ini (undefined jika level tidak telaah doc ini / teruskan). */
+  docItem: ChecklistItem | undefined;
+  /** True kalau entry ini cuma "diteruskan" — tidak ada checklistDokumen. */
+  isTeruskan: boolean;
+  /** Catatan global dari level ini (untuk milestone turun). */
+  catatanGlobal: string;
 }
 
 const LEVEL_ORDER: TelaahLevel[] = ["kasubbid", "kabid", "sekban"];
@@ -162,19 +156,55 @@ function levelsBeforeCurrent(current: TelaahLevel): TelaahLevel[] {
   return idx <= 0 ? [] : LEVEL_ORDER.slice(0, idx);
 }
 
-type StatusKind = "belum" | "checked" | "kosong";
-
 /* ==================== Header Section (Progress) ==================== */
 
 const HeaderSection: React.FC<{
   totalUploaded: number;
   totalAll: number;
-  totalChecked: number;
-}> = ({ totalUploaded, totalAll, totalChecked }) => {
-  const isComplete = totalUploaded > 0 && totalChecked === totalUploaded;
+  totalSesuai: number;
+  totalBelumSesuai: number;
+}> = ({ totalUploaded, totalAll, totalSesuai, totalBelumSesuai }) => {
+  const totalBelumDitelaah = totalUploaded - totalSesuai - totalBelumSesuai;
+  const isComplete = totalUploaded > 0 && totalBelumDitelaah === 0;
   const isEmpty = totalUploaded === 0;
-  const percent =
-    totalUploaded === 0 ? 0 : Math.round((totalChecked / totalUploaded) * 100);
+  const adaBelumSesuai = totalBelumSesuai > 0;
+
+  const pct = (n: number) =>
+    totalUploaded === 0 ? 0 : (n / totalUploaded) * 100;
+
+  // Warna header kartu: hijau kalau semua Sesuai, merah kalau ada Belum Sesuai,
+  // kuning kalau masih ada yang belum ditelaah, abu kalau kosong.
+  const cardClass = isEmpty
+    ? "border-[#e2e8f2] bg-[#f7f8fa]"
+    : adaBelumSesuai
+      ? "border-[#fecaca] bg-[#fef2f2]"
+      : isComplete
+        ? "border-[#a7f3d0] bg-[#ecfdf5]"
+        : "border-[#fde68a] bg-[#fffbeb]";
+
+  const statusIconBg = isEmpty
+    ? "bg-[#7a8899]"
+    : adaBelumSesuai
+      ? "bg-[#c0392b]"
+      : isComplete
+        ? "bg-[#0f9b6e]"
+        : "bg-[#f59e0b]";
+
+  const statusText = isEmpty
+    ? "Tidak ada dokumen yang diupload"
+    : adaBelumSesuai
+      ? `${totalBelumSesuai} dokumen Belum Sesuai`
+      : isComplete
+        ? "Semua dokumen sudah ditelaah"
+        : `${totalBelumDitelaah} dokumen belum ditelaah`;
+
+  const statusTextClass = isEmpty
+    ? "text-[#5a6474]"
+    : adaBelumSesuai
+      ? "text-[#991b1b]"
+      : isComplete
+        ? "text-[#0f6e56]"
+        : "text-[#b45309]";
 
   return (
     <div className="rounded-sm border-2 border-[#1a4e8f]/15 bg-white p-5">
@@ -187,83 +217,67 @@ const HeaderSection: React.FC<{
             Telaah Dokumen
           </h3>
           <p className="mt-0.5 text-[12px] leading-relaxed text-[#5a6474]">
-            Periksa setiap dokumen di bawah.{" "}
-            <span className="font-semibold text-[#1a4e8f]">
-              Centang semua dokumen yang diupload
-            </span>{" "}
-            — catatan per dokumen bersifat opsional.
+            Pilih <span className="font-semibold text-[#0f6e56]">Sesuai</span>{" "}
+            atau{" "}
+            <span className="font-semibold text-[#c0392b]">Belum Sesuai</span>{" "}
+            untuk setiap dokumen yang diupload. Dokumen &ldquo;Belum
+            Sesuai&rdquo; wajib diberi catatan.
           </p>
         </div>
       </div>
 
-      <div
-        className={`mt-4 rounded-sm border px-4 py-3 ${
-          isEmpty
-            ? "border-[#e2e8f2] bg-[#f7f8fa]"
-            : isComplete
-              ? "border-[#a7f3d0] bg-[#ecfdf5]"
-              : "border-[#fde68a] bg-[#fffbeb]"
-        }`}
-      >
+      <div className={`mt-4 rounded-sm border px-4 py-3 ${cardClass}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${
-                isEmpty
-                  ? "bg-[#7a8899]"
-                  : isComplete
-                    ? "bg-[#0f9b6e]"
-                    : "bg-[#f59e0b]"
-              }`}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${statusIconBg}`}
             >
-              {isComplete ? <IconCheck /> : <IconClipboard />}
+              {adaBelumSesuai ? (
+                <IconXCircle />
+              ) : isComplete ? (
+                <IconCheckCircle />
+              ) : (
+                <IconClipboard />
+              )}
             </span>
             <div className="min-w-0">
-              <div
-                className={`text-[13px] font-bold ${
-                  isEmpty
-                    ? "text-[#5a6474]"
-                    : isComplete
-                      ? "text-[#0f6e56]"
-                      : "text-[#b45309]"
-                }`}
-              >
-                {isEmpty
-                  ? "Tidak ada dokumen yang diupload"
-                  : isComplete
-                    ? "Semua dokumen sudah dicek"
-                    : `${totalUploaded - totalChecked} dokumen belum dicek`}
+              <div className={`text-[13px] font-bold ${statusTextClass}`}>
+                {statusText}
               </div>
               <div className="text-[11px] text-[#7a8899]">
                 {totalUploaded} dari {totalAll} dokumen diupload
               </div>
             </div>
           </div>
-          <div
-            className={`text-[18px] leading-none font-bold ${
-              isEmpty
-                ? "text-[#7a8899]"
-                : isComplete
-                  ? "text-[#0f6e56]"
-                  : "text-[#b45309]"
-            }`}
-          >
-            {totalChecked}
-            <span className="text-[13px] text-[#7a8899]">/{totalUploaded}</span>
+          <div className="flex items-center gap-3 text-[12px] font-semibold">
+            <span className="text-[#0f6e56]">
+              {totalSesuai} <span className="text-[10px]">Sesuai</span>
+            </span>
+            <span className="text-[#c0392b]">
+              {totalBelumSesuai}{" "}
+              <span className="text-[10px]">Belum Sesuai</span>
+            </span>
+            <span className="text-[#7a8899]">
+              {totalBelumDitelaah}{" "}
+              <span className="text-[10px]">Belum ditelaah</span>
+            </span>
           </div>
         </div>
 
-        <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-white">
-          <div
-            className={`h-full transition-all duration-500 ${
-              isEmpty
-                ? "bg-[#d0d7de]"
-                : isComplete
-                  ? "bg-[#0f9b6e]"
-                  : "bg-[#f59e0b]"
-            }`}
-            style={{ width: `${percent}%` }}
-          />
+        {/* Stacked progress bar */}
+        <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-full bg-[#e2e8f0]">
+          {totalSesuai > 0 && (
+            <div
+              className="h-full bg-[#0f9b6e] transition-all duration-500"
+              style={{ width: `${pct(totalSesuai)}%` }}
+            />
+          )}
+          {totalBelumSesuai > 0 && (
+            <div
+              className="h-full bg-[#c0392b] transition-all duration-500"
+              style={{ width: `${pct(totalBelumSesuai)}%` }}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -272,55 +286,90 @@ const HeaderSection: React.FC<{
 
 /* ==================== Sub-line: Telaah Sebelumnya ==================== */
 
-const PrevSubLine: React.FC<{
-  items: {
-    level: TelaahLevel;
-    levelLabel: string;
-    timestamp: string;
-    item: ChecklistItem | undefined;
-  }[];
-}> = ({ items }) => {
-  const valid = items.filter((i) => i.item);
-  if (valid.length === 0) return null;
+const PrevSubLine: React.FC<{ items: PrevLevelInfo[] }> = ({ items }) => {
+  if (items.length === 0) return null;
 
   return (
     <div className="mt-1 space-y-0.5">
-      {valid.map((p, idx) => {
-        const isLast = idx === valid.length - 1;
+      {items.map((p, idx) => {
+        const isLast = idx === items.length - 1;
         const prefix = isLast ? "└" : "├";
+
+        // Kasus "diteruskan" — level ini cuma meneruskan tanpa telaah per-doc.
+        if (p.isTeruskan) {
+          return (
+            <div
+              key={p.level}
+              className="flex items-start gap-1.5 text-[10.5px] leading-tight text-[#5a6474]"
+            >
+              <span className="shrink-0 font-mono text-[#b0bac5]">
+                {prefix}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide text-[#5a6474] uppercase">
+                <IconUserBadge />
+                {p.levelLabel}
+              </span>
+              <span className="shrink-0 text-[#b0bac5]">:</span>
+              <span className="min-w-0 truncate text-[#7a8899] italic">
+                (diteruskan
+                {p.catatanGlobal.trim() ? ` — "${p.catatanGlobal}"` : ""})
+              </span>
+            </div>
+          );
+        }
+
+        const item = p.docItem;
+
+        // Belum ada entry / status null → belum ditelaah.
+        if (!item || item.status === null) {
+          return (
+            <div
+              key={p.level}
+              className="flex items-start gap-1.5 text-[10.5px] leading-tight text-[#5a6474]"
+            >
+              <span className="shrink-0 font-mono text-[#b0bac5]">
+                {prefix}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide text-[#7a8899] uppercase">
+                <IconUserBadge />
+                {p.levelLabel}
+              </span>
+              <span className="shrink-0 text-[#b0bac5]">:</span>
+              <span className="text-[#b0bac5] italic">(belum ditelaah)</span>
+            </div>
+          );
+        }
+
+        const isSesuai = item.status === "sesuai";
+
         return (
           <div
             key={p.level}
             className="flex items-start gap-1.5 text-[10.5px] leading-tight text-[#5a6474]"
           >
             <span className="shrink-0 font-mono text-[#b0bac5]">{prefix}</span>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide text-[#0f6e56] uppercase">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide uppercase">
               <IconUserBadge />
-              {p.levelLabel}
+              <span className={isSesuai ? "text-[#0f6e56]" : "text-[#c0392b]"}>
+                {p.levelLabel}
+              </span>
             </span>
             <span className="shrink-0 text-[#b0bac5]">:</span>
-            {p.item!.catatan.trim() ? (
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-sm border px-1.5 py-px text-[9.5px] font-bold uppercase ${
+                isSesuai
+                  ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]"
+                  : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b]"
+              }`}
+            >
+              {isSesuai ? <IconCheckCircle /> : <IconXCircle />}
+              {isSesuai ? "Sesuai" : "Belum Sesuai"}
+            </span>
+            {!isSesuai && item.catatan.trim() && (
               <span className="min-w-0 truncate text-[#3a4454] italic">
-                &ldquo;{p.item!.catatan}&rdquo;
-              </span>
-            ) : (
-              <span className="min-w-0 truncate text-[#b0bac5] italic">
-                {p.item!.checked
-                  ? "(diperiksa, tanpa catatan)"
-                  : "(belum diperiksa)"}
+                &ldquo;{item.catatan}&rdquo;
               </span>
             )}
-            <span className="ml-1 shrink-0">
-              {p.item!.checked ? (
-                <span className="inline-flex text-[#0f6e56]">
-                  <IconCheck />
-                </span>
-              ) : (
-                <span className="inline-flex text-[#c0392b]">
-                  <IconAlert />
-                </span>
-              )}
-            </span>
           </div>
         );
       })}
@@ -328,20 +377,100 @@ const PrevSubLine: React.FC<{
   );
 };
 
-/* ==================== Catatan Input Inline ==================== */
+/* ==================== Radio Group Inline (custom, browser-safe) ======== */
+
+const RadioStatusGroup: React.FC<{
+  value: StatusDokumenTelaah;
+  onChange: (v: StatusDokumenTelaah) => void;
+}> = ({ value, onChange }) => {
+  const isSesuai = value === "sesuai";
+  const isBelumSesuai = value === "belum_sesuai";
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {/* Tombol Sesuai */}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isSesuai}
+        onClick={() => onChange("sesuai")}
+        className={`flex cursor-pointer items-center gap-1.5 rounded-sm border px-2 py-1 text-[10.5px] font-semibold transition ${
+          isSesuai
+            ? "border-[#0f9b6e] bg-[#ecfdf5] text-[#065f46] shadow-xs"
+            : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#a7f3d0] hover:bg-[#ecfdf5]/50"
+        }`}
+      >
+        <span
+          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+            isSesuai ? "border-[#0f9b6e] bg-white" : "border-[#d0d7de] bg-white"
+          }`}
+        >
+          {isSesuai && (
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0f9b6e]" />
+          )}
+        </span>
+        <span className="whitespace-nowrap">Sesuai</span>
+      </button>
+
+      {/* Tombol Belum Sesuai */}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isBelumSesuai}
+        onClick={() => onChange("belum_sesuai")}
+        className={`flex cursor-pointer items-center gap-1.5 rounded-sm border px-2 py-1 text-[10.5px] font-semibold transition ${
+          isBelumSesuai
+            ? "border-[#c0392b] bg-[#fef2f2] text-[#991b1b] shadow-xs"
+            : "border-[#e2e8f2] bg-white text-[#7a8899] hover:border-[#fecaca] hover:bg-[#fef2f2]/50"
+        }`}
+      >
+        <span
+          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+            isBelumSesuai
+              ? "border-[#c0392b] bg-white"
+              : "border-[#d0d7de] bg-white"
+          }`}
+        >
+          {isBelumSesuai && (
+            <span className="h-1.5 w-1.5 rounded-full bg-[#c0392b]" />
+          )}
+        </span>
+        <span className="whitespace-nowrap">Belum Sesuai</span>
+      </button>
+    </div>
+  );
+};
+
+/* ==================== Catatan Input ==================== */
 
 const CatatanInput: React.FC<{
   value: string;
   onChange: (val: string) => void;
-}> = ({ value, onChange }) => (
-  <textarea
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    rows={2}
-    placeholder="Catatan (opsional)…"
-    className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-white p-2 text-[12px] text-[#1a1a2e] outline-none focus:border-[#a0bdec] focus:bg-[#f0f6fd]"
-  />
-);
+  placeholder?: string;
+  showError?: boolean;
+}> = ({ value, onChange, placeholder, showError }) => {
+  const isError = showError && value.trim().length < 5;
+  return (
+    <div className="space-y-1">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        placeholder={placeholder ?? "Catatan wajib (minimal 5 karakter)…"}
+        className={`w-full resize-none rounded-sm border p-2 text-[12px] transition outline-none ${
+          isError
+            ? "border-red-400 bg-red-50 text-[#1a1a2e] focus:border-red-500"
+            : "border-[#e2e8f2] bg-white text-[#1a1a2e] focus:border-[#a0bdec] focus:bg-[#f0f6fd]"
+        }`}
+      />
+      {isError && (
+        <p className="text-[10.5px] font-medium text-red-600">
+          Catatan wajib diisi minimal 5 karakter.
+        </p>
+      )}
+    </div>
+  );
+};
 
 /* ==================== DocRow ==================== */
 
@@ -350,14 +479,8 @@ interface DocRowProps {
   entry: DokumenEntry;
   wajib?: boolean;
   keterangan?: string;
-  status: StatusKind;
   item: ChecklistItem;
-  prevItems: {
-    level: TelaahLevel;
-    levelLabel: string;
-    timestamp: string;
-    item: ChecklistItem | undefined;
-  }[];
+  prevItems: PrevLevelInfo[];
   onPreview: () => void;
   onChangeChecklist: (next: Partial<ChecklistItem>) => void;
 }
@@ -367,40 +490,44 @@ const DocRow: React.FC<DocRowProps> = ({
   entry,
   wajib,
   keterangan,
-  status,
   item,
   prevItems,
   onPreview,
   onChangeChecklist,
 }) => {
   const uploaded = !!entry.file;
+  const isBelumSesuai = item.status === "belum_sesuai";
 
   return (
     <tr
       className={`border-b border-[#eef1f5] transition-colors ${
-        status === "checked"
+        item.status === "sesuai"
           ? "bg-[#f7fdfa]"
-          : uploaded
-            ? "hover:bg-[#f7f8fa]"
-            : "bg-[#fbfbfc]"
+          : isBelumSesuai
+            ? "bg-[#fef6f6]"
+            : uploaded
+              ? "hover:bg-[#f7f8fa]"
+              : "bg-[#fbfbfc]"
       }`}
     >
-      {/* NO — plain text, tanpa bulatan */}
+      {/* NO */}
       <td className="w-10 px-3 py-3 align-top">
         <span
           className={`text-[12.5px] font-bold ${
-            status === "checked"
+            item.status === "sesuai"
               ? "text-[#0f9b6e]"
-              : status === "kosong"
-                ? "text-[#b0bac5]"
-                : "text-[#1a4e8f]"
+              : isBelumSesuai
+                ? "text-[#c0392b]"
+                : uploaded
+                  ? "text-[#1a4e8f]"
+                  : "text-[#b0bac5]"
           }`}
         >
           {nomor !== null ? `${nomor}.` : ""}
         </span>
       </td>
 
-      {/* DOKUMEN — hanya label (filename dihilangkan) */}
+      {/* DOKUMEN */}
       <td className="px-3 py-3 align-top">
         <div className="flex items-start gap-2.5">
           <div
@@ -431,64 +558,48 @@ const DocRow: React.FC<DocRowProps> = ({
                 ({keterangan})
               </p>
             )}
-
             <PrevSubLine items={prevItems} />
           </div>
         </div>
       </td>
 
-      {/* AKSI — Lihat (teks) + Centang */}
-      <td className="w-40 px-3 py-3 align-top">
+      {/* AKSI — Radio + Lihat */}
+      <td className="w-56 px-3 py-3 align-top">
         {uploaded ? (
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onPreview}
-              className="flex h-8 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white px-3 text-[11px] font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
-            >
-              Lihat
-            </button>
-            <label
-              title={
-                item.checked ? "Batalkan centang" : "Centang sudah diperiksa"
-              }
-              className={`flex h-8 cursor-pointer items-center gap-1.5 rounded-sm border px-2.5 transition ${
-                item.checked
-                  ? "border-[#a7f3d0] bg-[#ecfdf5]"
-                  : "border-[#e2e8f2] bg-white hover:border-[#a0bdec] hover:bg-[#f0f6fd]"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={item.checked}
-                onChange={(e) =>
-                  onChangeChecklist({ checked: e.target.checked })
-                }
-                className="h-4 w-4 shrink-0 cursor-pointer rounded-sm border-gray-300 accent-[#0f9b6e]"
-              />
-              <span
-                className={`text-[10.5px] font-bold whitespace-nowrap ${
-                  item.checked ? "text-[#065f46]" : "text-[#5a6474]"
-                }`}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onPreview}
+                className="flex h-7 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white px-2.5 text-[11px] font-semibold text-[#1a4e8f] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
               >
-                {item.checked ? "Dicek" : "Centang"}
-              </span>
-            </label>
+                Lihat
+              </button>
+              <RadioStatusGroup
+                value={item.status}
+                onChange={(v) => onChangeChecklist({ status: v })}
+              />
+            </div>
           </div>
         ) : (
           <span className="text-[11px] text-[#b0bac5] italic">—</span>
         )}
       </td>
 
-      {/* CATATAN */}
-      <td className="w-64 px-3 py-3 align-top">
-        {uploaded ? (
+      {/* CATATAN — hanya muncul jika Belum Sesuai */}
+      <td className="w-72 px-3 py-3 align-top">
+        {uploaded && isBelumSesuai ? (
           <CatatanInput
             value={item.catatan}
             onChange={(val) => onChangeChecklist({ catatan: val })}
+            showError
           />
         ) : (
-          <span className="text-[11px] text-[#b0bac5] italic">—</span>
+          <span className="text-[11px] text-[#b0bac5] italic">
+            {uploaded && item.status === "sesuai"
+              ? "(Sesuai — tidak perlu catatan)"
+              : "—"}
+          </span>
         )}
       </td>
     </tr>
@@ -516,39 +627,64 @@ export default function DaftarDokumenDenganChecklist({
   );
 
   const previousLevels = levelsBeforeCurrent(currentLevel);
-  const previousChecklists = useMemo(
-    () =>
-      previousLevels.map((level) => ({
-        level,
-        levelLabel: TELAAH_LEVEL_LABEL[level],
-        data: findChecklistByLevel(riwayat, level),
-      })),
-    [previousLevels, riwayat],
-  );
+
+  // Untuk setiap level sebelumnya, cari entry terakhirnya. Karena riwayat
+  // append-only dan bisa multi-siklus, kita ambil entry PALING AKHIR dari
+  // level itu yang berada di siklus saat ini (cari dari belakang, stop
+  // kalau ketemu DIAJUKAN/SIKLUS_BARU_DIMULAI).
+  const previousEntries = useMemo(() => {
+    // Cari index awal siklus saat ini.
+    let siklusAwalIdx = 0;
+    for (let i = riwayat.length - 1; i >= 0; i--) {
+      if (
+        riwayat[i].milestone === "DIAJUKAN" ||
+        riwayat[i].milestone === "SIKLUS_BARU_DIMULAI"
+      ) {
+        siklusAwalIdx = i;
+        break;
+      }
+    }
+    const riwayatSiklusIni = riwayat.slice(siklusAwalIdx);
+
+    return previousLevels.map((level) => ({
+      level,
+      levelLabel: TELAAH_LEVEL_LABEL[level],
+      entry: findEntryByLevel(riwayatSiklusIni, level),
+    }));
+  }, [riwayat, previousLevels]);
 
   const totalUploaded = dokumenFlat.filter((d) => d.file !== null).length;
   const totalAll = dokumenFlat.length;
-  const totalChecked = dokumenFlat.filter(
-    (d) => d.file !== null && checklistDokumen[d.key]?.checked,
+
+  const totalSesuai = dokumenFlat.filter(
+    (d) => d.file !== null && checklistDokumen[d.key]?.status === "sesuai",
+  ).length;
+  const totalBelumSesuai = dokumenFlat.filter(
+    (d) =>
+      d.file !== null && checklistDokumen[d.key]?.status === "belum_sesuai",
   ).length;
 
-  const getStatus = (key: string, uploaded: boolean): StatusKind => {
-    if (!uploaded) return "kosong";
-    return checklistDokumen[key]?.checked ? "checked" : "belum";
-  };
-
-  const buildPrevForDoc = (docKey: string) =>
-    previousChecklists
+  const buildPrevForDoc = (docKey: string): PrevLevelInfo[] => {
+    return previousEntries
       .map((p) => {
-        if (!p.data) return null;
+        if (!p.entry) return null;
+        const entry = p.entry;
+        const hasChecklist = !!entry.checklistDokumen;
+        const isTeruskan =
+          entry.milestone.startsWith("DITERUSKAN_") ||
+          entry.milestone === "DIKIRIM_KE_OPD";
+
         return {
           level: p.level,
           levelLabel: p.levelLabel,
-          timestamp: p.data.timestamp,
-          item: p.data.checklist[docKey],
+          timestamp: entry.timestamp,
+          docItem: hasChecklist ? entry.checklistDokumen![docKey] : undefined,
+          isTeruskan,
+          catatanGlobal: entry.catatan,
         };
       })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
+      .filter((x): x is PrevLevelInfo => x !== null);
+  };
 
   const renderDocRow = (
     entry: DokumenEntry,
@@ -558,10 +694,8 @@ export default function DaftarDokumenDenganChecklist({
       keterangan?: string;
     },
   ) => {
-    const uploaded = !!entry.file;
-    const status = getStatus(entry.key, uploaded);
     const item = checklistDokumen[entry.key] ?? {
-      checked: false,
+      status: null,
       catatan: "",
     };
     return (
@@ -571,7 +705,6 @@ export default function DaftarDokumenDenganChecklist({
         entry={entry}
         wajib={opts.wajib}
         keterangan={opts.keterangan}
-        status={status}
         item={item}
         prevItems={buildPrevForDoc(entry.key)}
         onPreview={() => setPreviewDoc(entry)}
@@ -593,7 +726,8 @@ export default function DaftarDokumenDenganChecklist({
       <HeaderSection
         totalUploaded={totalUploaded}
         totalAll={totalAll}
-        totalChecked={totalChecked}
+        totalSesuai={totalSesuai}
+        totalBelumSesuai={totalBelumSesuai}
       />
 
       {dokumenFlat.length === 0 ? (
@@ -613,10 +747,10 @@ export default function DaftarDokumenDenganChecklist({
                   <th className="px-3 py-2.5 text-left text-[10.5px] font-bold tracking-wider text-[#5a6474] uppercase">
                     Dokumen
                   </th>
-                  <th className="w-40 px-3 py-2.5 text-left text-[10.5px] font-bold tracking-wider text-[#5a6474] uppercase">
-                    Aksi
+                  <th className="w-56 px-3 py-2.5 text-left text-[10.5px] font-bold tracking-wider text-[#5a6474] uppercase">
+                    Status
                   </th>
-                  <th className="w-64 px-3 py-2.5 text-left text-[10.5px] font-bold tracking-wider text-[#5a6474] uppercase">
+                  <th className="w-72 px-3 py-2.5 text-left text-[10.5px] font-bold tracking-wider text-[#5a6474] uppercase">
                     Catatan
                   </th>
                 </tr>
@@ -630,10 +764,8 @@ export default function DaftarDokumenDenganChecklist({
                       keterangan: tampilan.keterangan,
                     });
                   }
-
                   return (
                     <Fragment key={`grup-${tampilan.nomor}`}>
-                      {/* Group header */}
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f6fd]">
                         <td className="w-10 px-3 py-2 align-middle">
                           <span className="text-[12.5px] font-bold text-[#1a4e8f]">
@@ -654,8 +786,6 @@ export default function DaftarDokumenDenganChecklist({
                           )}
                         </td>
                       </tr>
-
-                      {/* Sub-dokumen rows (kolom NO kosong) */}
                       {tampilan.anak.map((entry) =>
                         renderDocRow(entry, { nomor: null }),
                       )}
@@ -672,36 +802,44 @@ export default function DaftarDokumenDenganChecklist({
               if (tampilan.type === "single") {
                 const entry = tampilan.entry;
                 const uploaded = !!entry.file;
-                const status = getStatus(entry.key, uploaded);
                 const item = checklistDokumen[entry.key] ?? {
-                  checked: false,
+                  status: null,
                   catatan: "",
                 };
                 const prevItems = buildPrevForDoc(entry.key);
+                const isBelumSesuai = item.status === "belum_sesuai";
 
                 return (
                   <div
                     key={entry.key}
                     className={`overflow-hidden rounded-sm border ${
-                      status === "checked"
+                      item.status === "sesuai"
                         ? "border-[#a7f3d0] bg-white"
-                        : uploaded
-                          ? "border-[#e2e8f2] bg-white"
-                          : "border-dashed border-[#e2e8f2] bg-[#fbfbfc]"
+                        : isBelumSesuai
+                          ? "border-[#fecaca] bg-white"
+                          : uploaded
+                            ? "border-[#e2e8f2] bg-white"
+                            : "border-dashed border-[#e2e8f2] bg-[#fbfbfc]"
                     }`}
                   >
                     <div
                       className={`flex items-start gap-2.5 p-3 ${
-                        status === "checked" ? "bg-[#f7fdfa]" : ""
+                        item.status === "sesuai"
+                          ? "bg-[#f7fdfa]"
+                          : isBelumSesuai
+                            ? "bg-[#fef6f6]"
+                            : ""
                       }`}
                     >
                       <span
                         className={`mt-0.5 text-[12.5px] font-bold ${
-                          status === "checked"
+                          item.status === "sesuai"
                             ? "text-[#0f9b6e]"
-                            : status === "kosong"
-                              ? "text-[#b0bac5]"
-                              : "text-[#1a4e8f]"
+                            : isBelumSesuai
+                              ? "text-[#c0392b]"
+                              : uploaded
+                                ? "text-[#1a4e8f]"
+                                : "text-[#b0bac5]"
                         }`}
                       >
                         {tampilan.nomor !== null ? `${tampilan.nomor}.` : ""}
@@ -735,51 +873,42 @@ export default function DaftarDokumenDenganChecklist({
 
                     {uploaded && (
                       <>
-                        <div className="flex items-center gap-1.5 border-t border-[#eef1f5] bg-white px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-1.5 border-t border-[#eef1f5] bg-white px-3 py-2">
                           <button
                             type="button"
                             onClick={() => setPreviewDoc(entry)}
-                            className="flex h-8 flex-1 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white text-[11px] font-semibold text-[#1a4e8f] transition hover:bg-[#e8f0fb]"
+                            className="flex h-7 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white px-2.5 text-[11px] font-semibold text-[#1a4e8f] transition hover:bg-[#e8f0fb]"
                           >
                             Lihat
                           </button>
-                          <label
-                            className={`flex h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-sm border text-[11px] font-bold transition ${
-                              item.checked
-                                ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]"
-                                : "border-[#e2e8f2] bg-white text-[#5a6474]"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={item.checked}
-                              onChange={(e) =>
-                                onChecklistChange(entry.key, {
-                                  checked: e.target.checked,
-                                })
-                              }
-                              className="h-4 w-4 shrink-0 cursor-pointer rounded-sm border-gray-300 accent-[#0f9b6e]"
-                            />
-                            {item.checked ? "Sudah dicek" : "Centang"}
-                          </label>
-                        </div>
-                        <div className="border-t border-[#eef1f5] px-3 py-2.5">
-                          <label className="mb-1 block text-[10px] font-bold tracking-wider text-[#1a4e8f] uppercase">
-                            Catatan Anda
-                          </label>
-                          <CatatanInput
-                            value={item.catatan}
-                            onChange={(val) =>
-                              onChecklistChange(entry.key, { catatan: val })
+                          <RadioStatusGroup
+                            value={item.status}
+                            onChange={(v) =>
+                              onChecklistChange(entry.key, { status: v })
                             }
                           />
                         </div>
+                        {isBelumSesuai && (
+                          <div className="border-t border-[#eef1f5] bg-[#fef6f6] px-3 py-2.5">
+                            <label className="mb-1 block text-[10px] font-bold tracking-wider text-[#c0392b] uppercase">
+                              Catatan Anda (wajib)
+                            </label>
+                            <CatatanInput
+                              value={item.catatan}
+                              onChange={(val) =>
+                                onChecklistChange(entry.key, { catatan: val })
+                              }
+                              showError
+                            />
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
                 );
               }
 
+              // Group
               return (
                 <Fragment key={`grup-${tampilan.nomor}`}>
                   <div className="flex items-start gap-2.5 rounded-sm border border-[#dbe6f7] bg-[#f0f6fd] px-3 py-2.5">
@@ -803,30 +932,35 @@ export default function DaftarDokumenDenganChecklist({
 
                   {tampilan.anak.map((entry) => {
                     const uploaded = !!entry.file;
-                    const status = getStatus(entry.key, uploaded);
                     const item = checklistDokumen[entry.key] ?? {
-                      checked: false,
+                      status: null,
                       catatan: "",
                     };
                     const prevItems = buildPrevForDoc(entry.key);
+                    const isBelumSesuai = item.status === "belum_sesuai";
 
                     return (
                       <div
                         key={entry.key}
                         className={`overflow-hidden rounded-sm border ${
-                          status === "checked"
+                          item.status === "sesuai"
                             ? "border-[#a7f3d0] bg-white"
-                            : uploaded
-                              ? "border-[#e2e8f2] bg-white"
-                              : "border-dashed border-[#e2e8f2] bg-[#fbfbfc]"
+                            : isBelumSesuai
+                              ? "border-[#fecaca] bg-white"
+                              : uploaded
+                                ? "border-[#e2e8f2] bg-white"
+                                : "border-dashed border-[#e2e8f2] bg-[#fbfbfc]"
                         }`}
                       >
                         <div
                           className={`flex items-start gap-2.5 p-3 ${
-                            status === "checked" ? "bg-[#f7fdfa]" : ""
+                            item.status === "sesuai"
+                              ? "bg-[#f7fdfa]"
+                              : isBelumSesuai
+                                ? "bg-[#fef6f6]"
+                                : ""
                           }`}
                         >
-                          {/* No placeholder untuk sub-dokumen */}
                           <div className="w-5 shrink-0" />
                           <div
                             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ${
@@ -854,47 +988,37 @@ export default function DaftarDokumenDenganChecklist({
 
                         {uploaded && (
                           <>
-                            <div className="flex items-center gap-1.5 border-t border-[#eef1f5] bg-white px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-1.5 border-t border-[#eef1f5] bg-white px-3 py-2">
                               <button
                                 type="button"
                                 onClick={() => setPreviewDoc(entry)}
-                                className="flex h-8 flex-1 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white text-[11px] font-semibold text-[#1a4e8f] transition hover:bg-[#e8f0fb]"
+                                className="flex h-7 items-center justify-center rounded-sm border border-[#e2e8f2] bg-white px-2.5 text-[11px] font-semibold text-[#1a4e8f] transition hover:bg-[#e8f0fb]"
                               >
                                 Lihat
                               </button>
-                              <label
-                                className={`flex h-8 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-sm border text-[11px] font-bold transition ${
-                                  item.checked
-                                    ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]"
-                                    : "border-[#e2e8f2] bg-white text-[#5a6474]"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={item.checked}
-                                  onChange={(e) =>
-                                    onChecklistChange(entry.key, {
-                                      checked: e.target.checked,
-                                    })
-                                  }
-                                  className="h-4 w-4 shrink-0 cursor-pointer rounded-sm border-gray-300 accent-[#0f9b6e]"
-                                />
-                                {item.checked ? "Sudah dicek" : "Centang"}
-                              </label>
-                            </div>
-                            <div className="border-t border-[#eef1f5] px-3 py-2.5">
-                              <label className="mb-1 block text-[10px] font-bold tracking-wider text-[#1a4e8f] uppercase">
-                                Catatan Anda
-                              </label>
-                              <CatatanInput
-                                value={item.catatan}
-                                onChange={(val) =>
-                                  onChecklistChange(entry.key, {
-                                    catatan: val,
-                                  })
+                              <RadioStatusGroup
+                                value={item.status}
+                                onChange={(v) =>
+                                  onChecklistChange(entry.key, { status: v })
                                 }
                               />
                             </div>
+                            {isBelumSesuai && (
+                              <div className="border-t border-[#eef1f5] bg-[#fef6f6] px-3 py-2.5">
+                                <label className="mb-1 block text-[10px] font-bold tracking-wider text-[#c0392b] uppercase">
+                                  Catatan Anda (wajib)
+                                </label>
+                                <CatatanInput
+                                  value={item.catatan}
+                                  onChange={(val) =>
+                                    onChecklistChange(entry.key, {
+                                      catatan: val,
+                                    })
+                                  }
+                                  showError
+                                />
+                              </div>
+                            )}
                           </>
                         )}
                       </div>

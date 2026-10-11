@@ -2,41 +2,29 @@
 
 /* ------------------------------------------------------------------ */
 /*  DaftarDokumenReadOnly.tsx                                          */
-/*  Panel dokumen pendukung READ-ONLY — dipakai di DetailTelaah saat:  */
-/*   - mode="admin"                                                    */
-/*   - atau user internal yang BUKAN gilirannya                        */
-/*   - atau telaah sudah selesai                                       */
-/*                                                                      */
-/*  Tabel 2 kolom: NO | DOKUMEN | AKSI (Lihat)                        */
-/*  - Telaah sebelumnya tampil sebagai sub-line di bawah nama dokumen  */
-/*  - Klik [Lihat] → modal preview PDF                                 */
-/*  - Nol interaktivitas (tidak ada checkbox/textarea)                 */
+/*  Panel dokumen pendukung READ-ONLY — untuk admin / non-giliran /    */
+/*  telaah selesai. Tampilkan status per-dokumen dari tiap level.      */
 /* ------------------------------------------------------------------ */
 
 import { Fragment, useMemo, useState } from "react";
-import type {
-  FormulirPenghapusanPiutangOPDRecord,
-  UploadedFileRef,
-} from "@/types/types";
+import type { FormulirPenghapusanPiutangOPDRecord } from "@/types/types";
 import type { TelaahLevel, TelaahLogEntry } from "@/types/telaah-internal";
 import { TELAAH_LEVEL_LABEL } from "@/types/telaah-internal";
 import {
   buildDokumenTampilan,
   flattenDokumenTampilan,
+  findEntryByLevel,
   ModalPreviewPDF,
   type DokumenEntry,
 } from "./TelaahDokumenShared";
 
-/* ==================== Tipe publik ==================== */
-
 interface DaftarDokumenReadOnlyProps {
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
-  /** Riwayat telaah lengkap — untuk menampilkan telaah sebelumnya. */
   riwayat: TelaahLogEntry[];
 }
 
-type ChecklistItem = { checked: boolean; catatan: string };
-type ChecklistMap = Record<string, ChecklistItem>;
+type StatusDokumenTelaah = "sesuai" | "belum_sesuai" | null;
+type ChecklistItem = { status: StatusDokumenTelaah; catatan: string };
 
 /* ==================== Ikon ==================== */
 
@@ -60,8 +48,8 @@ const IconPdfDoc: React.FC<{ muted?: boolean }> = ({ muted = false }) => (
 
 const IconCheck = () => (
   <svg
-    width="13"
-    height="13"
+    width="12"
+    height="12"
     viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
@@ -75,21 +63,30 @@ const IconCheck = () => (
   </svg>
 );
 
-const IconAlert = () => (
+const IconX = () => (
   <svg
-    width="13"
-    height="13"
+    width="12"
+    height="12"
     viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.8"
+    strokeWidth="2.4"
   >
-    <path
-      d="M8 2.5l6 11H2l6-11z"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M8 6.5v3.5M8 12v.5" strokeLinecap="round" />
+    <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+  </svg>
+);
+
+const IconUserBadge = () => (
+  <svg
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+  >
+    <circle cx="8" cy="5.5" r="2.5" />
+    <path d="M3 14c0-2.7 2.2-5 5-5s5 2.3 5 5" strokeLinecap="round" />
   </svg>
 );
 
@@ -111,20 +108,6 @@ const IconClipboard = () => (
   </svg>
 );
 
-const IconUserBadge = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.7"
-  >
-    <circle cx="8" cy="5.5" r="2.5" />
-    <path d="M3 14c0-2.7 2.2-5 5-5s5 2.3 5 5" strokeLinecap="round" />
-  </svg>
-);
-
 const IconLock = () => (
   <svg
     width="13"
@@ -139,89 +122,103 @@ const IconLock = () => (
   </svg>
 );
 
-/* ==================== Helper ==================== */
+/* ==================== Helper prev entry ==================== */
 
-function fileOf(dok: DokumenEntry): UploadedFileRef | null {
-  return dok.file;
-}
-
-function findChecklistByLevel(
-  riwayat: TelaahLogEntry[],
-  level: TelaahLevel,
-): { username: string; timestamp: string; checklist: ChecklistMap } | null {
-  const milestone =
-    level === "kasubbid"
-      ? "SUDAH_TELAAH_KASUBBID"
-      : level === "kabid"
-        ? "SUDAH_TELAAH_KABID"
-        : "SUDAH_TELAAH_SEKBAN";
-
-  for (let i = riwayat.length - 1; i >= 0; i--) {
-    const r = riwayat[i];
-    if (r.milestone === milestone) {
-      return {
-        username: r.olehUsername,
-        timestamp: r.timestamp,
-        checklist: r.checklistDokumen ?? {},
-      };
-    }
-  }
-  return null;
+interface PrevLevelInfo {
+  level: TelaahLevel;
+  levelLabel: string;
+  timestamp: string;
+  docItem: ChecklistItem | undefined;
+  isTeruskan: boolean;
+  catatanGlobal: string;
 }
 
 const LEVEL_ORDER: TelaahLevel[] = ["kasubbid", "kabid", "sekban"];
 
-/* ==================== Sub-line: Telaah Sebelumnya ==================== */
+/* ==================== Sub-line ==================== */
 
-const PrevSubLine: React.FC<{
-  items: {
-    level: TelaahLevel;
-    levelLabel: string;
-    timestamp: string;
-    item: ChecklistItem | undefined;
-  }[];
-}> = ({ items }) => {
-  const valid = items.filter((i) => i.item);
-  if (valid.length === 0) return null;
+const PrevSubLine: React.FC<{ items: PrevLevelInfo[] }> = ({ items }) => {
+  if (items.length === 0) return null;
 
   return (
     <div className="mt-1 space-y-0.5">
-      {valid.map((p, idx) => {
-        const isLast = idx === valid.length - 1;
+      {items.map((p, idx) => {
+        const isLast = idx === items.length - 1;
         const prefix = isLast ? "└" : "├";
+
+        if (p.isTeruskan) {
+          return (
+            <div
+              key={p.level}
+              className="flex items-start gap-1.5 text-[10.5px] leading-tight text-[#5a6474]"
+            >
+              <span className="shrink-0 font-mono text-[#b0bac5]">
+                {prefix}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide text-[#5a6474] uppercase">
+                <IconUserBadge />
+                {p.levelLabel}
+              </span>
+              <span className="shrink-0 text-[#b0bac5]">:</span>
+              <span className="min-w-0 truncate text-[#7a8899] italic">
+                (diteruskan
+                {p.catatanGlobal.trim() ? ` — "${p.catatanGlobal}"` : ""})
+              </span>
+            </div>
+          );
+        }
+
+        const item = p.docItem;
+
+        if (!item || item.status === null) {
+          return (
+            <div
+              key={p.level}
+              className="flex items-start gap-1.5 text-[10.5px] leading-tight text-[#5a6474]"
+            >
+              <span className="shrink-0 font-mono text-[#b0bac5]">
+                {prefix}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide text-[#7a8899] uppercase">
+                <IconUserBadge />
+                {p.levelLabel}
+              </span>
+              <span className="shrink-0 text-[#b0bac5]">:</span>
+              <span className="text-[#b0bac5] italic">(belum ditelaah)</span>
+            </div>
+          );
+        }
+
+        const isSesuai = item.status === "sesuai";
+
         return (
           <div
             key={p.level}
             className="flex items-start gap-1.5 text-[10.5px] leading-tight text-[#5a6474]"
           >
             <span className="shrink-0 font-mono text-[#b0bac5]">{prefix}</span>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide text-[#0f6e56] uppercase">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-wide uppercase">
               <IconUserBadge />
-              {p.levelLabel}
+              <span className={isSesuai ? "text-[#0f6e56]" : "text-[#c0392b]"}>
+                {p.levelLabel}
+              </span>
             </span>
             <span className="shrink-0 text-[#b0bac5]">:</span>
-            {p.item!.catatan.trim() ? (
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-sm border px-1.5 py-px text-[9.5px] font-bold uppercase ${
+                isSesuai
+                  ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]"
+                  : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b]"
+              }`}
+            >
+              {isSesuai ? <IconCheck /> : <IconX />}
+              {isSesuai ? "Sesuai" : "Belum Sesuai"}
+            </span>
+            {!isSesuai && item.catatan.trim() && (
               <span className="min-w-0 truncate text-[#3a4454] italic">
-                &ldquo;{p.item!.catatan}&rdquo;
-              </span>
-            ) : (
-              <span className="min-w-0 truncate text-[#b0bac5] italic">
-                {p.item!.checked
-                  ? "(diperiksa, tanpa catatan)"
-                  : "(belum diperiksa)"}
+                &ldquo;{item.catatan}&rdquo;
               </span>
             )}
-            <span className="ml-1 shrink-0">
-              {p.item!.checked ? (
-                <span className="inline-flex text-[#0f6e56]">
-                  <IconCheck />
-                </span>
-              ) : (
-                <span className="inline-flex text-[#c0392b]">
-                  <IconAlert />
-                </span>
-              )}
-            </span>
           </div>
         );
       })}
@@ -252,7 +249,6 @@ const HeaderSection: React.FC<{
       </div>
     </div>
 
-    {/* Info read-only */}
     <div className="mt-3 flex items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-2">
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-white text-[#7a8899]">
         <IconLock />
@@ -272,12 +268,7 @@ interface DocRowProps {
   entry: DokumenEntry;
   wajib?: boolean;
   keterangan?: string;
-  prevItems: {
-    level: TelaahLevel;
-    levelLabel: string;
-    timestamp: string;
-    item: ChecklistItem | undefined;
-  }[];
+  prevItems: PrevLevelInfo[];
   onPreview: () => void;
 }
 
@@ -297,7 +288,6 @@ const DocRow: React.FC<DocRowProps> = ({
         uploaded ? "hover:bg-[#f7f8fa]" : "bg-[#fbfbfc]"
       }`}
     >
-      {/* NO */}
       <td className="w-10 px-3 py-3 align-top">
         <span
           className={`text-[12.5px] font-bold ${
@@ -308,7 +298,6 @@ const DocRow: React.FC<DocRowProps> = ({
         </span>
       </td>
 
-      {/* DOKUMEN + Sub-line */}
       <td className="px-3 py-3 align-top">
         <div className="flex items-start gap-2.5">
           <div
@@ -339,13 +328,11 @@ const DocRow: React.FC<DocRowProps> = ({
                 ({keterangan})
               </p>
             )}
-
             <PrevSubLine items={prevItems} />
           </div>
         </div>
       </td>
 
-      {/* AKSI */}
       <td className="w-32 px-3 py-3 align-top">
         {uploaded ? (
           <button
@@ -380,34 +367,48 @@ export default function DaftarDokumenReadOnly({
     [dokumenTampilan],
   );
 
-  // Untuk read-only, tampilkan SEMUA level yang sudah approve di riwayat
-  // (bukan filter berdasarkan currentLevel) — supaya user bisa lihat
-  // seluruh history telaah.
-  const allChecklists = useMemo(
-    () =>
-      LEVEL_ORDER.map((level) => ({
-        level,
-        levelLabel: TELAAH_LEVEL_LABEL[level],
-        data: findChecklistByLevel(riwayat, level),
-      })).filter((p) => p.data !== null),
-    [riwayat],
-  );
+  // Kumpulkan entry terakhir per level DARI SIKLUS SAAT INI.
+  const allEntries = useMemo(() => {
+    let siklusAwalIdx = 0;
+    for (let i = riwayat.length - 1; i >= 0; i--) {
+      if (
+        riwayat[i].milestone === "DIAJUKAN" ||
+        riwayat[i].milestone === "SIKLUS_BARU_DIMULAI"
+      ) {
+        siklusAwalIdx = i;
+        break;
+      }
+    }
+    const riwayatSiklusIni = riwayat.slice(siklusAwalIdx);
+    return LEVEL_ORDER.map((level) => ({
+      level,
+      levelLabel: TELAAH_LEVEL_LABEL[level],
+      entry: findEntryByLevel(riwayatSiklusIni, level),
+    }));
+  }, [riwayat]);
 
   const totalUploaded = dokumenFlat.filter((d) => d.file !== null).length;
   const totalAll = dokumenFlat.length;
 
-  const buildPrevForDoc = (docKey: string) =>
-    allChecklists
+  const buildPrevForDoc = (docKey: string): PrevLevelInfo[] =>
+    allEntries
       .map((p) => {
-        if (!p.data) return null;
+        if (!p.entry) return null;
+        const entry = p.entry;
+        const hasChecklist = !!entry.checklistDokumen;
+        const isTeruskan =
+          entry.milestone.startsWith("DITERUSKAN_") ||
+          entry.milestone === "DIKIRIM_KE_OPD";
         return {
           level: p.level,
           levelLabel: p.levelLabel,
-          timestamp: p.data.timestamp,
-          item: p.data.checklist[docKey],
+          timestamp: entry.timestamp,
+          docItem: hasChecklist ? entry.checklistDokumen![docKey] : undefined,
+          isTeruskan,
+          catatanGlobal: entry.catatan,
         };
       })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
+      .filter((x): x is PrevLevelInfo => x !== null);
 
   const renderDocRow = (
     entry: DokumenEntry,
@@ -446,7 +447,7 @@ export default function DaftarDokumenReadOnly({
         </div>
       ) : (
         <>
-          {/* ══════════════════ DESKTOP (≥ md): Tabel ══════════════════ */}
+          {/* DESKTOP */}
           <div className="hidden overflow-hidden rounded-sm border border-[#e2e8f2] bg-white md:block">
             <table className="w-full border-collapse">
               <thead>
@@ -471,10 +472,8 @@ export default function DaftarDokumenReadOnly({
                       keterangan: tampilan.keterangan,
                     });
                   }
-
                   return (
                     <Fragment key={`grup-${tampilan.nomor}`}>
-                      {/* Group header */}
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f6fd]">
                         <td className="w-10 px-3 py-2 align-middle">
                           <span className="text-[12.5px] font-bold text-[#1a4e8f]">
@@ -495,8 +494,6 @@ export default function DaftarDokumenReadOnly({
                           )}
                         </td>
                       </tr>
-
-                      {/* Sub-dokumen rows (nomor kosong) */}
                       {tampilan.anak.map((entry) =>
                         renderDocRow(entry, { nomor: null }),
                       )}
@@ -507,7 +504,7 @@ export default function DaftarDokumenReadOnly({
             </table>
           </div>
 
-          {/* ══════════════════ MOBILE (< md): Card View ══════════════════ */}
+          {/* MOBILE */}
           <div className="space-y-3 md:hidden">
             {dokumenTampilan.map((tampilan) => {
               if (tampilan.type === "single") {
@@ -558,7 +555,6 @@ export default function DaftarDokumenReadOnly({
                         <PrevSubLine items={prevItems} />
                       </div>
                     </div>
-
                     {uploaded && (
                       <div className="border-t border-[#eef1f5] bg-white px-3 py-2">
                         <button
@@ -633,7 +629,6 @@ export default function DaftarDokumenReadOnly({
                             <PrevSubLine items={prevItems} />
                           </div>
                         </div>
-
                         {uploaded && (
                           <div className="border-t border-[#eef1f5] bg-white px-3 py-2">
                             <button
