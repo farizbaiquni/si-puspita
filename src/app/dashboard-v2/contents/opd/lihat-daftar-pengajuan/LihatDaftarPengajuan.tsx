@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useMemo,
-  useRef,
-  useCallback,
-  type ChangeEvent,
-} from "react";
+import React, { useState, useMemo, useRef, type ChangeEvent } from "react";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   StatusFormulir,
@@ -25,14 +19,8 @@ import {
   IconFilter,
   IconClose,
   IconEye,
-  IconUser,
-  IconBriefcase,
   IconDocument,
   IconCalendar,
-  IconTag,
-  IconUsers,
-  IconCash,
-  IconTrash,
   IconFile,
 } from "./icons";
 import ModalEditRevisiTelaah from "./ModalEditRevisiTelaah";
@@ -140,6 +128,24 @@ const IconRotate = () => (
   </svg>
 );
 
+const IconClipboard = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+  >
+    <path
+      d="M7 3.5H5a1.5 1.5 0 00-1.5 1.5v11A1.5 1.5 0 005 17.5h10a1.5 1.5 0 001.5-1.5V5A1.5 1.5 0 0015 3.5h-2"
+      strokeLinecap="round"
+    />
+    <rect x="7" y="1.5" width="6" height="4" rx="1" />
+    <path d="M7 10h6M7 13h4" strokeLinecap="round" />
+  </svg>
+);
+
 // ────────────────────────────── HELPERS ─────────────────────────────────────
 
 function formatRupiah(angka: string): string {
@@ -180,6 +186,27 @@ function hasRevisiTelaahAktif(
   return Boolean(record.revisiTelaahInternal?.aktif);
 }
 
+/** Inisial pendek dari nama OPD untuk avatar. */
+function ambilInisialOPD(nama: string): string {
+  const trimmed = nama.trim();
+  if (!trimmed) return "?";
+
+  if (trimmed.length <= 6) return trimmed.toUpperCase();
+
+  const skip = new Set(["dan", "yang", "di", "ke", "of", "the"]);
+  const kata = trimmed
+    .split(/\s+/)
+    .filter((k) => k.length > 0 && !skip.has(k.toLowerCase()));
+
+  if (kata.length === 0) return trimmed[0].toUpperCase();
+
+  return kata
+    .slice(0, 3)
+    .map((k) => k[0])
+    .join("")
+    .toUpperCase();
+}
+
 // ────────────────────────────── STATUS CONFIG ───────────────────────────────
 
 const STATUS_CONFIG: Record<
@@ -203,7 +230,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-/** Badge khusus untuk revisi telaah internal — orange. */
 const REVISI_TELAAH_BADGE = {
   label: "Revisi Telaah Internal",
   badgeClass: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
@@ -236,13 +262,13 @@ const StatusGroupHeader: React.FC<{
   const cfg = STATUS_CONFIG[status];
   return (
     <div
-      className={`flex items-center gap-2 rounded-md border px-3 py-2 ${cfg.badgeClass}`}
+      className={`flex items-center gap-2 rounded-xs border px-3 py-2 ${cfg.badgeClass}`}
     >
       <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dotClass}`} />
       <span className="text-[11.5px] font-bold tracking-wide uppercase">
         {cfg.label}
       </span>
-      <span className="rounded-full bg-white/70 px-1.75 py-px text-[10.5px] font-bold">
+      <span className="rounded-xs bg-white/70 px-1.75 py-px text-[10.5px] font-bold">
         {count}
       </span>
     </div>
@@ -259,10 +285,10 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
 }> = ({ label, value, accentClass, cardClass, icon }) => (
   <div
-    className={`flex min-w-0 items-center gap-2.5 rounded-md border px-3 py-3 sm:gap-3 sm:px-4.5 sm:py-3.5 ${cardClass}`}
+    className={`flex min-w-0 items-center gap-2.5 rounded-xs border px-3 py-3 sm:gap-3 sm:px-4.5 sm:py-3.5 ${cardClass}`}
   >
     <div
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white sm:h-9 sm:w-9 ${accentClass}`}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xs text-white sm:h-9 sm:w-9 ${accentClass}`}
     >
       {icon}
     </div>
@@ -301,7 +327,6 @@ const StatusBadge: React.FC<{
   );
 };
 
-/** Badge khusus revisi telaah internal — dipakai di samping badge status. */
 const RevisiTelaahBadge: React.FC = () => (
   <span
     className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${REVISI_TELAAH_BADGE.badgeClass}`}
@@ -336,7 +361,7 @@ const IdentifierChip: React.FC<{
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API tidak tersedia — abaikan
+      // abaikan
     }
   };
 
@@ -350,7 +375,7 @@ const IdentifierChip: React.FC<{
           ? `${label}: ${rawValue} — klik untuk salin`
           : "Nomor registrasi belum terbit"
       }
-      className={`group/chip mt-1 inline-flex max-w-full items-center gap-1 rounded-[5px] border px-1.5 py-0.5 text-[10.5px] font-medium transition-colors duration-150 ${
+      className={`group/chip mt-1 inline-flex max-w-full items-center gap-1 rounded-xs border px-1.5 py-0.5 text-[10.5px] font-medium transition-colors duration-150 ${
         isRegistered
           ? "border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46] hover:bg-[#d7f7e8]"
           : "border-[#fed7aa] bg-[#fff7ed] text-[#9a3412] hover:bg-[#ffedd5]"
@@ -384,7 +409,7 @@ const PdfPreviewModal: React.FC<{
       onClick={onClose}
     >
       <div
-        className="flex h-full max-h-full w-full max-w-5xl flex-col rounded-lg bg-white shadow-2xl"
+        className="flex h-full max-h-full w-full max-w-5xl flex-col rounded-xs bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
@@ -433,7 +458,7 @@ const HasilVerifikasiSection: React.FC<{
       </h3>
 
       {isRevisi ? (
-        <div className="overflow-hidden rounded-lg border border-[#fecaca] bg-linear-to-br from-[#fef2f2] to-white shadow-sm">
+        <div className="overflow-hidden rounded-xs border border-[#fecaca] bg-linear-to-br from-[#fef2f2] to-white shadow-sm">
           <div className="flex items-start gap-3 border-b border-[#fecaca]/70 p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#c0392b]">
               <svg
@@ -487,7 +512,7 @@ const HasilVerifikasiSection: React.FC<{
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[#a7f3d0] bg-linear-to-br from-[#ecfdf5] to-white shadow-sm">
+        <div className="overflow-hidden rounded-xs border border-[#a7f3d0] bg-linear-to-br from-[#ecfdf5] to-white shadow-sm">
           <div className="flex items-start gap-3 p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d1fae5] text-[#0f6e56]">
               <svg
@@ -531,7 +556,7 @@ const HasilVerifikasiSection: React.FC<{
   );
 };
 
-// ──────────────────── REVISI TELAAH SECTION (untuk ModalDetail) ────────
+// ──────────────────── REVISI TELAAH SECTION ────────
 
 const RevisiTelaahSection: React.FC<{
   record: FormulirPenghapusanPiutangOPDRecord;
@@ -544,7 +569,7 @@ const RevisiTelaahSection: React.FC<{
       <h3 className="mb-3 text-xs font-bold tracking-widest text-[#ea580c] uppercase">
         Revisi Telaah Internal
       </h3>
-      <div className="overflow-hidden rounded-lg border border-[#fdba74] bg-linear-to-br from-[#fff7ed] to-white shadow-sm">
+      <div className="overflow-hidden rounded-xs border border-[#fdba74] bg-linear-to-br from-[#fff7ed] to-white shadow-sm">
         <div className="flex items-start gap-3 border-b border-[#fdba74]/70 p-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffedd5] text-[#ea580c]">
             <IconRotate />
@@ -572,10 +597,10 @@ const RevisiTelaahSection: React.FC<{
             info.catatanPerLevel.map((c, idx) => (
               <div
                 key={idx}
-                className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-3"
+                className="rounded-xs border border-[#fed7aa] bg-[#fff7ed] p-3"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="inline-flex items-center rounded-sm border border-[#fdba74] bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[#9a3412] uppercase">
+                  <span className="inline-flex items-center rounded-xs border border-[#fdba74] bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[#9a3412] uppercase">
                     {TELAAH_LEVEL_SUMBER_CATATAN_LABEL[c.olehLevel]}
                   </span>
                   <span className="text-[10.5px] text-[#7a8899]">
@@ -609,7 +634,7 @@ const GroupCaption: React.FC<{ variant: "teks" | "berkas" }> = ({
   return (
     <div className="mb-2 flex items-center gap-1.5">
       <span
-        className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded ${
+        className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-xs ${
           isBerkas
             ? "bg-[#eff6ff] text-[#1a4e8f]"
             : "bg-slate-100 text-slate-500"
@@ -629,30 +654,6 @@ const GroupCaption: React.FC<{ variant: "teks" | "berkas" }> = ({
   );
 };
 
-// ──────────────────── INFO ROW ─────────────────────────────────────────────
-
-const InfoRow: React.FC<{
-  icon?: React.ReactNode;
-  uraian: string;
-  value: React.ReactNode;
-}> = ({ icon, uraian, value }) => (
-  <div className="flex items-start gap-2.5 rounded-md border border-[#eef1f6] bg-[#f8fafc] px-3 py-2.5">
-    {icon && (
-      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white text-[#64748b] ring-1 ring-[#e8edf4]">
-        {icon}
-      </span>
-    )}
-    <div className="min-w-0">
-      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
-        {uraian}
-      </div>
-      <div className="mt-0.5 text-[13px] leading-snug font-semibold wrap-break-word text-[#0f172a]">
-        {value || "-"}
-      </div>
-    </div>
-  </div>
-);
-
 // ──────────────────── DOCUMENT CARD ────────────────────────────────────────
 
 const DocumentCard: React.FC<{
@@ -662,60 +663,111 @@ const DocumentCard: React.FC<{
   onPreview: (file: UploadedFileRef, title: string) => void;
 }> = ({ label, file, keterangan, onPreview }) => {
   const tersedia = !!file;
+
   return (
     <div
-      className={`flex items-center gap-3 rounded-md border border-l-[3px] bg-white px-3 py-2.5 shadow-xs ${
+      className={`group flex items-center gap-3 rounded-xs border border-l-[2px] bg-white px-3 py-2 transition-all duration-150 ${
         tersedia
-          ? "border-[#e2e8f2] border-l-[#1a4e8f]"
-          : "border-red-100 border-l-red-300 bg-red-50/40"
+          ? "border-[#e2e8f2] border-l-[#0f9b6e] hover:border-[#a0bdec] hover:border-l-[#0f9b6e] hover:bg-[#fafcff] hover:shadow-xs"
+          : "border-dashed border-[#e2e8f2] border-l-[#d0d7de] bg-[#fbfbfc]"
       }`}
     >
-      <div
-        className={`flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-md ${
-          tersedia ? "bg-[#eff6ff] text-[#1a4e8f]" : "bg-red-50 text-red-300"
-        }`}
-      >
-        <IconFile />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p
-            className="truncate text-[12.5px] font-semibold text-[#1a1a2e]"
-            title={label}
+      {/* ── Icon dokumen dengan status overlay ── */}
+      <div className="relative shrink-0">
+        <div
+          className={`flex h-8 w-8 items-center justify-center rounded-xs transition-colors ${
+            tersedia
+              ? "bg-[#eff6ff] text-[#1a4e8f]"
+              : "bg-[#f1f3f5] text-[#b0bac5]"
+          }`}
+        >
+          {/* Icon dokumen (file with lines) */}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
           >
-            {label}
-          </p>
-          {tersedia && (
-            <span className="shrink-0 rounded-[3px] bg-[#1a4e8f] px-1 py-px text-[9px] font-bold tracking-wide text-white">
-              PDF
-            </span>
-          )}
+            <path
+              d="M11.5 2.5H5a1.5 1.5 0 00-1.5 1.5v12A1.5 1.5 0 005 17.5h10a1.5 1.5 0 001.5-1.5V7.5l-5-5z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d="M11.5 2.5v5h5" strokeLinecap="round" />
+            <path d="M7 11h6M7 14h4" strokeLinecap="round" />
+          </svg>
         </div>
-        {tersedia ? (
-          <p
-            className="truncate text-[11px] text-[#7a8899]"
-            title={file!.namaFile}
-          >
-            {file!.namaFile}
-            {typeof file!.ukuranBytes === "number" && (
-              <> · {(file!.ukuranBytes / 1024 / 1024).toFixed(2)} MB</>
-            )}
-          </p>
-        ) : (
-          <p className="text-[11px] font-medium text-[#c0392b]">
-            {keterangan ?? "Tidak ada"}
-          </p>
-        )}
+
+        {/* Status dot di pojok kanan bawah icon */}
+        <span
+          className={`absolute -right-0.5 -bottom-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-white ${
+            tersedia ? "bg-[#0f9b6e]" : "bg-[#d0d7de]"
+          }`}
+        >
+          {tersedia ? (
+            <svg
+              width="7"
+              height="7"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+            >
+              <path
+                d="M3 8l3.5 3.5L13 4.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg
+              width="7"
+              height="7"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+            >
+              <path d="M4 8h8" strokeLinecap="round" />
+            </svg>
+          )}
+        </span>
       </div>
-      {tersedia && (
+
+      {/* Label + status text */}
+      <div className="min-w-0 flex-1">
+        <p
+          className={`truncate text-[12.5px] font-semibold ${
+            tersedia ? "text-[#1a1a2e]" : "text-[#8a96a3]"
+          }`}
+          title={label}
+        >
+          {label}
+        </p>
+        <p
+          className={`mt-0.5 text-[10px] font-medium tracking-wide uppercase ${
+            tersedia ? "text-[#0f6e56]" : "text-[#b0bac5]"
+          }`}
+        >
+          {tersedia ? "Terupload" : (keterangan ?? "Belum diupload")}
+        </p>
+      </div>
+
+      {/* Preview button */}
+      {tersedia ? (
         <button
           type="button"
           onClick={() => onPreview(file!, `${label} (${file!.namaFile})`)}
-          className="flex shrink-0 items-center gap-1 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1.5 text-[11px] font-semibold text-[#1a4e8f] shadow-sm transition-all hover:bg-[#dbeafe] hover:shadow-md"
+          title="Preview PDF"
+          aria-label="Preview PDF"
+          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-xs border border-[#bfdbfe] bg-[#eff6ff] text-[#1a4e8f] transition-all group-hover:shadow-sm hover:bg-[#dbeafe]"
         >
           <IconEye />
-          <span className="hidden sm:inline">Preview</span>
         </button>
+      ) : (
+        <span className="shrink-0 text-[10px] text-[#d0d7de] italic">—</span>
       )}
     </div>
   );
@@ -729,12 +781,12 @@ const LegendBox: React.FC<{
   className?: string;
 }> = ({ title, children, className = "" }) => (
   <div
-    className={`relative rounded-md border border-[#dbe4f0] bg-[#fafbfd] px-3 pt-4 pb-3 ${className}`}
+    className={`relative rounded-xs border border-[#dbe4f0] bg-[#fafbfd] px-3 pt-4 pb-3 ${className}`}
   >
-    <span className="absolute -top-2.5 left-3 rounded bg-white px-1.5 text-[10.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
+    <span className="absolute -top-2.5 left-3 rounded-xs bg-white px-1.5 text-[10.5px] font-bold tracking-wide text-[#1a4e8f] uppercase">
       {title}
     </span>
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">{children}</div>
+    <div className="space-y-1.5">{children}</div>
   </div>
 );
 
@@ -798,7 +850,7 @@ const RiwayatRevisiSection: React.FC<{ pengajuanId: string }> = ({
           return (
             <div
               key={r.id}
-              className="rounded-md border border-[#e2e8f2] bg-[#fafbfc]"
+              className="rounded-xs border border-[#e2e8f2] bg-[#fafbfc]"
             >
               <button
                 type="button"
@@ -863,32 +915,6 @@ const ModalDetail: React.FC<{
   } | null>(null);
   const [copiedNomor, setCopiedNomor] = useState(false);
 
-  const refIdentitas = useRef<HTMLDivElement>(null);
-  const refDokumen = useRef<HTMLDivElement>(null);
-  const refSubstantif = useRef<HTMLDivElement>(null);
-  const refVerifikasi = useRef<HTMLDivElement>(null);
-  const refRevisiTelaah = useRef<HTMLDivElement>(null);
-
-  const handleNavClick = useCallback(
-    (
-      id:
-        "verifikasi" | "dokumen" | "substantif" | "identitas" | "revisi-telaah",
-    ) => {
-      const targetRef =
-        id === "verifikasi"
-          ? refVerifikasi
-          : id === "dokumen"
-            ? refDokumen
-            : id === "substantif"
-              ? refSubstantif
-              : id === "revisi-telaah"
-                ? refRevisiTelaah
-                : refIdentitas;
-      targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    },
-    [],
-  );
-
   const isRegistered = record.status === "teregistrasi";
   const nomorAktif = isRegistered
     ? record.nomorRegistrasi
@@ -910,60 +936,25 @@ const ModalDetail: React.FC<{
   const openPreview = (file: UploadedFileRef, title: string) =>
     setPreview({ url: file.url, title });
 
-  const identitasRows = [
-    { icon: <IconUser />, uraian: "OPD Pengusul", value: record.namaOPD },
-    {
-      icon: <IconUser />,
-      uraian: "Nama Penanggung Jawab",
-      value: record.namaPenanggungJawab,
-    },
-    {
-      icon: <IconBriefcase />,
-      uraian: "Jabatan (Ka OPD)",
-      value: record.jabatan,
-    },
-    {
-      icon: <IconDocument />,
-      uraian: "Nomor Surat Pengantar",
-      value: record.nomorSurat,
-    },
-    {
-      icon: <IconCalendar />,
-      uraian: "Tanggal Surat",
-      value: formatTanggal(record.tanggalSurat),
-    },
-    { icon: <IconTag />, uraian: "Jenis Piutang", value: record.jenisPiutang },
-    {
-      icon: <IconUsers />,
-      uraian: "Jumlah Debitur",
-      value: `${record.jumlahDebitur} orang`,
-    },
-    {
-      icon: <IconCash />,
-      uraian: "Total Nilai Piutang yang Diusulkan",
-      value: formatRupiah(record.totalNilaiPiutang),
-    },
-    {
-      icon: <IconCash />,
-      uraian: "Rekapitulasi Angsuran (Rp)",
-      value: formatRupiah(nom.nilaiRekapitulasiAngsuran),
-    },
-    {
-      icon: <IconTrash />,
-      uraian: "Jenis Penghapusan",
-      value: record.jenisPenghapusan,
-    },
-  ];
-
+  /* ── Dokumen Administrasi — dengan kategori ── */
   const dokumenChecklist = [
     {
       label: "Bukti Piutang Macet (SKRD/SK/Surat Perjanjian)",
       file: nom.persyaratanPiutangMacet,
+      keterangan: undefined as string | undefined,
+      kategori: "Persyaratan Utama",
     },
-    { label: "Surat Pengantar Usulan", file: nom.suratPengantarUsulan },
+    {
+      label: "Surat Pengantar Usulan",
+      file: nom.suratPengantarUsulan,
+      keterangan: undefined as string | undefined,
+      kategori: "Persyaratan Utama",
+    },
     {
       label: "Daftar Nominatif Usulan Piutang SKPD",
       file: nom.daftarNominatifPiutang,
+      keterangan: undefined as string | undefined,
+      kategori: "Persyaratan Utama",
     },
     {
       label: "Dokumen Dasar Piutang",
@@ -971,18 +962,25 @@ const ModalDetail: React.FC<{
         nom.opsiDokumenDasarPiutang === "ada" ? nom.dokumenDasarPiutang : null,
       keterangan:
         nom.opsiDokumenDasarPiutang === "tidak_ada" ? "Tidak ada" : undefined,
+      kategori: "Persyaratan Utama",
     },
     {
       label: "Rekapitulasi Saldo Piutang (Rp)",
       file: nom.daftarNominatifPiutang,
+      keterangan: undefined as string | undefined,
+      kategori: "Dokumen Pendukung",
     },
     {
       label: "Neraca Awal Terjadinya Piutang",
       file: nom.persyaratanUsiaPencatatan,
+      keterangan: undefined as string | undefined,
+      kategori: "Dokumen Pendukung",
     },
     {
       label: "Rekapitulasi Angsuran (Rp)",
       file: nom.daftarNominatifPiutang,
+      keterangan: undefined as string | undefined,
+      kategori: "Dokumen Pendukung",
     },
     {
       label:
@@ -993,8 +991,14 @@ const ModalDetail: React.FC<{
           : null,
       keterangan:
         nom.opsiKerjaSamaPihakKetiga === "ya" ? undefined : "Tidak dilakukan",
+      kategori: "Dokumen Pendukung",
     },
   ];
+
+  const dokumenUploaded = dokumenChecklist.filter((d) => d.file).length;
+  const dokumenTotal = dokumenChecklist.length;
+  const dokumenPercent =
+    dokumenTotal === 0 ? 0 : Math.round((dokumenUploaded / dokumenTotal) * 100);
 
   const riwayatPenagihanDokumen = [
     {
@@ -1053,25 +1057,6 @@ const ModalDetail: React.FC<{
       : []),
   ];
 
-  const navItems = [
-    ...(adaRevisiTelaah
-      ? [
-          {
-            id: "revisi-telaah" as const,
-            label: "Revisi Telaah Internal",
-          },
-        ]
-      : []),
-    ...(record.status !== "diajukan"
-      ? [
-          {
-            id: "verifikasi" as const,
-            label: "Hasil Verifikasi",
-          },
-        ]
-      : []),
-  ];
-
   return (
     <>
       {preview && (
@@ -1087,44 +1072,69 @@ const ModalDetail: React.FC<{
         onClick={onClose}
       >
         <div
-          className="animate-scale-in flex h-full w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-md"
+          className="animate-scale-in flex h-full w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xs"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="shrink-0 bg-linear-to-r from-[#1a4e8f] to-[#0e3b6e] px-4 py-3 text-white sm:px-6">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold">
-                    {record.namaPenanggungJawab}
-                  </h2>
+          <div className="relative shrink-0 overflow-hidden bg-linear-to-r from-[#1a4e8f] to-[#0e3b6e] px-4 py-3.5 text-white sm:px-6">
+            {/* Subtle pattern overlay */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.06]"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, #fff, #fff 1px, transparent 1px, transparent 12px)",
+              }}
+            />
+
+            <div className="relative flex items-start gap-3.5">
+              {/* Avatar OPD */}
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xs bg-white/15 text-[12px] font-bold tracking-wide text-white shadow-inner backdrop-blur-sm">
+                {ambilInisialOPD(record.namaOPD)}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                {/* Baris 1: Nomor + badges */}
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  {nomorAktif && (
+                    <button
+                      type="button"
+                      onClick={handleCopyNomor}
+                      title="Klik untuk salin nomor"
+                      className="group/nc inline-flex cursor-pointer items-center gap-1 rounded-xs bg-white/10 px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-blue-50 transition-colors hover:bg-white/20"
+                    >
+                      <span className="opacity-70">{labelNomor}:</span>
+                      <span className="max-w-50 truncate">{nomorAktif}</span>
+                      <span className="opacity-60 group-hover/nc:opacity-100">
+                        {copiedNomor ? <IconCheck /> : <IconCopy />}
+                      </span>
+                    </button>
+                  )}
                   <StatusBadge
                     status={record.status}
                     reviuStatus={record.reviuInspektoratStatus}
                   />
                   {adaRevisiTelaah && <RevisiTelaahBadge />}
                 </div>
-                <p className="truncate text-sm text-blue-100">
+
+                {/* Baris 2: Nama OPD (hero) */}
+                <div className="truncate text-[17px] leading-tight font-bold text-white">
                   {record.namaOPD}
-                </p>
-                {nomorAktif && (
-                  <button
-                    type="button"
-                    onClick={handleCopyNomor}
-                    title="Klik untuk salin nomor"
-                    className="group mt-1.5 inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-[11px] font-medium text-blue-50 transition-colors hover:bg-white/20"
-                  >
-                    <span className="shrink-0 opacity-75">{labelNomor}</span>
-                    <span className="truncate font-mono">{nomorAktif}</span>
-                    <span className="shrink-0 opacity-70 group-hover:opacity-100">
-                      {copiedNomor ? <IconCheck /> : <IconCopy />}
-                    </span>
-                  </button>
-                )}
+                </div>
+
+                {/* Baris 3: PJ + jabatan */}
+                <div className="mt-0.5 truncate text-[12px] text-blue-100/90">
+                  <span className="font-medium text-white">
+                    {record.namaPenanggungJawab}
+                  </span>
+                  <span className="mx-1.5 opacity-50">·</span>
+                  <span>{record.jabatan}</span>
+                </div>
               </div>
+
+              {/* Close button */}
               <button
                 onClick={onClose}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
                 title="Tutup"
               >
                 <IconClose />
@@ -1132,57 +1142,135 @@ const ModalDetail: React.FC<{
             </div>
           </div>
 
-          {/* Navigasi cepat */}
-          {navItems.length > 0 && (
-            <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[#e2e8f2] bg-[#f7f8fa] px-4 py-2 sm:px-6">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleNavClick(item.id)}
-                  className={`shrink-0 cursor-pointer rounded-full border px-3 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                    item.id === "revisi-telaah"
-                      ? "border-[#fdba74] bg-[#fff7ed] text-[#9a3412] hover:border-[#ea580c] hover:bg-[#ffedd5]"
-                      : "border-[#e2e8f2] bg-white text-[#5a6474] hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Body */}
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {/* 1. Identitas Usulan */}
-            <div ref={refIdentitas} className="mb-6 scroll-mt-3">
-              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
-                Identitas Usulan
-              </h3>
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {identitasRows.map((item, i) => (
-                  <InfoRow
-                    key={i}
-                    icon={item.icon}
-                    uraian={item.uraian}
-                    value={item.value}
-                  />
-                ))}
+            {/* 1. IDENTITAS USULAN — Hero card */}
+            <div className="mb-6">
+              <div className="mb-3 flex items-center gap-2">
+                <h3 className="text-[13px] font-bold tracking-wide text-[#1a1a2e] uppercase">
+                  Identitas Usulan
+                </h3>
+                <div className="h-px flex-1 bg-[#e8edf4]" />
+              </div>
+
+              <div className="overflow-hidden rounded-xs border border-[#e2e8f2] bg-white">
+                {/* ── HERO: OPD ── */}
+                <div className="flex items-start gap-3.5 border-b border-[#eef1f5] bg-linear-to-br from-[#f8fafc] to-white px-4 py-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xs bg-linear-to-br from-[#1a4e8f] to-[#0e3b6e] text-[12px] font-bold tracking-wide text-white shadow-sm">
+                    {ambilInisialOPD(record.namaOPD)}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[16px] leading-tight font-bold text-[#1a1a2e]">
+                      {record.namaOPD}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
+                      <span className="font-medium text-[#3a4454]">
+                        {record.namaPenanggungJawab}
+                      </span>
+                      <span className="text-[#b0bac5]">·</span>
+                      <span className="text-[#7a8899]">{record.jabatan}</span>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-xs border px-2 py-1 text-[10px] font-bold tracking-wide uppercase ${
+                      record.jenisPenghapusan === "Penghapusan Bersyarat"
+                        ? "border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]"
+                        : "border-[#ddd6fe] bg-[#f5f3ff] text-[#5b21b6]"
+                    }`}
+                  >
+                    {record.jenisPenghapusan === "Penghapusan Bersyarat"
+                      ? "Bersyarat"
+                      : "Mutlak"}
+                  </span>
+                </div>
+
+                {/* ── BODY: Detail Piutang ── */}
+                <div className="border-b border-[#eef1f5] px-4 py-4">
+                  {/* Hero angka */}
+                  <div className="mb-4 flex flex-wrap items-end gap-x-8 gap-y-3">
+                    <div>
+                      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                        Total Nilai Piutang
+                      </div>
+                      <div className="mt-1 text-[22px] leading-none font-bold text-[#1a4e8f]">
+                        {formatRupiah(record.totalNilaiPiutang)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                        Jumlah Angsuran
+                      </div>
+                      <div className="mt-1 text-[15px] leading-none font-bold text-[#0f6e56]">
+                        {formatRupiah(nom.nilaiRekapitulasiAngsuran)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                        Jumlah Debitur
+                      </div>
+                      <div className="mt-1 text-[15px] leading-none font-bold text-[#1a1a2e]">
+                        {record.jumlahDebitur} orang
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Grid 2 kolom */}
+                  <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
+                    <div className="min-w-0">
+                      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                        Jenis Piutang
+                      </div>
+                      <div className="mt-0.5 text-[13px] leading-snug font-semibold text-[#1a1a2e]">
+                        {record.jenisPiutang || "-"}
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                        Jenis Penghapusan
+                      </div>
+                      <div className="mt-0.5 text-[13px] leading-snug font-semibold text-[#1a1a2e]">
+                        {record.jenisPenghapusan || "-"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── FOOTER: Surat Pengantar ── */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-[#fafbfc] px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-[#eff6ff] text-[#1a4e8f]">
+                      <IconDocument />
+                    </span>
+                    <span className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                      Nomor Surat
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-[#1a1a2e]">
+                      {record.nomorSurat || "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-[#eff6ff] text-[#1a4e8f]">
+                      <IconCalendar />
+                    </span>
+                    <span className="text-[10.5px] font-semibold tracking-wide text-[#8a96a3] uppercase">
+                      Tanggal Surat
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-[#1a1a2e]">
+                      {formatTanggal(record.tanggalSurat)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* 2. Revisi Telaah Internal — muncul kalau aktif */}
-            {adaRevisiTelaah && (
-              <div ref={refRevisiTelaah} className="scroll-mt-3">
-                <RevisiTelaahSection record={record} />
-              </div>
-            )}
+            {/* 2. Revisi Telaah Internal */}
+            {adaRevisiTelaah && <RevisiTelaahSection record={record} />}
 
             {/* 3. Hasil Verifikasi BPKAD */}
             {record.status !== "diajukan" && (
-              <div ref={refVerifikasi} className="scroll-mt-3">
-                <HasilVerifikasiSection record={record} />
-              </div>
+              <HasilVerifikasiSection record={record} />
             )}
 
             {/* 4. Riwayat Revisi verifikasi BPKAD */}
@@ -1190,23 +1278,219 @@ const ModalDetail: React.FC<{
               <RiwayatRevisiSection pengajuanId={record.id} />
             )}
 
-            {/* 5. Dokumen Administrasi */}
-            <div ref={refDokumen} className="mb-6 scroll-mt-3">
-              <h3 className="mb-3 text-xs font-bold tracking-widest text-[#1a4e8f] uppercase">
-                Dokumen Administrasi
-              </h3>
-              <GroupCaption variant="berkas" />
-              <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {dokumenChecklist.map((doc, idx) => (
-                  <DocumentCard
-                    key={idx}
-                    label={doc.label}
-                    file={doc.file}
-                    keterangan={doc.keterangan}
-                    onPreview={openPreview}
-                  />
-                ))}
+            {/* 5. DOKUMEN ADMINISTRASI */}
+            <div className="mb-6">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#1a4e8f] text-white">
+                  <IconClipboard />
+                </span>
+                <h3 className="text-[13px] font-bold tracking-wide text-[#1a1a2e] uppercase">
+                  Dokumen Administrasi
+                </h3>
+                <div className="h-px flex-1 bg-[#e8edf4]" />
               </div>
+
+              {/* Progress card — dengan icon stack */}
+              <div className="mb-4 flex items-center gap-3 rounded-xs border border-[#e2e8f2] bg-[#fafbfc] px-3.5 py-2.5">
+                <div
+                  className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xs text-white shadow-sm ${
+                    dokumenPercent === 100
+                      ? "bg-linear-to-br from-[#0f9b6e] to-[#0a7a56]"
+                      : dokumenPercent >= 50
+                        ? "bg-linear-to-br from-[#3b82f6] to-[#1d4ed8]"
+                        : "bg-linear-to-br from-[#f59e0b] to-[#d97706]"
+                  }`}
+                >
+                  {/* Icon: dokumen bertumpuk */}
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                  >
+                    {/* Dokumen belakang (offset kanan-atas) */}
+                    <path
+                      d="M8 3.5h6l3.5 3.5v9a1.5 1.5 0 01-1.5 1.5H8a1.5 1.5 0 01-1.5-1.5V5A1.5 1.5 0 018 3.5z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.5"
+                    />
+                    <path
+                      d="M14 3.5V7h3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.5"
+                    />
+                    {/* Dokumen depan (offset kiri-bawah) */}
+                    <path
+                      d="M4.5 6H3.5A1.5 1.5 0 002 7.5v10A1.5 1.5 0 003.5 19h8a1.5 1.5 0 001.5-1.5v-1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {/* Baris teks di dokumen depan */}
+                    <path
+                      d="M6 11h5M6 14h3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+
+                  {/* Progress indicator tipis di bawah icon */}
+                  <span
+                    className="absolute right-1 bottom-1 left-1 h-0.5 overflow-hidden rounded-full bg-white/30"
+                    aria-hidden
+                  >
+                    <span
+                      className="block h-full bg-white transition-all duration-500"
+                      style={{ width: `${dokumenPercent}%` }}
+                    />
+                  </span>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[14px] font-bold text-[#1a1a2e]">
+                      {dokumenUploaded}
+                    </span>
+                    <span className="text-[12px] text-[#7a8899]">
+                      dari {dokumenTotal} dokumen
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-xs bg-[#e2e8f0]">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        dokumenPercent === 100
+                          ? "bg-[#0f9b6e]"
+                          : dokumenPercent >= 50
+                            ? "bg-[#3b82f6]"
+                            : "bg-[#f59e0b]"
+                      }`}
+                      style={{ width: `${dokumenPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                <span
+                  className={`shrink-0 text-[16px] font-bold ${
+                    dokumenPercent === 100
+                      ? "text-[#0f6e56]"
+                      : dokumenPercent >= 50
+                        ? "text-[#1d4ed8]"
+                        : "text-[#b45309]"
+                  }`}
+                >
+                  {dokumenPercent}%
+                </span>
+              </div>
+
+              {/* Group per kategori */}
+              {(["Persyaratan Utama", "Dokumen Pendukung"] as const).map(
+                (kategori) => {
+                  const items = dokumenChecklist.filter(
+                    (d) => d.kategori === kategori,
+                  );
+                  if (items.length === 0) return null;
+                  const uploaded = items.filter((d) => d.file).length;
+                  const lengkap = uploaded === items.length;
+                  const isUtama = kategori === "Persyaratan Utama";
+
+                  return (
+                    <div key={kategori} className="mb-4 last:mb-0">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs ${
+                            isUtama
+                              ? "bg-[#eff6ff] text-[#1a4e8f]"
+                              : "bg-[#f5f3ff] text-[#5b21b6]"
+                          }`}
+                        >
+                          {isUtama ? (
+                            <svg
+                              width="11"
+                              height="11"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path
+                                d="M8 1.5l4.5 4.5-4.5 4.5L3.5 6 8 1.5z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M3.5 6v8.5M12.5 6v8.5"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              width="11"
+                              height="11"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <circle cx="8" cy="8" r="5.5" />
+                              <path d="M8 5v3.5" strokeLinecap="round" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="text-[11px] font-bold tracking-wider text-[#5a6474] uppercase">
+                          {kategori}
+                        </span>
+                        <span
+                          className={`rounded-xs px-1.5 py-0.5 text-[10px] font-bold ${
+                            lengkap
+                              ? "bg-[#ecfdf5] text-[#0f6e56]"
+                              : "bg-[#fff7ed] text-[#b45309]"
+                          }`}
+                        >
+                          {uploaded}/{items.length}
+                        </span>
+                        {lengkap && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold tracking-wide text-[#0f6e56] uppercase">
+                            <svg
+                              width="9"
+                              height="9"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.4"
+                            >
+                              <path
+                                d="M3 8l3.5 3.5L13 4.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            Lengkap
+                          </span>
+                        )}
+                        <div className="h-px flex-1 bg-[#eef1f5]" />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {items.map((doc, idx) => (
+                          <DocumentCard
+                            key={idx}
+                            label={doc.label}
+                            file={doc.file}
+                            keterangan={doc.keterangan}
+
+                            onPreview={openPreview}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+
+              {/* Riwayat Penagihan */}
               <LegendBox title="Bukti Surat Riwayat Penagihan" className="mt-4">
                 {riwayatPenagihanDokumen.map((doc, idx) => (
                   <DocumentCard
@@ -1220,11 +1504,21 @@ const ModalDetail: React.FC<{
             </div>
 
             {/* 6. Checklist Persyaratan Substantif */}
-            <div ref={refSubstantif} className="mb-6 scroll-mt-3">
+            <div className="mb-6">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#1a4e8f] text-white">
+                  <IconClipboard />
+                </span>
+                <h3 className="text-[13px] font-bold tracking-wide text-[#1a1a2e] uppercase">
+                  Checklist Persyaratan Substantif
+                </h3>
+                <div className="h-px flex-1 bg-[#e8edf4]" />
+              </div>
+
               {substantifDokumen.length > 0 && (
                 <div className="mb-3">
                   <GroupCaption variant="berkas" />
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="space-y-1.5">
                     {substantifDokumen.map((doc, idx) => (
                       <DocumentCard
                         key={idx}
@@ -1323,7 +1617,7 @@ const EditFileSlot: React.FC<{
         {required && <span className="text-red-500"> *</span>}
       </label>
       <div
-        className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 ${
+        className={`flex items-center justify-between gap-2 rounded-xs border px-3 py-2 ${
           newFile
             ? "border-[#a0bdec] bg-[#eff6ff]"
             : dihapus
@@ -1371,7 +1665,7 @@ const EditFileSlot: React.FC<{
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="flex items-center gap-1 rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#1a4e8f] hover:bg-[#e8f0fb]"
+              className="flex items-center gap-1 rounded-xs border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#1a4e8f] hover:bg-[#e8f0fb]"
             >
               <IconUpload />
               {adaFile ? "Ganti" : "Unggah"}
@@ -1381,7 +1675,7 @@ const EditFileSlot: React.FC<{
             <button
               type="button"
               onClick={() => onChangeFile(null)}
-              className="rounded-sm border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50"
+              className="rounded-xs border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50"
             >
               Batal
             </button>
@@ -1390,7 +1684,7 @@ const EditFileSlot: React.FC<{
             <button
               type="button"
               onClick={onHapus}
-              className="rounded-sm border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50"
+              className="rounded-xs border border-red-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-red-600 hover:bg-red-50"
             >
               Hapus
             </button>
@@ -1399,7 +1693,7 @@ const EditFileSlot: React.FC<{
             <button
               type="button"
               onClick={onBatalkanHapus}
-              className="rounded-sm border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#5a6474] hover:bg-[#f7f8fa]"
+              className="rounded-xs border border-[#e2e8f2] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#5a6474] hover:bg-[#f7f8fa]"
             >
               Batalkan Hapus
             </button>
@@ -1410,7 +1704,7 @@ const EditFileSlot: React.FC<{
   );
 };
 
-// ──────────────────────── MODAL EDIT REVISI (verifikasi BPKAD) ────────────
+// ──────────────────────── MODAL EDIT REVISI ────────────
 
 const BUKTI_TIDAK_MAMPU_ITEMS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
@@ -1608,7 +1902,7 @@ const ModalEditRevisi: React.FC<{
       onClick={onClose}
     >
       <div
-        className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-md"
+        className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xs"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 bg-linear-to-r from-[#c0392b] to-[#9a2e22] px-4 py-3 text-white sm:px-6">
@@ -1623,7 +1917,7 @@ const ModalEditRevisi: React.FC<{
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
             title="Tutup"
           >
             <IconClose />
@@ -1638,7 +1932,7 @@ const ModalEditRevisi: React.FC<{
         )}
 
         <div className="flex-1 space-y-7 overflow-y-auto px-4 py-5 sm:px-6">
-          <p className="rounded-md border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1d4ed8]">
+          <p className="rounded-xs border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1d4ed8]">
             Perbaiki bagian mana pun sesuai catatan BPKAD di atas — input data,
             ganti dokumen yang salah unggah, atau hapus dokumen yang tidak
             relevan. Dokumen yang tidak disentuh akan tetap memakai file lama.
@@ -1654,7 +1948,7 @@ const ModalEditRevisi: React.FC<{
                   type="text"
                   value={namaPenanggungJawab}
                   onChange={(e) => setNamaPenanggungJawab(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full rounded-xs border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -1665,7 +1959,7 @@ const ModalEditRevisi: React.FC<{
                   type="text"
                   value={jabatan}
                   onChange={(e) => setJabatan(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full rounded-xs border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -1676,7 +1970,7 @@ const ModalEditRevisi: React.FC<{
                   type="text"
                   value={nomorSurat}
                   onChange={(e) => setNomorSurat(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full rounded-xs border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -1687,7 +1981,7 @@ const ModalEditRevisi: React.FC<{
                   type="date"
                   value={tanggalSurat}
                   onChange={(e) => setTanggalSurat(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] scheme-light outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full rounded-xs border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] scheme-light outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -1700,7 +1994,7 @@ const ModalEditRevisi: React.FC<{
                   onChange={(e) =>
                     setJumlahDebitur(e.target.value.replace(/[^0-9]/g, ""))
                   }
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full rounded-xs border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -1713,7 +2007,7 @@ const ModalEditRevisi: React.FC<{
                   onChange={(e) =>
                     setTotalNilaiPiutang(parseRupiahInput(e.target.value))
                   }
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full rounded-xs border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -1725,7 +2019,7 @@ const ModalEditRevisi: React.FC<{
                   onChange={(e) =>
                     setJenisPiutang(e.target.value as typeof jenisPiutang)
                   }
-                  className="w-full cursor-pointer rounded-md border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full cursor-pointer rounded-xs border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 >
                   {JENIS_PIUTANG_OPTIONS.map((opsi) => (
                     <option key={opsi} value={opsi}>
@@ -1745,7 +2039,7 @@ const ModalEditRevisi: React.FC<{
                       e.target.value as typeof jenisPenghapusan,
                     )
                   }
-                  className="w-full cursor-pointer rounded-md border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
+                  className="w-full cursor-pointer rounded-xs border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#1a4e8f]/30"
                 >
                   {JENIS_PENGHAPUSAN_OPTIONS.map((opsi) => (
                     <option key={opsi} value={opsi}>
@@ -1784,7 +2078,7 @@ const ModalEditRevisi: React.FC<{
                   <span className="text-red-500">*</span>
                 </p>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  className={`rounded-xs px-2 py-0.5 text-[11px] font-semibold ${
                     jumlahBuktiTidakMampu > 0
                       ? "bg-green-50 text-green-700"
                       : "bg-gray-100 text-gray-500"
@@ -1797,7 +2091,7 @@ const ModalEditRevisi: React.FC<{
               <p className="text-[11px] text-[#7a8899]">
                 Minimal satu harus dipenuhi dibawah ini.
               </p>
-              <div className="space-y-3 rounded-md border border-[#e2e8f2] bg-[#f7f8fa] p-3">
+              <div className="space-y-3 rounded-xs border border-[#e2e8f2] bg-[#f7f8fa] p-3">
                 {BUKTI_TIDAK_MAMPU_ITEMS.map((item) => (
                   <EditFileSlot
                     key={item.key as string}
@@ -1827,7 +2121,7 @@ const ModalEditRevisi: React.FC<{
                   <span className="text-red-500">*</span>
                 </p>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  className={`rounded-xs px-2 py-0.5 text-[11px] font-semibold ${
                     jumlahSuratTagihan > 0
                       ? "bg-green-50 text-green-700"
                       : "bg-gray-100 text-gray-500"
@@ -1840,7 +2134,7 @@ const ModalEditRevisi: React.FC<{
               <p className="text-[11px] text-[#7a8899]">
                 Minimal satu harus dipenuhi dibawah ini.
               </p>
-              <div className="space-y-3 rounded-md border border-[#e2e8f2] bg-[#f7f8fa] p-3">
+              <div className="space-y-3 rounded-xs border border-[#e2e8f2] bg-[#f7f8fa] p-3">
                 {SURAT_TAGIHAN_ITEMS.map((item) => (
                   <EditFileSlot
                     key={item.key as string}
@@ -1888,7 +2182,7 @@ const ModalEditRevisi: React.FC<{
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="w-full rounded-md border border-[#e2e8f2] bg-white px-4 py-2.5 text-sm font-medium text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
+            className="w-full rounded-xs border border-[#e2e8f2] bg-white px-4 py-2.5 text-sm font-medium text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
           >
             Batal
           </button>
@@ -1896,7 +2190,7 @@ const ModalEditRevisi: React.FC<{
             type="button"
             onClick={handleSimpan}
             disabled={isSaving}
-            className="w-full rounded-md bg-[#1a4e8f] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#0e3b6e] disabled:opacity-60 sm:w-auto"
+            className="w-full rounded-xs bg-[#1a4e8f] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#0e3b6e] disabled:opacity-60 sm:w-auto"
           >
             {isSaving ? "Menyimpan…" : "Simpan & Ajukan Ulang"}
           </button>
@@ -1925,7 +2219,7 @@ const RecordCardMobile: React.FC<{
 
   return (
     <div
-      className={`rounded-md border bg-white p-3.5 ${
+      className={`rounded-xs border bg-white p-3.5 ${
         adaRevisiTelaah ? "border-[#fdba74]" : "border-[#e2e8f2]"
       }`}
     >
@@ -1950,7 +2244,7 @@ const RecordCardMobile: React.FC<{
           <button
             onClick={onLihatDetail}
             title="Lihat Detail"
-            className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+            className="flex h-8 cursor-pointer items-center gap-1 rounded-xs border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
           >
             <IconEye /> Lihat
           </button>
@@ -1958,7 +2252,7 @@ const RecordCardMobile: React.FC<{
             <button
               onClick={onEditRevisi}
               title="Edit Pengajuan"
-              className="flex h-8 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
+              className="flex h-8 cursor-pointer items-center gap-1 rounded-xs border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
             >
               <IconPencil /> Edit
             </button>
@@ -1993,9 +2287,8 @@ const RecordCardMobile: React.FC<{
         </div>
       </div>
 
-      {/* Badge Revisi Telaah Internal */}
       {adaRevisiTelaah && (
-        <div className="mt-3 rounded-md border border-[#fdba74] bg-[#fff7ed] p-2.5">
+        <div className="mt-3 rounded-xs border border-[#fdba74] bg-[#fff7ed] p-2.5">
           <div className="flex items-start gap-2">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ea580c] text-white">
               <IconRotate />
@@ -2012,7 +2305,7 @@ const RecordCardMobile: React.FC<{
           </div>
           <button
             onClick={onPerbaikiRevisiTelaah}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-sm bg-[#ea580c] py-2 text-[11.5px] font-semibold text-white transition hover:bg-[#c2410c]"
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xs bg-[#ea580c] py-2 text-[11.5px] font-semibold text-white transition hover:bg-[#c2410c]"
           >
             <IconRotate />
             Perbaiki Revisi Telaah
@@ -2028,14 +2321,6 @@ const RecordCardMobile: React.FC<{
           />
           {adaRevisiTelaah && <RevisiTelaahBadge />}
         </div>
-        {record.status === "revisi" && (
-          <button
-            onClick={onLihatDetail}
-            className="cursor-pointer text-[11px] font-semibold text-[#c0392b] hover:underline"
-          >
-            Lihat catatan revisi →
-          </button>
-        )}
       </div>
     </div>
   );
@@ -2272,8 +2557,8 @@ export default function DaftarPengajuanOPDBaru({
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="mb-3.5 flex flex-wrap items-center gap-2.5 rounded-md border border-[#e2e8f2] bg-white p-3 sm:p-[14px_16px]">
-        <div className="flex min-w-0 flex-[1_1_100%] items-center gap-2 rounded-lg border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:flex-[1_1_200px]">
+      <div className="mb-3.5 flex flex-wrap items-center gap-2.5 rounded-xs border border-[#e2e8f2] bg-white p-3 sm:p-[14px_16px]">
+        <div className="flex min-w-0 flex-[1_1_100%] items-center gap-2 rounded-xs border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 sm:flex-[1_1_200px]">
           <span className="shrink-0 text-[#7a8899]">
             <IconSearch />
           </span>
@@ -2307,7 +2592,7 @@ export default function DaftarPengajuanOPDBaru({
                 status: e.target.value as StatusFormulir | "SEMUA",
               }))
             }
-            className="cursor-pointer rounded-[7px] border border-[#e2e8f2] bg-white px-2.5 py-1.5 text-xs text-[#1a1a2e] outline-none"
+            className="cursor-pointer rounded-xs border border-[#e2e8f2] bg-white px-2.5 py-1.5 text-xs text-[#1a1a2e] outline-none"
           >
             <option value="SEMUA">Semua Status</option>
             {(Object.keys(STATUS_CONFIG) as StatusFormulir[]).map((s) => (
@@ -2324,7 +2609,7 @@ export default function DaftarPengajuanOPDBaru({
 
       {/* Daftar pengajuan */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-[#e2e8f2] bg-white p-[56px_24px] text-[#7a8899]">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xs border border-[#e2e8f2] bg-white p-[56px_24px] text-[#7a8899]">
           <div className="text-[#1a4e8f] opacity-35">
             <svg
               width="32"
@@ -2382,7 +2667,7 @@ export default function DaftarPengajuanOPDBaru({
           </div>
 
           {/* Desktop */}
-          <div className="hidden overflow-x-auto rounded-md border border-[#e2e8f2] bg-white md:block">
+          <div className="hidden overflow-x-auto rounded-xs border border-[#e2e8f2] bg-white md:block">
             <table className="w-full min-w-180 border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-[#e2e8f2] bg-[#263e6e]">
@@ -2444,7 +2729,7 @@ export default function DaftarPengajuanOPDBaru({
                               <span className="text-[11px] font-bold tracking-[0.06em] uppercase">
                                 {cfg.label}
                               </span>
-                              <span className="rounded-full bg-white/70 px-1.75 py-px text-[10px] font-bold">
+                              <span className="rounded-xs bg-white/70 px-1.75 py-px text-[10px] font-bold">
                                 {group.items.length}
                               </span>
                             </div>
@@ -2497,29 +2782,13 @@ export default function DaftarPengajuanOPDBaru({
                                   />
                                   {adaRevisiTelaah && <RevisiTelaahBadge />}
                                 </div>
-                                {record.status === "revisi" && (
-                                  <button
-                                    onClick={() => setSelectedRecord(record)}
-                                    className="mt-1 block cursor-pointer text-[11px] font-semibold text-[#c0392b] hover:underline"
-                                  >
-                                    Lihat catatan revisi →
-                                  </button>
-                                )}
-                                {adaRevisiTelaah && (
-                                  <button
-                                    onClick={() => setSelectedRecord(record)}
-                                    className="mt-1 block cursor-pointer text-[11px] font-semibold text-[#ea580c] hover:underline"
-                                  >
-                                    Lihat catatan telaah →
-                                  </button>
-                                )}
                               </td>
                               <td className="p-[12px_14px] whitespace-nowrap">
                                 <div className="flex flex-col gap-1.5">
                                   <button
                                     onClick={() => setSelectedRecord(record)}
                                     title="Lihat Detail"
-                                    className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+                                    className="flex h-7 cursor-pointer items-center gap-1 rounded-xs border border-[#e2e8f2] bg-[#f7f8fa] px-2 text-[11px] font-semibold text-[#7a8899] transition-colors duration-150 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
                                   >
                                     <IconEye /> Lihat
                                   </button>
@@ -2527,7 +2796,7 @@ export default function DaftarPengajuanOPDBaru({
                                     <button
                                       onClick={() => setEditRecord(record)}
                                       title="Edit Pengajuan"
-                                      className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
+                                      className="flex h-7 cursor-pointer items-center gap-1 rounded-xs border border-[#fed7aa] bg-[#fff7ed] px-2 text-[11px] font-semibold text-[#9a3412] transition-colors duration-150 hover:border-[#f97316] hover:bg-[#ffedd5]"
                                     >
                                       <IconPencil /> Edit
                                     </button>
@@ -2538,7 +2807,7 @@ export default function DaftarPengajuanOPDBaru({
                                         setEditTelaahRecord(record)
                                       }
                                       title="Perbaiki Revisi Telaah Internal"
-                                      className="flex h-7 cursor-pointer items-center gap-1 rounded-[7px] border border-[#fdba74] bg-[#fff7ed] px-2 text-[11px] font-semibold whitespace-nowrap text-[#9a3412] transition-colors duration-150 hover:border-[#ea580c] hover:bg-[#ffedd5]"
+                                      className="flex h-7 cursor-pointer items-center gap-1 rounded-xs border border-[#fdba74] bg-[#fff7ed] px-2 text-[11px] font-semibold whitespace-nowrap text-[#9a3412] transition-colors duration-150 hover:border-[#ea580c] hover:bg-[#ffedd5]"
                                     >
                                       <IconRotate /> Perbaiki
                                     </button>
