@@ -21,6 +21,8 @@ import { getOpdByNama } from "@/types/types";
 const PENGAJUAN_COLLECTION = "pengajuan";
 const COUNTER_NOMOR_PENGAJUAN_ID = "nomorPengajuan";
 
+/* ==================== Nomor Pengajuan ==================== */
+
 function formatNomorPengajuan(
   urutan: number,
   kodeOpd: string,
@@ -45,6 +47,8 @@ async function generateNomorPengajuan(
   });
 }
 
+/* ==================== Field dokumen (untuk upload otomatis) ====== */
+
 const FIELD_DOKUMEN = [
   "fileSurat",
   "suratPengantarUsulan",
@@ -68,6 +72,8 @@ const FIELD_DOKUMEN = [
   "buktiKerjaSamaPihakKetiga",
   "buktiUpayaOptimal",
 ] as const satisfies readonly (keyof FormulirPenghapusanPiutangOPD)[];
+
+/* ==================== createPengajuan ==================== */
 
 export async function createPengajuan(
   form: FormulirPenghapusanPiutangOPD,
@@ -163,7 +169,7 @@ export async function createPengajuan(
   return { id: pengajuanId, nomorPengajuan };
 }
 
-/* ==================== Ajukan Ulang (verifikasi BPKAD) ==================== */
+/* ==================== Ajukan Ulang (revisi verifikasi BPKAD) ====== */
 
 type FieldBisaDirevisi =
   | "namaPenanggungJawab"
@@ -263,7 +269,7 @@ export async function ajukanUlangPengajuan(
   });
 }
 
-/* ==================== Simpan Perbaikan Revisi Telaah Internal ============ */
+/* ==================== Simpan Perbaikan Revisi Telaah Internal ==== */
 
 /**
  * Simpan perbaikan OPD untuk revisi TELAAH INTERNAL (BEDA dari
@@ -274,8 +280,7 @@ export async function ajukanUlangPengajuan(
  *  - revisiTelaahInternal di-null-kan
  *
  * Riwayat telaah internal tetap utuh — siklus baru dimulai oleh Admin
- * lewat "Ajukan Telaah Ulang" (lihat ajukanTelaahUlang di
- * telaah-internal-store.tsx).
+ * lewat "Ajukan Telaah Ulang" (lihat ajukanTelaahUlang di store).
  */
 export async function simpanPerbaikanRevisiTelaah(
   id: string,

@@ -3,9 +3,6 @@
 /* ------------------------------------------------------------------ */
 /*  TelaahSayaInternal.tsx                                             */
 /*  "Ruang Telaah" untuk user INTERNAL_STRUKTURAL.                     */
-/*  2 tab:                                                             */
-/*   - "Antrean Saya"   → telaah yang menunggu aksi user (naik/turun). */
-/*   - "Riwayat Telaah" → telaah yang pernah di-aksi oleh user.        */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
@@ -337,7 +334,7 @@ const StatCard: React.FC<{
               {percent}%
             </span>
           </div>
-          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/70">
+          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-sm bg-white/70">
             <div
               className={`h-full transition-all duration-500 ${progressColor}`}
               style={{ width: `${percent}%` }}
@@ -349,7 +346,7 @@ const StatCard: React.FC<{
   );
 };
 
-/* ==================== Kartu: Antrean ==================== */
+/* ==================== Kartu Antrean ==================== */
 
 const KartuAntrean: React.FC<{
   telaah: TelaahInternalRecord;
@@ -437,7 +434,7 @@ const KartuAntrean: React.FC<{
   );
 };
 
-/* ==================== Kartu: Riwayat ==================== */
+/* ==================== Kartu Riwayat ==================== */
 
 const KartuRiwayat: React.FC<{
   telaah: TelaahInternalRecord;
@@ -590,8 +587,6 @@ export default function TelaahSayaInternal() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
   }, [data]);
 
-  /* ── Data tab "Antrean Saya" ── */
-  // Termasuk state naik (telaah) & turun (teruskan revisi).
   const daftarAntrean = useMemo(() => {
     if (!level) return [];
     return data
@@ -606,7 +601,6 @@ export default function TelaahSayaInternal() {
       );
   }, [data, level]);
 
-  /* ── Data tab "Riwayat Telaah" ── */
   const daftarRiwayat = useMemo(() => {
     if (!username) return [];
     return data
@@ -698,7 +692,6 @@ export default function TelaahSayaInternal() {
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      {/* Header */}
       <div className="mb-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -726,7 +719,6 @@ export default function TelaahSayaInternal() {
         </p>
       </div>
 
-      {/* Stat cards */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
           icon={<IconInbox />}
@@ -763,7 +755,6 @@ export default function TelaahSayaInternal() {
         />
       </div>
 
-      {/* Tab bar */}
       <div className="mb-3.5 flex flex-wrap gap-1.5 border-b border-[#e2e8f2]">
         {tabs.map((t) => {
           const isActive = tab === t.key;
@@ -792,7 +783,6 @@ export default function TelaahSayaInternal() {
         })}
       </div>
 
-      {/* Filter bar */}
       <div className="mb-3.5 flex flex-col gap-2 rounded-sm border border-[#e2e8f2] bg-white p-[14px_16px] lg:flex-row lg:items-center">
         <div className="flex w-full min-w-0 items-center gap-2 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-3 py-1.75 lg:min-w-40 lg:flex-1">
           <span className="shrink-0 text-[#7a8899]">
@@ -849,7 +839,6 @@ export default function TelaahSayaInternal() {
         </div>
       </div>
 
-      {/* Filter chips khusus Riwayat */}
       {tab === "riwayat" && (
         <div className="mb-3.5 flex flex-wrap gap-1.5">
           {(
@@ -894,7 +883,6 @@ export default function TelaahSayaInternal() {
         </div>
       )}
 
-      {/* Konten */}
       {isLoading ? (
         <div className="flex items-center justify-center rounded-sm border border-dashed border-[#e2e8f2] bg-white py-16 text-sm text-[#7a8899]">
           Memuat data telaah…

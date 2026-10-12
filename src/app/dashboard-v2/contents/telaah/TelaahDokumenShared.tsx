@@ -63,19 +63,6 @@ export function labelJenisPiutang(j: JenisPiutang | ""): string {
 
 /* ==================== Helper: cari entry terakhir per level ============ */
 
-/**
- * Cari entry TERAKHIR dari level tertentu di riwayat.
- *
- * BEDA dari versi lama (yang cari by milestone "SUDAH_TELAAH_X"), versi
- * ini lebih fleksibel — bisa menemukan entry:
- *  - SUDAH_TELAAH_*    (approve — semua dokumen "sesuai")
- *  - REVISI_DARI_*     (reject — ada dokumen "belum_sesuai")
- *  - DITERUSKAN_*      (teruskan — tanpa checklistDokumen)
- *
- * Dipakai untuk menampilkan sub-line "telaah sebelumnya" di bawah tiap
- * dokumen — supaya baik status approve maupun reject dari level
- * sebelumnya bisa ditampilkan dengan tepat.
- */
 export function findEntryByLevel(
   riwayat: TelaahLogEntry[],
   level: TelaahLevel,
@@ -350,7 +337,7 @@ export const ModalPreviewPDF: React.FC<{
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-none bg-white shadow-2xl sm:rounded-sm">
+      <div className="flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-sm bg-white shadow-2xl">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e2e8f2] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-[#fdecea]">
@@ -368,7 +355,7 @@ export const ModalPreviewPDF: React.FC<{
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded bg-[#f1f3f5] px-2.5 py-1.5 text-[13px] font-medium text-[#1a1a2e] transition hover:bg-[#e5e7eb]"
+              className="flex items-center gap-1.5 rounded-sm bg-[#f1f3f5] px-2.5 py-1.5 text-[13px] font-medium text-[#1a1a2e] transition hover:bg-[#e5e7eb]"
               title="Buka di tab baru"
             >
               Tab baru
@@ -376,7 +363,7 @@ export const ModalPreviewPDF: React.FC<{
             <button
               type="button"
               onClick={onClose}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#7a8899] transition hover:bg-[#f1f3f5] hover:text-[#1a1a2e]"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm text-[#7a8899] transition hover:bg-[#f1f3f5] hover:text-[#1a1a2e]"
               title="Tutup (Esc)"
             >
               <IconClose />
@@ -395,7 +382,7 @@ export const ModalPreviewPDF: React.FC<{
   );
 };
 
-/* ==================== Komponen: DokumenItem (read-only, dipakai verifikasi) ===== */
+/* ==================== Komponen: DokumenItem ==================== */
 
 export const DokumenItem: React.FC<{
   nomor: number | null;

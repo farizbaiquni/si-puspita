@@ -1,5 +1,10 @@
 "use client";
 
+/* ------------------------------------------------------------------ */
+/*  notifikasi-store.tsx                                               */
+/*  Notifikasi untuk OPD (verifikasi BPKAD & revisi telaah internal).  */
+/* ------------------------------------------------------------------ */
+
 import { useEffect, useState } from "react";
 import {
   addDoc,
@@ -76,8 +81,8 @@ export async function kirimNotifikasiVerifikasi(
 }
 
 /**
- * Kirim notifikasi ke OPD saat Admin mengirim revisi dari TELAAH INTERNAL.
- * Status tetap "teregistrasi" (tidak berubah), tipe khusus "telaah_internal".
+ * Notifikasi ke OPD saat Admin mengirim revisi dari TELAAH INTERNAL.
+ * Status tetap "teregistrasi", tipe khusus "telaah_internal".
  */
 export async function kirimNotifikasiTelaahKeOPD(
   pengajuan: Pick<

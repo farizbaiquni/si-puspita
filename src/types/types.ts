@@ -114,7 +114,7 @@ export interface NotifikasiOPD {
    * Jenis notifikasi — untuk UI bedakan warna/ikon di dropdown.
    * Opsional untuk backward-compat: notif lama (dibuat sebelum fitur
    * revisi telaah internal) tidak punya field ini → di UI diperlakukan
-   * sebagai "verifikasi" (default) lewat `n.tipe ?? "verifikasi"`.
+   * sebagai "verifikasi" (default).
    */
   tipe?: "verifikasi" | "telaah_internal";
 }
@@ -133,13 +133,9 @@ export interface RiwayatRevisiRecord {
 
 /* ==================== 1d. Revisi Telaah Internal ==================== */
 
-/**
- * Level sumber catatan revisi telaah internal.
- */
 export type TelaahLevelSumberCatatan =
   "kasubbid" | "kabid" | "sekban" | "admin";
 
-/** Satu baris catatan revisi dari level telaah tertentu. */
 export interface CatatanRevisiTelaah {
   olehLevel: TelaahLevelSumberCatatan;
   olehUsername: string;
@@ -148,17 +144,31 @@ export interface CatatanRevisiTelaah {
 }
 
 /**
- * Info revisi telaah internal yang sedang aktif pada satu pengajuan.
- * Di-set Admin saat klik "Kirim Revisi ke OPD"; di-null-kan lagi setelah
- * OPD submit perbaikan (via ModalEditRevisiTelaah).
+ * Catatan revisi PER-DOKUMEN dari level telaah tertentu.
+ * Hanya menyimpan `docKey` (mis. "persyaratanPiutangMacet") — BUKAN label
+ * panjang. Label di-lookup saat render dari buildDokumenTampilan() supaya
+ * konsisten walau label berubah nanti.
  */
+export interface CatatanDokumenRevisi {
+  docKey: string;
+  olehLevel: TelaahLevelSumberCatatan;
+  olehUsername: string;
+  catatan: string;
+  timestamp: string;
+}
+
 export interface RevisiTelaahInternal {
   aktif: boolean;
   telaahId: string;
   dikirimOleh: string;
   dikirimPada: string;
-  /** Catatan berjenjang dari tiap level, urut kronologis (paling awal dulu). */
+  /** Catatan berjenjang per level, urut kronologis. */
   catatanPerLevel: CatatanRevisiTelaah[];
+  /**
+   * Catatan PER-DOKUMEN dari tiap level yang menandai "Belum Sesuai".
+   * Opsional untuk backward-compat.
+   */
+  catatanPerDokumen?: CatatanDokumenRevisi[];
 }
 
 export const TELAAH_LEVEL_SUMBER_CATATAN_LABEL: Record<
@@ -293,14 +303,9 @@ export interface FormulirPenghapusanPiutangOPDRecord {
 
   /**
    * Info revisi telaah internal (BARU — non-destructive).
-   *
-   * Di-set Admin saat klik "Kirim Revisi ke OPD". Di-null-kan lagi
-   * setelah OPD submit perbaikan (via ModalEditRevisiTelaah).
-   *
-   * ⚠️ Field `status` pengajuan TETAP "teregistrasi" selama proses ini —
-   * TIDAK berubah jadi "revisi" seperti pada revisi verifikasi BPKAD
-   * biasa. Badge "Revisi Telaah Internal" di UI ditampilkan terpisah
-   * dari badge status utama.
+   * Di-set Admin saat klik "Kirim Revisi ke OPD".
+   * Di-null-kan lagi setelah OPD submit perbaikan.
+   * Status pengajuan TETAP "teregistrasi".
    */
   revisiTelaahInternal?: RevisiTelaahInternal | null;
 }

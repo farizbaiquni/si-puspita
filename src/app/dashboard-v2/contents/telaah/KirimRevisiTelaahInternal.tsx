@@ -3,7 +3,6 @@
 /* ------------------------------------------------------------------ */
 /*  KirimRevisiTelaahInternal.tsx                                      */
 /*  Menu Admin untuk kirim revisi telaah internal ke OPD.              */
-/*  Daftar telaah dengan state MENUNGGU_ADMIN_KIRIM_REVISI.            */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
@@ -126,11 +125,6 @@ const IconBuilding = () => (
 
 /* ==================== Helper ==================== */
 
-/**
- * Ambil semua entry catatan revisi berjenjang dari SIKLUS SAAT INI
- * (dari awal siklus sampai sekarang). Hanya milestone REVISI_DARI_* &
- * DITERUSKAN_* yang diambil.
- */
 function ambilCatatanRevisiSaatIni(
   riwayat: TelaahLogEntry[],
 ): TelaahLogEntry[] {
@@ -289,7 +283,6 @@ export default function KirimRevisiTelaahInternal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  /* ── Daftar OPD unik ── */
   const daftarOPD = useMemo(() => {
     const set = new Set<string>();
     semuaPengajuan.forEach((p) => {
@@ -298,7 +291,6 @@ export default function KirimRevisiTelaahInternal() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
   }, [semuaPengajuan]);
 
-  /* ── Daftar telaah dengan state MENUNGGU_ADMIN_KIRIM_REVISI ── */
   const daftarRevisi = useMemo(
     () =>
       semuaTelaah
@@ -311,7 +303,6 @@ export default function KirimRevisiTelaahInternal() {
     [semuaTelaah],
   );
 
-  /* ── Filter ── */
   const filtered = useMemo(() => {
     return daftarRevisi.filter((t) => {
       if (filterOPD && t.namaOPD !== filterOPD) return false;
@@ -334,7 +325,6 @@ export default function KirimRevisiTelaahInternal() {
     setFilterOPD("");
   };
 
-  /* ── Handler kirim ke OPD ── */
   const handleKonfirmasiKirim = async (catatanTambahan: string) => {
     if (!pendingKirim || !user?.username) return;
     setIsSubmitting(true);
@@ -351,7 +341,6 @@ export default function KirimRevisiTelaahInternal() {
     }
   };
 
-  /* ── Render detail ── */
   if (selectedTelaahId) {
     return (
       <DetailTelaah

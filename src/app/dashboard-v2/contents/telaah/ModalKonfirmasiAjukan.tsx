@@ -2,8 +2,8 @@
 
 /* ------------------------------------------------------------------ */
 /*  ModalKonfirmasiAjukan.tsx                                          */
-/*  Modal konfirmasi sebelum admin mengajukan pengajuan ke telaah      */
-/*  internal. Mendukung 2 varian:                                       */
+/*  Modal konfirmasi admin sebelum ajukan pengajuan ke telaah internal.*/
+/*  Mendukung 2 varian:                                                 */
 /*   - "baru"  : siklus pertama kali (siklusKe = 1)                    */
 /*   - "ulang" : siklus baru setelah OPD revisi (siklusKe >= 2)        */
 /* ------------------------------------------------------------------ */
@@ -33,9 +33,7 @@ interface ModalKonfirmasiAjukanProps {
   onClose: () => void;
   isSubmitting: boolean;
   errorMessage?: string | null;
-  /** "baru" (default) untuk siklus pertama; "ulang" untuk siklus baru. */
   variant?: "baru" | "ulang";
-  /** Nomor siklus yang akan dimulai (untuk variant "ulang"). */
   siklusBerikutnya?: number;
 }
 
@@ -68,7 +66,7 @@ export default function ModalKonfirmasiAjukan({
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-xl border border-[#e2e8f2] bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-md rounded-sm border border-[#e2e8f2] bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-start gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
@@ -85,7 +83,7 @@ export default function ModalKonfirmasiAjukan({
           </div>
         </div>
 
-        <div className="mb-4 space-y-2 rounded-lg border border-[#eef1f5] bg-[#f9fafc] p-4">
+        <div className="mb-4 space-y-2 rounded-sm border border-[#eef1f5] bg-[#f9fafc] p-4">
           <div>
             <div className="text-[10.5px] font-semibold tracking-wider text-[#7a8899] uppercase">
               Nomor Registrasi
@@ -112,7 +110,7 @@ export default function ModalKonfirmasiAjukan({
           )}
         </div>
 
-        <div className="mb-4 rounded-lg border border-[#dbe6f7] bg-[#eff6ff] px-3.5 py-3 text-[12px] text-[#1e40af]">
+        <div className="mb-4 rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-3.5 py-3 text-[12px] text-[#1e40af]">
           <p className="mb-1 font-semibold">Alur telaah internal:</p>
           <ol className="list-inside list-decimal space-y-0.5 text-[11.5px]">
             <li>
@@ -129,7 +127,7 @@ export default function ModalKonfirmasiAjukan({
         </div>
 
         {isUlang && (
-          <div className="mb-4 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3.5 py-2.5 text-[11.5px] text-[#b45309]">
+          <div className="mb-4 rounded-sm border border-[#fde68a] bg-[#fffbeb] px-3.5 py-2.5 text-[11.5px] text-[#b45309]">
             <span className="font-semibold">ℹ️ Info:</span> OPD sudah
             memperbaiki pengajuan berdasarkan catatan revisi sebelumnya. Siklus
             baru akan dimulai dari Kasubbid, dan riwayat telaah sebelumnya tetap
@@ -138,7 +136,7 @@ export default function ModalKonfirmasiAjukan({
         )}
 
         {!isUlang && (
-          <div className="mb-4 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-3.5 py-2.5 text-[11.5px] text-[#9a3412]">
+          <div className="mb-4 rounded-sm border border-[#fed7aa] bg-[#fff7ed] px-3.5 py-2.5 text-[11.5px] text-[#9a3412]">
             <span className="font-semibold">⚠️ Perhatian:</span> Setelah
             diajukan, pengajuan ini{" "}
             <span className="font-semibold">
@@ -150,7 +148,7 @@ export default function ModalKonfirmasiAjukan({
         )}
 
         {errorMessage && (
-          <div className="mb-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-[12px] text-[#c0392b]">
+          <div className="mb-4 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-[12px] text-[#c0392b]">
             {errorMessage}
           </div>
         )}
@@ -160,7 +158,7 @@ export default function ModalKonfirmasiAjukan({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="w-full rounded-lg border border-[#e2e8f2] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
+            className="w-full rounded-sm border border-[#e2e8f2] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
           >
             Batal
           </button>
@@ -168,7 +166,7 @@ export default function ModalKonfirmasiAjukan({
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
-            className={`w-full rounded-lg px-4 py-2.5 text-[13px] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto ${
+            className={`w-full rounded-sm px-4 py-2.5 text-[13px] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto ${
               isUlang
                 ? "bg-[#f59e0b] hover:bg-[#d97706]"
                 : "bg-[#1a4e8f] hover:bg-[#2d63a8]"

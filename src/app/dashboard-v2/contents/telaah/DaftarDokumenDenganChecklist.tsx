@@ -2,15 +2,14 @@
 
 /* ------------------------------------------------------------------ */
 /*  DaftarDokumenDenganChecklist.tsx                                   */
-/*  Tabel telaah dengan RADIO "Sesuai"/"Belum Sesuai" per dokumen.     */
-/*  Textarea catatan hanya muncul jika "Belum Sesuai" (wajib, min 5 ch).*/
+/*  Tabel telaah dengan RADIO custom "Sesuai"/"Belum Sesuai" per       */
+/*  dokumen. Textarea catatan hanya muncul jika "Belum Sesuai"         */
+/*  (wajib, min 5 karakter). Warna card status pakai biru kalem        */
+/*  (bukan merah) supaya tidak bikin user panik.                       */
 /* ------------------------------------------------------------------ */
 
 import { Fragment, useMemo, useState } from "react";
-import type {
-  FormulirPenghapusanPiutangOPDRecord,
-  UploadedFileRef,
-} from "@/types/types";
+import type { FormulirPenghapusanPiutangOPDRecord } from "@/types/types";
 import type { TelaahLevel, TelaahLogEntry } from "@/types/telaah-internal";
 import { TELAAH_LEVEL_LABEL } from "@/types/telaah-internal";
 import {
@@ -90,19 +89,6 @@ const IconXCircle = () => (
   </svg>
 );
 
-const IconArrowRight = () => (
-  <svg
-    width="11"
-    height="11"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path d="M6 3.5l4 4.5-4 4.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 const IconUserBadge = () => (
   <svg
     width="11"
@@ -135,17 +121,14 @@ const IconClipboard = () => (
   </svg>
 );
 
-/* ==================== Helper prev entry ==================== */
+/* ==================== Helper ==================== */
 
 interface PrevLevelInfo {
   level: TelaahLevel;
   levelLabel: string;
   timestamp: string;
-  /** Item checklist untuk dokumen ini (undefined jika level tidak telaah doc ini / teruskan). */
   docItem: ChecklistItem | undefined;
-  /** True kalau entry ini cuma "diteruskan" — tidak ada checklistDokumen. */
   isTeruskan: boolean;
-  /** Catatan global dari level ini (untuk milestone turun). */
   catatanGlobal: string;
 }
 
@@ -172,12 +155,11 @@ const HeaderSection: React.FC<{
   const pct = (n: number) =>
     totalUploaded === 0 ? 0 : (n / totalUploaded) * 100;
 
-  // Warna header kartu: hijau kalau semua Sesuai, merah kalau ada Belum Sesuai,
-  // kuning kalau masih ada yang belum ditelaah, abu kalau kosong.
+  // Warna card status: biru kalem (bukan merah) kalau ada Belum Sesuai.
   const cardClass = isEmpty
     ? "border-[#e2e8f2] bg-[#f7f8fa]"
     : adaBelumSesuai
-      ? "border-[#fecaca] bg-[#fef2f2]"
+      ? "border-[#dbe6f7] bg-[#eff6ff]"
       : isComplete
         ? "border-[#a7f3d0] bg-[#ecfdf5]"
         : "border-[#fde68a] bg-[#fffbeb]";
@@ -185,7 +167,7 @@ const HeaderSection: React.FC<{
   const statusIconBg = isEmpty
     ? "bg-[#7a8899]"
     : adaBelumSesuai
-      ? "bg-[#c0392b]"
+      ? "bg-[#1a4e8f]"
       : isComplete
         ? "bg-[#0f9b6e]"
         : "bg-[#f59e0b]";
@@ -201,7 +183,7 @@ const HeaderSection: React.FC<{
   const statusTextClass = isEmpty
     ? "text-[#5a6474]"
     : adaBelumSesuai
-      ? "text-[#991b1b]"
+      ? "text-[#1e40af]"
       : isComplete
         ? "text-[#0f6e56]"
         : "text-[#b45309]";
@@ -230,7 +212,7 @@ const HeaderSection: React.FC<{
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${statusIconBg}`}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-white ${statusIconBg}`}
             >
               {adaBelumSesuai ? (
                 <IconXCircle />
@@ -264,8 +246,7 @@ const HeaderSection: React.FC<{
           </div>
         </div>
 
-        {/* Stacked progress bar */}
-        <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-full bg-[#e2e8f0]">
+        <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-sm bg-[#e2e8f0]">
           {totalSesuai > 0 && (
             <div
               className="h-full bg-[#0f9b6e] transition-all duration-500"
@@ -295,7 +276,6 @@ const PrevSubLine: React.FC<{ items: PrevLevelInfo[] }> = ({ items }) => {
         const isLast = idx === items.length - 1;
         const prefix = isLast ? "└" : "├";
 
-        // Kasus "diteruskan" — level ini cuma meneruskan tanpa telaah per-doc.
         if (p.isTeruskan) {
           return (
             <div
@@ -320,7 +300,6 @@ const PrevSubLine: React.FC<{ items: PrevLevelInfo[] }> = ({ items }) => {
 
         const item = p.docItem;
 
-        // Belum ada entry / status null → belum ditelaah.
         if (!item || item.status === null) {
           return (
             <div
@@ -377,7 +356,7 @@ const PrevSubLine: React.FC<{ items: PrevLevelInfo[] }> = ({ items }) => {
   );
 };
 
-/* ==================== Radio Group Inline (custom, browser-safe) ======== */
+/* ==================== Radio Group (custom, browser-safe) ============ */
 
 const RadioStatusGroup: React.FC<{
   value: StatusDokumenTelaah;
@@ -387,7 +366,7 @@ const RadioStatusGroup: React.FC<{
   const isBelumSesuai = value === "belum_sesuai";
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div role="radiogroup" className="flex flex-wrap items-center gap-1.5">
       {/* Tombol Sesuai */}
       <button
         type="button"
@@ -459,12 +438,12 @@ const CatatanInput: React.FC<{
         placeholder={placeholder ?? "Catatan wajib (minimal 5 karakter)…"}
         className={`w-full resize-none rounded-sm border p-2 text-[12px] transition outline-none ${
           isError
-            ? "border-red-400 bg-red-50 text-[#1a1a2e] focus:border-red-500"
+            ? "border-amber-300 bg-amber-50 text-[#1a1a2e] focus:border-amber-400"
             : "border-[#e2e8f2] bg-white text-[#1a1a2e] focus:border-[#a0bdec] focus:bg-[#f0f6fd]"
         }`}
       />
       {isError && (
-        <p className="text-[10.5px] font-medium text-red-600">
+        <p className="text-[10.5px] font-medium text-amber-700">
           Catatan wajib diisi minimal 5 karakter.
         </p>
       )}
@@ -510,7 +489,6 @@ const DocRow: React.FC<DocRowProps> = ({
               : "bg-[#fbfbfc]"
       }`}
     >
-      {/* NO */}
       <td className="w-10 px-3 py-3 align-top">
         <span
           className={`text-[12.5px] font-bold ${
@@ -527,7 +505,6 @@ const DocRow: React.FC<DocRowProps> = ({
         </span>
       </td>
 
-      {/* DOKUMEN */}
       <td className="px-3 py-3 align-top">
         <div className="flex items-start gap-2.5">
           <div
@@ -563,7 +540,6 @@ const DocRow: React.FC<DocRowProps> = ({
         </div>
       </td>
 
-      {/* AKSI — Radio + Lihat */}
       <td className="w-56 px-3 py-3 align-top">
         {uploaded ? (
           <div className="space-y-2">
@@ -586,7 +562,6 @@ const DocRow: React.FC<DocRowProps> = ({
         )}
       </td>
 
-      {/* CATATAN — hanya muncul jika Belum Sesuai */}
       <td className="w-72 px-3 py-3 align-top">
         {uploaded && isBelumSesuai ? (
           <CatatanInput
@@ -628,12 +603,7 @@ export default function DaftarDokumenDenganChecklist({
 
   const previousLevels = levelsBeforeCurrent(currentLevel);
 
-  // Untuk setiap level sebelumnya, cari entry terakhirnya. Karena riwayat
-  // append-only dan bisa multi-siklus, kita ambil entry PALING AKHIR dari
-  // level itu yang berada di siklus saat ini (cari dari belakang, stop
-  // kalau ketemu DIAJUKAN/SIKLUS_BARU_DIMULAI).
   const previousEntries = useMemo(() => {
-    // Cari index awal siklus saat ini.
     let siklusAwalIdx = 0;
     for (let i = riwayat.length - 1; i >= 0; i--) {
       if (
@@ -736,7 +706,7 @@ export default function DaftarDokumenDenganChecklist({
         </div>
       ) : (
         <>
-          {/* ══════════════════ DESKTOP (≥ md): Tabel ══════════════════ */}
+          {/* DESKTOP */}
           <div className="hidden overflow-hidden rounded-sm border border-[#e2e8f2] bg-white md:block">
             <table className="w-full border-collapse">
               <thead>
@@ -796,7 +766,7 @@ export default function DaftarDokumenDenganChecklist({
             </table>
           </div>
 
-          {/* ══════════════════ MOBILE (< md): Card View ══════════════════ */}
+          {/* MOBILE */}
           <div className="space-y-3 md:hidden">
             {dokumenTampilan.map((tampilan) => {
               if (tampilan.type === "single") {

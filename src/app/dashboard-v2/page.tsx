@@ -156,7 +156,7 @@ const ADMIN_MENUS: MenuItem[] = [
   {
     key: "kirim-revisi-telaah",
     icon: <IconSend />,
-    label: "Kirim Revisi Telaah Internal ke OPD",
+    label: "Kirim Revisi Telaah Internal",
   },
   {
     key: "reviu-inspektorat",
@@ -289,7 +289,7 @@ const NavItem: React.FC<NavItemProps> = ({
 }) => (
   <div
     onClick={onClick}
-    className={`relative flex cursor-pointer items-center gap-3 rounded-xl px-4 py-2.5 transition-all duration-150 ${
+    className={`relative flex cursor-pointer items-center gap-3 rounded-sm px-4 py-2.5 transition-all duration-150 ${
       active
         ? "bg-[#1a4e8f] text-white"
         : "text-[#7a8899] hover:bg-[#f0f4fb] hover:text-[#1a4e8f]"
@@ -299,7 +299,7 @@ const NavItem: React.FC<NavItemProps> = ({
     <span className="text-sm font-medium">{label}</span>
     {badge !== undefined && (
       <span
-        className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+        className={`ml-auto rounded-sm px-2 py-0.5 text-xs font-semibold ${
           active ? "bg-white/20 text-white" : "bg-[#e8f0fb] text-[#1a4e8f]"
         }`}
       >
@@ -361,7 +361,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <SiPuspitaLogo />
           <button
             onClick={onCloseMobile}
-            className="rounded-lg p-1.5 text-[#7a8899] hover:bg-[#f0f4fb] lg:hidden"
+            className="rounded-sm p-1.5 text-[#7a8899] hover:bg-[#f0f4fb] lg:hidden"
             aria-label="Tutup menu"
           >
             <svg
@@ -431,7 +431,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex cursor-pointer items-center gap-3 rounded-xl px-1.5 py-1 transition-colors hover:bg-[#f7f8fa]"
+        className="flex cursor-pointer items-center gap-3 rounded-sm px-1.5 py-1 transition-colors hover:bg-[#f7f8fa]"
       >
         <div
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${avatarGradient} text-sm font-semibold text-white`}
@@ -450,7 +450,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-[#ebebeb] bg-white py-1 shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-2 w-52 overflow-hidden rounded-sm border border-[#ebebeb] bg-white py-1 shadow-lg">
           <div className="border-b border-[#f0f0f0] px-4 py-3">
             <p className="truncate text-sm font-semibold text-slate-800">
               {name}
@@ -491,7 +491,7 @@ function formatWaktuRelatif(iso: string): string {
   });
 }
 
-// ── Notification Dropdown (OPD) — dengan pembeda tipe ──
+// ── Notification Dropdown OPD — dengan pembeda tipe ──
 
 const NOTIFIKASI_TIPE_AKSEN: Record<
   "verifikasi" | "telaah_internal",
@@ -548,7 +548,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Notifikasi"
-        className="relative hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex"
+        className="relative hidden h-9 w-9 items-center justify-center rounded-sm text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex"
       >
         <IconBell />
         {unreadCount > 0 && (
@@ -559,7 +559,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#ebebeb] bg-white shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-sm border border-[#ebebeb] bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-[#f0f0f0] px-4 py-3">
             <p className="text-sm font-semibold text-slate-800">Notifikasi</p>
             {unreadCount > 0 && (
@@ -633,7 +633,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   );
 };
 
-// ── Notification Dropdown (Internal) ──
+// ── Notification Dropdown Internal ──
 
 const MILESTONE_NOTIF_COLOR: Record<string, string> = {
   DIAJUKAN: "bg-[#1a4e8f]",
@@ -678,7 +678,7 @@ const NotificationDropdownInternal: React.FC<
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Notifikasi"
-        className="relative hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex"
+        className="relative hidden h-9 w-9 items-center justify-center rounded-sm text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex"
       >
         <IconBell />
         {unreadCount > 0 && (
@@ -689,7 +689,7 @@ const NotificationDropdownInternal: React.FC<
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#ebebeb] bg-white shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-sm border border-[#ebebeb] bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-[#f0f0f0] px-4 py-3">
             <p className="text-sm font-semibold text-slate-800">Notifikasi</p>
             {unreadCount > 0 && (
@@ -834,7 +834,7 @@ const Header: React.FC<HeaderProps> = ({
     <header className="flex h-auto min-h-17 shrink-0 flex-wrap items-center gap-3 border-b border-[#f0f0f0] bg-white px-4 py-2.5 sm:px-6 lg:px-8">
       <button
         onClick={onOpenMobileMenu}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] lg:hidden"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] lg:hidden"
         aria-label="Buka menu"
       >
         <svg
@@ -849,17 +849,17 @@ const Header: React.FC<HeaderProps> = ({
         </svg>
       </button>
 
-      <div className="order-3 flex w-full items-center gap-2.5 rounded-xl border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5 sm:order-0 sm:w-auto sm:max-w-85 sm:flex-1">
+      <div className="order-3 flex w-full items-center gap-2.5 rounded-sm border border-[#ebebeb] bg-[#f7f8fa] px-4 py-2.5 sm:order-0 sm:w-auto sm:max-w-85 sm:flex-1">
         <IconSearch />
         <span className="flex-1 text-sm text-[#b0bac5]">Search</span>
-        <div className="hidden items-center gap-1 rounded-md border border-[#e0e0e0] px-1.5 py-0.5 text-xs text-[#b0bac5] md:flex">
+        <div className="hidden items-center gap-1 rounded-sm border border-[#e0e0e0] px-1.5 py-0.5 text-xs text-[#b0bac5] md:flex">
           <span>⌘</span>
           <span>F</span>
         </div>
       </div>
       <div className="flex-1" />
 
-      <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
+      <button className="hidden h-9 w-9 items-center justify-center rounded-sm text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
         <IconMail />
       </button>
 
@@ -880,7 +880,7 @@ const Header: React.FC<HeaderProps> = ({
           onTandaiSemuaDibaca={notifikasiInternal.onTandaiSemuaDibaca}
         />
       ) : (
-        <button className="hidden h-9 w-9 items-center justify-center rounded-xl text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
+        <button className="hidden h-9 w-9 items-center justify-center rounded-sm text-[#7a8899] transition-colors hover:bg-[#f0f4fb] hover:text-[#1a4e8f] sm:flex">
           <IconBell />
         </button>
       )}
@@ -899,7 +899,7 @@ const Header: React.FC<HeaderProps> = ({
 // ── Empty content ──
 
 const EmptyContent: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#d8e4f5] bg-white/60">
+  <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-sm border-2 border-dashed border-[#d8e4f5] bg-white/60">
     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8f0fb] text-[#1a4e8f] opacity-60">
       <svg
         width="20"
@@ -1006,7 +1006,6 @@ const DashboardContent: React.FC = () => {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
 
-  // Guard: baca localStorage langsung untuk hindari race condition
   useEffect(() => {
     const raw = window.localStorage.getItem("si-puspita-session");
     if (!raw) {

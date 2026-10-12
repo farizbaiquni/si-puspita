@@ -8,6 +8,12 @@
 /*   - Naik  : Approve (semua Sesuai) atau Revisi (ada Belum Sesuai)   */
 /*   - Turun : Teruskan                                                 */
 /*   - Lain  : Lihat saja                                               */
+/*                                                                      */
+/*  Validasi Revisi:                                                    */
+/*   - Tombol TIDAK di-disable — user tetap bisa klik                   */
+/*   - Validasi muncul sebagai ERROR di bawah tombol saat diklik        */
+/*   - Card status pakai warna biru kalem (bukan merah) supaya user     */
+/*     tidak panik; tombol Revisi tetap merah                           */
 /* ------------------------------------------------------------------ */
 
 import { useState } from "react";
@@ -301,7 +307,7 @@ function labelTombolTeruskan(level: TelaahLevel): string {
   return "Teruskan";
 }
 
-/* ==================== Sub-komponen: Field dengan icon ==================== */
+/* ==================== Sub-komponen: Field ==================== */
 
 const Field: React.FC<{
   icon: React.ReactNode;
@@ -323,7 +329,7 @@ const Field: React.FC<{
   </div>
 );
 
-/* ==================== Timeline Riwayat ==================== */
+/* ==================== Timeline ==================== */
 
 const TimelineRiwayat: React.FC<{
   riwayat: import("@/types/telaah-internal").TelaahLogEntry[];
@@ -409,10 +415,11 @@ const ProgressChecklist: React.FC<{
   const isEmpty = total === 0;
   const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100);
 
+  // Warna card: biru kalem (bukan merah) saat ada Belum Sesuai.
   const cardClass = isEmpty
     ? "border-[#e2e8f2] bg-[#f7f8fa]"
     : adaBelumSesuai
-      ? "border-[#fecaca] bg-[#fef2f2]"
+      ? "border-[#dbe6f7] bg-[#eff6ff]"
       : isComplete
         ? "border-[#a7f3d0] bg-[#ecfdf5]"
         : "border-[#fde68a] bg-[#fffbeb]";
@@ -420,7 +427,7 @@ const ProgressChecklist: React.FC<{
   const textClass = isEmpty
     ? "text-[#7a8899]"
     : adaBelumSesuai
-      ? "text-[#991b1b]"
+      ? "text-[#1e40af]"
       : isComplete
         ? "text-[#0f6e56]"
         : "text-[#b45309]";
@@ -446,7 +453,7 @@ const ProgressChecklist: React.FC<{
         </span>
       </div>
 
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-white">
+      <div className="flex h-1.5 w-full overflow-hidden rounded-sm bg-white">
         {sesuai > 0 && (
           <div
             className="h-full bg-[#0f9b6e] transition-all duration-300"
@@ -532,8 +539,6 @@ export default function DetailTelaah({
   const level = user?.telaahLevel ?? null;
   const aksi = level ? getAksiTelaah(telaah.tahapSaatIni, level) : "lihat_saja";
 
-  // Aksi hanya bisa dilakukan saat mode "internal" & bukan state SELESAI /
-  // MENUNGGU_REVISI_OPD.
   const bisaAksi =
     mode === "internal" &&
     level !== null &&
@@ -543,7 +548,6 @@ export default function DetailTelaah({
   const dokumenFlat = flattenDokumenTampilan(buildDokumenTampilan(pengajuan));
   const dokumenUploaded = dokumenFlat.filter((d) => d.file !== null);
 
-  // Statistik checklist untuk sidebar & progress.
   const stats = (() => {
     let sesuai = 0;
     let belumSesuai = 0;
@@ -569,7 +573,7 @@ export default function DetailTelaah({
     if (error) setError(null);
   };
 
-  // Validasi & submit untuk aksi "telaah" (approve/revisi).
+  // Submit approve/revisi
   const handleSubmitTelaah = async () => {
     if (!level || !user?.username || isSubmitting) return;
 
@@ -599,9 +603,17 @@ export default function DetailTelaah({
 
     if (missingCatatan.length > 0) {
       setError(
-        `Dokumen berstatus "Belum Sesuai" wajib diberi catatan (min. 5 karakter):\n${missingCatatan
+        `Dokumen "Belum Sesuai" wajib diberi catatan (min. 5 karakter):\n${missingCatatan
           .map((l) => `• ${l}`)
           .join("\n")}`,
+      );
+      return;
+    }
+
+    const akanRevisi = stats.belumSesuai > 0;
+    if (akanRevisi && catatan.trim().length < 5) {
+      setError(
+        "Catatan Umum wajib diisi (minimal 5 karakter) ketika mengembalikan pengajuan untuk revisi.",
       );
       return;
     }
@@ -609,7 +621,6 @@ export default function DetailTelaah({
     setIsSubmitting(true);
     setError(null);
 
-    // Kirim hanya item yang upload-nya ada (buang yang null).
     const uploadedKeys = new Set(dokumenUploaded.map((d) => d.key));
     const checklistToSend: ChecklistMap = {};
     for (const [key, value] of Object.entries(checklistDokumen)) {
@@ -622,8 +633,7 @@ export default function DetailTelaah({
     }
 
     try {
-      const adaBelumSesuai = stats.belumSesuai > 0;
-      if (adaBelumSesuai) {
+      if (akanRevisi) {
         await revisiTelaah(
           telaah.id,
           level,
@@ -650,7 +660,7 @@ export default function DetailTelaah({
     }
   };
 
-  // Submit untuk aksi "teruskan".
+  // Submit teruskan
   const handleTeruskan = async () => {
     if (!level || !user?.username || isSubmitting) return;
 
@@ -671,10 +681,11 @@ export default function DetailTelaah({
   const identitasUtama = telaah.nomorRegistrasi || telaah.nomorPengajuan;
   const siklusKe = telaah.siklusKe ?? 1;
 
-  // Progress info
   const belumDitelaah = stats.total - stats.sesuai - stats.belumSesuai;
   const semuaSesuai = stats.total > 0 && stats.sesuai === stats.total;
   const adaBelumSesuai = stats.belumSesuai > 0;
+
+  const isCatatanUmumValid = catatan.trim().length >= 5;
 
   return (
     <div className="mx-auto w-full max-w-400">
@@ -686,9 +697,8 @@ export default function DetailTelaah({
       </button>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* ══════════════════ KOLOM KIRI ══════════════════ */}
+        {/* KOLOM KIRI */}
         <div className="space-y-4 lg:col-span-2">
-          {/* Card identitas */}
           <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white">
             <div className="bg-linear-to-r from-[#1a4e8f] to-[#2d63a8] px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -803,7 +813,6 @@ export default function DetailTelaah({
             </div>
           </div>
 
-          {/* Daftar dokumen — interaktif kalau aksi="telaah", read-only kalau selain itu */}
           {bisaAksi && aksi === "telaah" && level ? (
             <DaftarDokumenDenganChecklist
               pengajuan={pengajuan}
@@ -820,7 +829,7 @@ export default function DetailTelaah({
           )}
         </div>
 
-        {/* ══════════════════ KOLOM KANAN ══════════════════ */}
+        {/* KOLOM KANAN */}
         <div className="space-y-4 lg:col-span-1">
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             {telaah.selesai ? (
@@ -938,15 +947,38 @@ export default function DetailTelaah({
                 </div>
 
                 <label className="mb-1.5 block text-[12px] font-bold text-gray-500">
-                  CATATAN UMUM (opsional)
+                  CATATAN UMUM{" "}
+                  {adaBelumSesuai ? (
+                    <span className="text-[#b45309]">
+                      (wajib — min. 5 karakter)
+                    </span>
+                  ) : (
+                    <span className="text-[#7a8899]">(opsional)</span>
+                  )}
                 </label>
                 <textarea
                   value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
+                  onChange={(e) => {
+                    setCatatan(e.target.value);
+                    if (error) setError(null);
+                  }}
                   rows={4}
-                  placeholder="Kesimpulan telaah (boleh dikosongkan)…"
-                  className="w-full resize-none rounded-sm border border-[#e2e8f2] bg-gray-50 p-3 text-[13px] text-[#1a1a2e] outline-none focus:border-[#a0bdec] focus:bg-white"
+                  placeholder={
+                    adaBelumSesuai
+                      ? "Jelaskan kesimpulan revisi (min. 5 karakter)…"
+                      : "Kesimpulan telaah (boleh dikosongkan)…"
+                  }
+                  className={`w-full resize-none rounded-sm border p-3 text-[13px] text-[#1a1a2e] outline-none focus:bg-white ${
+                    adaBelumSesuai && !isCatatanUmumValid
+                      ? "border-amber-300 bg-amber-50 focus:border-amber-400"
+                      : "border-[#e2e8f2] bg-gray-50 focus:border-[#a0bdec]"
+                  }`}
                 />
+                {adaBelumSesuai && !isCatatanUmumValid && (
+                  <p className="mt-1 text-[11px] font-medium text-amber-700">
+                    Catatan Umum wajib diisi minimal 5 karakter untuk Revisi.
+                  </p>
+                )}
 
                 {error && (
                   <div className="mt-2 flex items-start gap-2 rounded-sm border border-[#fecaca] bg-[#fef2f2] p-2.5 text-[12px] font-medium text-[#c0392b]">
@@ -957,15 +989,14 @@ export default function DetailTelaah({
                   </div>
                 )}
 
-                {/* Info aksi */}
                 {belumDitelaah > 0 ? (
                   <div className="mt-3 rounded-sm border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[11.5px] text-[#b45309]">
                     Masih ada {belumDitelaah} dokumen yang belum ditelaah.
                   </div>
                 ) : adaBelumSesuai ? (
-                  <div className="mt-3 rounded-sm border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[11.5px] text-[#991b1b]">
+                  <div className="mt-3 rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-3 py-2 text-[11.5px] text-[#1e40af]">
                     Ada {stats.belumSesuai} dokumen{" "}
-                    <span className="font-semibold">Belum Sesuai</span> — klik{" "}
+                    <span className="font-semibold">Belum Sesuai</span>. Klik{" "}
                     <span className="font-semibold">Revisi</span> untuk
                     mengembalikan ke jenjang bawah.
                   </div>
@@ -976,10 +1007,12 @@ export default function DetailTelaah({
                   </div>
                 ) : null}
 
+                {/* Tombol TIDAK di-disable — hanya isSubmitting yang blok.
+                    Validasi muncul sebagai error di bawah saat diklik. */}
                 <button
                   onClick={handleSubmitTelaah}
-                  disabled={isSubmitting || belumDitelaah > 0}
-                  className={`mt-4 flex w-full items-center justify-center gap-2 rounded-sm py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  disabled={isSubmitting}
+                  className={`mt-4 flex w-full items-center justify-center gap-2 rounded-sm py-2.5 text-sm font-semibold text-white transition hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
                     adaBelumSesuai
                       ? "bg-[#c0392b] hover:bg-[#a63225]"
                       : "bg-[#1a4e8f] hover:bg-[#2d63a8]"

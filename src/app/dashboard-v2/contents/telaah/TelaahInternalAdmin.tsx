@@ -3,12 +3,7 @@
 /* ------------------------------------------------------------------ */
 /*  TelaahInternalAdmin.tsx                                            */
 /*  Menu "Telaah Internal" untuk admin.                                */
-/*  3 tab:                                                             */
-/*   - "Belum Diajukan" → pengajuan teregistrasi tanpa telaah doc     */
-/*                        ATAU telaah doc yang sudah direvisi & OPD    */
-/*                        sudah submit (siap diajukan ulang).          */
-/*   - "Dalam Proses"   → telaah yang belum selesai.                   */
-/*   - "Selesai"        → telaah yang sudah final.                     */
+/*  3 tab: Belum Diajukan / Dalam Proses / Selesai.                    */
 /* ------------------------------------------------------------------ */
 
 import { useMemo, useState } from "react";
@@ -379,7 +374,7 @@ const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
   );
 };
 
-/* ==================== Kartu: Belum Diajukan / Ajukan Ulang ==================== */
+/* ==================== Kartu Belum Diajukan / Ajukan Ulang =========== */
 
 const KartuBelumDiajukan: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
@@ -480,7 +475,7 @@ const KartuBelumDiajukan: React.FC<{
   );
 };
 
-/* ==================== Kartu: Dalam Proses ==================== */
+/* ==================== Kartu Dalam Proses ==================== */
 
 const KartuDalamProses: React.FC<{
   nomorRegistrasi: string;
@@ -604,7 +599,7 @@ const KartuDalamProses: React.FC<{
   );
 };
 
-/* ==================== Kartu: Selesai ==================== */
+/* ==================== Kartu Selesai ==================== */
 
 const KartuSelesai: React.FC<{
   nomorRegistrasi: string;
@@ -702,7 +697,7 @@ const KartuSelesai: React.FC<{
   );
 };
 
-/* ==================== Empty state ==================== */
+/* ==================== Empty ==================== */
 
 const EmptyState: React.FC<{
   icon: React.ReactNode;
@@ -751,11 +746,6 @@ export default function TelaahInternalAdmin() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
   }, [semuaPengajuan]);
 
-  /* ── Daftar "Belum Diajukan" ── */
-  // 2 kasus:
-  // 1. Belum ada telaah doc sama sekali
-  // 2. Sudah ada telaah doc, tapi state MENUNGGU_REVISI_OPD & pengajuan.revisiTelaahInternal
-  //    sudah null (OPD sudah submit perbaikan) → siap diajukan ulang
   const daftarBelum = useMemo(() => {
     const telaahByPengajuanId = new Map(
       semuaTelaah.map((t) => [t.pengajuanId, t]),
@@ -770,13 +760,11 @@ export default function TelaahInternalAdmin() {
       if (p.status !== "teregistrasi") continue;
       const telaah = telaahByPengajuanId.get(p.id);
       if (!telaah) {
-        // Kasus 1: belum ada telaah doc
         result.push({ pengajuan: p, variant: "baru" });
       } else if (
         telaah.tahapSaatIni === "MENUNGGU_REVISI_OPD" &&
         !p.revisiTelaahInternal?.aktif
       ) {
-        // Kasus 2: OPD sudah submit perbaikan, siap diajukan ulang
         result.push({
           pengajuan: p,
           variant: "ulang",

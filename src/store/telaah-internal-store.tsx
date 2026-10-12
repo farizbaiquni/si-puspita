@@ -119,7 +119,8 @@ function ambilCatatanPerLevelSaatIni(
     // Ambil milestone "revisi" dan "teruskan" — abaikan approve (yang naik).
     const isRevisi = entry.milestone.startsWith("REVISI_DARI_");
     const isTeruskan = entry.milestone.startsWith("DITERUSKAN_");
-    if (isRevisi || isTeruskan) {
+    const isKirimKeOPD = entry.milestone === "DIKIRIM_KE_OPD";
+    if (isRevisi || isTeruskan || isKirimKeOPD) {
       hasilTerbalik.push({
         olehLevel: entry.olehTelaahLevel as CatatanRevisiTelaah["olehLevel"],
         olehUsername: entry.olehUsername,

@@ -18,7 +18,6 @@ interface ModalKonfirmasiKirimRevisiProps {
   nomorRegistrasi: string;
   nomorPengajuan: string;
   namaOPD: string;
-  /** Catatan berjenjang dari level telaah (reject + teruskan) pada siklus ini. */
   catatanBerjenjang: TelaahLogEntry[];
   onConfirm: (catatanTambahan: string) => void;
   onClose: () => void;
@@ -91,7 +90,7 @@ export default function ModalKonfirmasiKirimRevisi({
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[#e2e8f2] bg-white shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-sm border border-[#e2e8f2] bg-white shadow-2xl">
         {/* Header */}
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#eef1f5] px-6 py-4">
           <div className="flex min-w-0 items-start gap-3">
@@ -120,8 +119,7 @@ export default function ModalKonfirmasiKirimRevisi({
 
         {/* Body */}
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
-          {/* Identity */}
-          <div className="rounded-lg border border-[#eef1f5] bg-[#f9fafc] p-4">
+          <div className="rounded-sm border border-[#eef1f5] bg-[#f9fafc] p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <div className="text-[10.5px] font-semibold tracking-wider text-[#7a8899] uppercase">
@@ -147,7 +145,7 @@ export default function ModalKonfirmasiKirimRevisi({
             <p className="mb-2 text-[11px] font-bold tracking-wider text-[#7a8899] uppercase">
               Catatan Berjenjang dari Telaah ({catatanBerjenjang.length})
             </p>
-            <div className="space-y-2 rounded-lg border border-[#eef1f5] bg-white p-3">
+            <div className="space-y-2 rounded-sm border border-[#eef1f5] bg-white p-3">
               {catatanBerjenjang.length === 0 ? (
                 <p className="text-[12px] text-[#7a8899] italic">
                   Tidak ada catatan khusus — pengajuan ini dikembalikan untuk
@@ -165,7 +163,7 @@ export default function ModalKonfirmasiKirimRevisi({
                   return (
                     <div
                       key={idx}
-                      className="rounded-md border border-[#eef1f5] bg-[#f9fafc] p-3"
+                      className="rounded-sm border border-[#eef1f5] bg-[#f9fafc] p-3"
                     >
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span
@@ -216,7 +214,7 @@ export default function ModalKonfirmasiKirimRevisi({
           </div>
 
           {/* Info */}
-          <div className="rounded-lg border border-[#dbe6f7] bg-[#eff6ff] px-3.5 py-2.5 text-[11.5px] text-[#1e40af]">
+          <div className="rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-3.5 py-2.5 text-[11.5px] text-[#1e40af]">
             <span className="font-semibold">ℹ️ Setelah dikirim:</span> OPD akan
             menerima notifikasi. Status pengajuan tetap{" "}
             <span className="font-bold">Teregistrasi</span>, dengan badge
@@ -237,7 +235,7 @@ export default function ModalKonfirmasiKirimRevisi({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="w-full rounded-lg border border-[#e2e8f2] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#5a6474] transition hover:bg-[#f0f4fb] disabled:opacity-50 sm:w-auto"
+            className="w-full rounded-sm border border-[#e2e8f2] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#5a6474] transition hover:bg-[#f0f4fb] disabled:opacity-50 sm:w-auto"
           >
             Batal
           </button>
@@ -245,7 +243,7 @@ export default function ModalKonfirmasiKirimRevisi({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className="w-full rounded-lg bg-[#f59e0b] px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#d97706] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="w-full rounded-sm bg-[#f59e0b] px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#d97706] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isSubmitting ? "Mengirim…" : "Ya, Kirim ke OPD"}
           </button>

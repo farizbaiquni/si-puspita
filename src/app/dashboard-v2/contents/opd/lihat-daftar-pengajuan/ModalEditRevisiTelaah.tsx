@@ -3,25 +3,34 @@
 /* ------------------------------------------------------------------ */
 /*  ModalEditRevisiTelaah.tsx                                          */
 /*  Modal OPD untuk perbaiki revisi TELAAH INTERNAL.                   */
-/*  BEDA dari ModalEditRevisi (verifikasi BPKAD):                      */
-/*   - Status pengajuan TETAP "teregistrasi"                           */
-/*   - Menampilkan catatan berjenjang dari level telaah                */
-/*   - Simpan via simpanPerbaikanRevisiTelaah()                        */
-/*   - Setelah submit: revisiTelaahInternal = null (tapi telaah doc    */
-/*     tetap MENUNGGU_REVISI_OPD sampai Admin klik "Ajukan Telaah Ulang")*/
+/*                                                                      */
+/*  Improvement:                                                       */
+/*   - Catatan telaah ditampilkan LANGSUNG di bawah label dokumen      */
+/*     yang bermasalah (bukan cuma badge "Perlu diperbaiki")           */
+/*   - Anti-duplikasi: catatan umum per level di-skip kalau level +    */
+/*     timestamp sama sudah tampil di catatan per-dokumen              */
 /* ------------------------------------------------------------------ */
 
-import React, { useState, useRef, type ChangeEvent } from "react";
+import React, { useState, useRef, useMemo, type ChangeEvent } from "react";
 import type {
   FormulirPenghapusanPiutangOPDRecord,
   UploadedFileRef,
+  CatatanDokumenRevisi,
+  CatatanRevisiTelaah,
+  TelaahLevelSumberCatatan,
 } from "@/types/types";
 import {
   JENIS_PENGHAPUSAN_OPTIONS,
   JENIS_PIUTANG_OPTIONS,
   TELAAH_LEVEL_SUMBER_CATATAN_LABEL,
 } from "@/types/types";
+import type { TelaahLogEntry } from "@/types/telaah-internal";
+import { useTelaahInternalStore } from "@/store/telaah-internal-store";
 import { simpanPerbaikanRevisiTelaah } from "@/lib/pengajuan";
+import {
+  buildDokumenTampilan,
+  flattenDokumenTampilan,
+} from "../../telaah/TelaahDokumenShared";
 
 /* ==================== Ikon ==================== */
 
@@ -95,7 +104,25 @@ const IconFile = () => (
   </svg>
 );
 
-const IconInfo = () => (
+const IconAlert = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
+    <path
+      d="M8 2.5l6 11H2l6-11z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M8 6.5v3.5M8 12v.5" strokeLinecap="round" />
+  </svg>
+);
+
+const IconFileBadge = () => (
   <svg
     width="14"
     height="14"
@@ -104,8 +131,29 @@ const IconInfo = () => (
     stroke="currentColor"
     strokeWidth="1.6"
   >
-    <circle cx="8" cy="8" r="6.5" />
-    <path d="M8 7.5v4M8 5.5v.01" strokeLinecap="round" />
+    <path
+      d="M10 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V5l-4-3z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M10 2v3h3M6 8.5h4M6 11h3" strokeLinecap="round" />
+  </svg>
+);
+
+const IconChat = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M14 8a5.5 5.5 0 01-5.5 5.5H4L1.5 15v-3.4A5.5 5.5 0 017 5.5h1.5A5.5 5.5 0 0114 8z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
@@ -128,7 +176,88 @@ function formatRupiahInput(value: string): string {
 const parseRupiahInput = (value: string): string =>
   value.replace(/[^0-9]/g, "");
 
-/* ==================== Sub-komponen: Section wrapper ==================== */
+function formatTanggalWaktuSingkat(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return (
+    d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }) +
+    " · " +
+    d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
+function hitungCatatanPerDokumenDariRiwayat(
+  riwayat: TelaahLogEntry[],
+): CatatanDokumenRevisi[] {
+  let siklusAwalIdx = 0;
+  for (let i = riwayat.length - 1; i >= 0; i--) {
+    if (
+      riwayat[i].milestone === "DIAJUKAN" ||
+      riwayat[i].milestone === "SIKLUS_BARU_DIMULAI"
+    ) {
+      siklusAwalIdx = i;
+      break;
+    }
+  }
+  const riwayatSiklusIni = riwayat.slice(siklusAwalIdx);
+
+  const hasil: CatatanDokumenRevisi[] = [];
+  for (const entry of riwayatSiklusIni) {
+    if (!entry.checklistDokumen) continue;
+    if (entry.olehTelaahLevel === "admin") continue;
+
+    for (const [docKey, item] of Object.entries(entry.checklistDokumen)) {
+      if (item.status === "belum_sesuai" && item.catatan.trim()) {
+        hasil.push({
+          docKey,
+          olehLevel: entry.olehTelaahLevel as TelaahLevelSumberCatatan,
+          olehUsername: entry.olehUsername,
+          catatan: item.catatan,
+          timestamp: entry.timestamp,
+        });
+      }
+    }
+  }
+  return hasil;
+}
+
+function hitungCatatanPerLevelDariRiwayat(
+  riwayat: TelaahLogEntry[],
+): CatatanRevisiTelaah[] {
+  let siklusAwalIdx = 0;
+  for (let i = riwayat.length - 1; i >= 0; i--) {
+    if (
+      riwayat[i].milestone === "DIAJUKAN" ||
+      riwayat[i].milestone === "SIKLUS_BARU_DIMULAI"
+    ) {
+      siklusAwalIdx = i;
+      break;
+    }
+  }
+  const hasilTerbalik: CatatanRevisiTelaah[] = [];
+  for (let i = riwayat.length - 1; i >= siklusAwalIdx; i--) {
+    const entry = riwayat[i];
+    const isRevisi = entry.milestone.startsWith("REVISI_DARI_");
+    const isTeruskan = entry.milestone.startsWith("DITERUSKAN_");
+    const isKirimKeOPD = entry.milestone === "DIKIRIM_KE_OPD";
+    if (isRevisi || isTeruskan || isKirimKeOPD) {
+      hasilTerbalik.push({
+        olehLevel: entry.olehTelaahLevel as TelaahLevelSumberCatatan,
+        olehUsername: entry.olehUsername,
+        catatan: entry.catatan,
+        timestamp: entry.timestamp,
+      });
+    }
+  }
+  return hasilTerbalik.reverse();
+}
+
+/* ==================== Section wrapper ==================== */
 
 const EditSection: React.FC<{ title: string; children: React.ReactNode }> = ({
   title,
@@ -142,7 +271,48 @@ const EditSection: React.FC<{ title: string; children: React.ReactNode }> = ({
   </div>
 );
 
-/* ==================== Sub-komponen: File Slot ==================== */
+/* ==================== Catatan Inline (di bawah file slot) ========== */
+
+const CatatanInlineDokumen: React.FC<{
+  catatanList: CatatanDokumenRevisi[];
+}> = ({ catatanList }) => {
+  if (catatanList.length === 0) return null;
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-sm border border-[#fdba74] bg-[#fff7ed]/60">
+      {/* Header kecil */}
+      <div className="flex items-center gap-1.5 border-b border-[#fdba74]/50 bg-[#ffedd5] px-2.5 py-1.5">
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-[#ea580c] text-white">
+          <IconAlert />
+        </span>
+        <span className="text-[10.5px] font-bold tracking-wide text-[#9a3412] uppercase">
+          Catatan dari Telaah Internal ({catatanList.length})
+        </span>
+      </div>
+
+      {/* Daftar catatan per level */}
+      <div className="divide-y divide-[#fdba74]/40">
+        {catatanList.map((c, idx) => (
+          <div key={idx} className="flex items-start gap-2 px-2.5 py-2">
+            <span className="mt-0.5 inline-flex shrink-0 items-center rounded-sm border border-[#fdba74] bg-white px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#9a3412] uppercase">
+              {TELAAH_LEVEL_SUMBER_CATATAN_LABEL[c.olehLevel]}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] leading-relaxed whitespace-pre-line text-[#1a1a2e]">
+                {c.catatan}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#b0bac5]">
+                {formatTanggalWaktuSingkat(c.timestamp)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ==================== File Slot ==================== */
 
 const EditFileSlot: React.FC<{
   label: string;
@@ -153,6 +323,7 @@ const EditFileSlot: React.FC<{
   onHapus?: () => void;
   onBatalkanHapus?: () => void;
   required?: boolean;
+  catatanList?: CatatanDokumenRevisi[];
 }> = ({
   label,
   existingFile,
@@ -162,8 +333,10 @@ const EditFileSlot: React.FC<{
   onHapus,
   onBatalkanHapus,
   required = true,
+  catatanList = [],
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasCatatan = catatanList.length > 0;
 
   const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -177,18 +350,21 @@ const EditFileSlot: React.FC<{
 
   return (
     <div className="space-y-1">
-      <label className="block text-[12.5px] font-semibold text-[#3a4454]">
+      <label className="flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold text-[#3a4454]">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
+
       <div
-        className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 ${
+        className={`flex items-center justify-between gap-2 rounded-sm border px-3 py-2 ${
           newFile
             ? "border-[#fdba74] bg-[#fff7ed]"
             : dihapus
               ? "border-red-200 bg-red-50"
               : adaFile
-                ? "border-[#e2e8f2] bg-[#f7f8fa]"
+                ? hasCatatan
+                  ? "border-[#fdba74] bg-[#fff7ed]/40"
+                  : "border-[#e2e8f2] bg-[#f7f8fa]"
                 : "border-red-200 bg-red-50"
         }`}
       >
@@ -265,11 +441,14 @@ const EditFileSlot: React.FC<{
           )}
         </div>
       </div>
+
+      {/* Catatan dari telaah — di bawah file slot */}
+      <CatatanInlineDokumen catatanList={catatanList} />
     </div>
   );
 };
 
-/* ==================== Daftar dokumen (SAMA dengan telaah) ============ */
+/* ==================== Daftar dokumen ==================== */
 
 const BUKTI_TIDAK_MAMPU_ITEMS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
@@ -301,12 +480,145 @@ const SURAT_TAGIHAN_ITEMS: {
   { key: "filePernyataanOPD", label: "Bukti pernyataan OPD" },
 ];
 
+/* ==================== Banner: Dokumen yang Perlu Diperbaiki ============ */
+
+const BannerDokumenPerluDiperbaiki: React.FC<{
+  pengajuan: FormulirPenghapusanPiutangOPDRecord;
+  catatanPerDokumen: CatatanDokumenRevisi[];
+}> = ({ pengajuan, catatanPerDokumen }) => {
+  const grouped = useMemo(() => {
+    const dokumenFlat = flattenDokumenTampilan(buildDokumenTampilan(pengajuan));
+    const map = new Map<
+      string,
+      { label: string; items: CatatanDokumenRevisi[] }
+    >();
+
+    for (const c of catatanPerDokumen) {
+      if (!map.has(c.docKey)) {
+        const entry = dokumenFlat.find((d) => d.key === c.docKey);
+        map.set(c.docKey, {
+          label: entry?.label ?? c.docKey,
+          items: [],
+        });
+      }
+      map.get(c.docKey)!.items.push(c);
+    }
+    return Array.from(map.entries()).map(([docKey, v]) => ({
+      docKey,
+      label: v.label,
+      items: v.items,
+    }));
+  }, [pengajuan, catatanPerDokumen]);
+
+  if (grouped.length === 0) return null;
+
+  return (
+    <div>
+      <h3 className="mb-2 flex items-center gap-1.5 text-[12px] font-bold tracking-widest text-[#1a1a2e] uppercase">
+        <IconFileBadge />
+        Dokumen yang Perlu Diperbaiki ({grouped.length})
+      </h3>
+
+      <div className="space-y-3">
+        {grouped.map((g) => (
+          <div
+            key={g.docKey}
+            className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white"
+          >
+            <div className="flex items-start gap-2 border-b border-[#eef1f5] bg-[#fafbfc] px-3 py-2">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-[#ea580c] text-white">
+                <IconAlert />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[12.5px] leading-snug font-bold text-[#1a1a2e]">
+                  {g.label}
+                </p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-[#eef1f5] bg-white">
+              {g.items.map((c, idx) => (
+                <div key={idx} className="flex items-start gap-2 px-3 py-2.5">
+                  <span className="mt-0.5 inline-flex shrink-0 items-center rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-[#3a4454] uppercase">
+                    {TELAAH_LEVEL_SUMBER_CATATAN_LABEL[c.olehLevel]}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12.5px] leading-relaxed whitespace-pre-line text-[#1a1a2e]">
+                      {c.catatan}
+                    </p>
+                    <p className="mt-0.5 text-[10.5px] text-[#b0bac5]">
+                      {formatTanggalWaktuSingkat(c.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ==================== Banner: Catatan Berjenjang Umum ============ */
+
+const BannerCatatanBerjenjang: React.FC<{
+  catatanPerLevel: CatatanRevisiTelaah[];
+  catatanPerDokumen: CatatanDokumenRevisi[];
+}> = ({ catatanPerLevel, catatanPerDokumen }) => {
+  const filtered = useMemo(() => {
+    return catatanPerLevel.filter((c) => {
+      const sudahAdaPerDokumen = catatanPerDokumen.some(
+        (pd) => pd.olehLevel === c.olehLevel && pd.timestamp === c.timestamp,
+      );
+      return !sudahAdaPerDokumen;
+    });
+  }, [catatanPerLevel, catatanPerDokumen]);
+
+  if (filtered.length === 0) return null;
+
+  return (
+    <div>
+      <h3 className="mb-2 flex items-center gap-1.5 text-[12px] font-bold tracking-widest text-[#1a1a2e] uppercase">
+        <IconChat />
+        Catatan Berjenjang dari Telaah ({filtered.length})
+      </h3>
+
+      <div className="space-y-2 rounded-sm border border-[#e2e8f2] bg-[#fafbfc] p-3">
+        {filtered.map((c, idx) => (
+          <div
+            key={idx}
+            className="rounded-sm border border-[#eef1f5] bg-white p-3"
+          >
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="inline-flex items-center gap-1 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[#3a4454] uppercase">
+                {TELAAH_LEVEL_SUMBER_CATATAN_LABEL[c.olehLevel]}
+              </span>
+              <span className="text-[10.5px] text-[#7a8899]">
+                {formatTanggalWaktuSingkat(c.timestamp)}
+              </span>
+            </div>
+            {c.catatan.trim() ? (
+              <p className="mt-1.5 text-[12.5px] leading-relaxed whitespace-pre-line text-[#1a1a2e]">
+                {c.catatan}
+              </p>
+            ) : (
+              <p className="mt-1 text-[11.5px] text-[#b0bac5] italic">
+                (tanpa catatan)
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 /* ==================== Komponen utama ==================== */
 
 interface ModalEditRevisiTelaahProps {
   record: FormulirPenghapusanPiutangOPDRecord;
   onClose: () => void;
-  /** Dipanggil setelah simpan sukses (untuk refresh UI kalau perlu). */
   onSimpan?: () => void;
 }
 
@@ -315,6 +627,9 @@ export default function ModalEditRevisiTelaah({
   onClose,
   onSimpan,
 }: ModalEditRevisiTelaahProps) {
+  const { getTelaahByPengajuanId } = useTelaahInternalStore();
+  const telaah = getTelaahByPengajuanId(record.id);
+
   // ── Data Pengajuan ──
   const [namaPenanggungJawab, setNamaPenanggungJawab] = useState(
     record.namaPenanggungJawab,
@@ -402,6 +717,32 @@ export default function ModalEditRevisiTelaah({
     }
   };
 
+  /* ── Catatan per-dokumen: pakai dari pengajuan dulu, fallback hitung ulang ── */
+  const catatanPerDokumen = useMemo<CatatanDokumenRevisi[]>(() => {
+    const saved = record.revisiTelaahInternal?.catatanPerDokumen ?? [];
+    if (saved.length > 0) return saved;
+    if (!telaah) return [];
+    return hitungCatatanPerDokumenDariRiwayat(telaah.riwayat);
+  }, [record.revisiTelaahInternal, telaah]);
+
+  /* ── Catatan per-level: fallback hitung ulang ── */
+  const catatanPerLevel = useMemo<CatatanRevisiTelaah[]>(() => {
+    const saved = record.revisiTelaahInternal?.catatanPerLevel ?? [];
+    if (saved.length > 0) return saved;
+    if (!telaah) return [];
+    return hitungCatatanPerLevelDariRiwayat(telaah.riwayat);
+  }, [record.revisiTelaahInternal, telaah]);
+
+  /* ── Map docKey → list catatan, dipakai di EditFileSlot ── */
+  const catatanPerDokumenMap = useMemo(() => {
+    const map = new Map<string, CatatanDokumenRevisi[]>();
+    catatanPerDokumen.forEach((c) => {
+      if (!map.has(c.docKey)) map.set(c.docKey, []);
+      map.get(c.docKey)!.push(c);
+    });
+    return map;
+  }, [catatanPerDokumen]);
+
   const renderSlot = (
     key: keyof FormulirPenghapusanPiutangOPDRecord,
     label: string,
@@ -418,6 +759,7 @@ export default function ModalEditRevisiTelaah({
         onHapus={() => hapusFile(key as string)}
         onBatalkanHapus={() => batalkanHapusFile(key as string)}
         required={required}
+        catatanList={catatanPerDokumenMap.get(key as string) ?? []}
       />
       {keterangan && (
         <p className="pl-1 text-[11px] text-[#7a8899]">{keterangan}</p>
@@ -435,15 +777,13 @@ export default function ModalEditRevisiTelaah({
     return Boolean(fileBaru[key as string] ?? record[key]);
   }).length;
 
-  const catatanPerLevel = record.revisiTelaahInternal?.catatanPerLevel ?? [];
-
   return (
     <div
       className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,20,40,0.45)] p-0 backdrop-blur-sm sm:p-4 lg:p-6"
       onClick={onClose}
     >
       <div
-        className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-md"
+        className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-sm"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -456,68 +796,29 @@ export default function ModalEditRevisiTelaah({
               </h2>
             </div>
             <p className="truncate text-sm text-orange-100">
-              {record.namaPenanggungJawab} · {record.nomorSurat}
+              {record.nomorRegistrasi || record.nomorPengajuan}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
             title="Tutup"
           >
             <IconClose />
           </button>
         </div>
 
-        {/* Body scrollable */}
+        {/* Body */}
         <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
-          {/* Info banner */}
-          <div className="rounded-md border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-[12px] text-[#1d4ed8]">
-            Pengajuan ini dikembalikan untuk{" "}
-            <strong>revisi telaah internal</strong>. Status pengajuan tetap{" "}
-            <strong>Teregistrasi</strong>. Perbaiki bagian yang perlu, lalu
-            submit — Admin akan mengajukan telaah ulang.
-          </div>
+          <BannerDokumenPerluDiperbaiki
+            pengajuan={record}
+            catatanPerDokumen={catatanPerDokumen}
+          />
 
-          {/* Catatan berjenjang dari telaah */}
-          {catatanPerLevel.length > 0 && (
-            <div>
-              <h3 className="mb-2 text-xs font-bold tracking-widest text-[#ea580c] uppercase">
-                Catatan Revisi dari Telaah ({catatanPerLevel.length})
-              </h3>
-              <div className="space-y-2 rounded-md border border-[#fed7aa] bg-[#fff7ed] p-3">
-                {catatanPerLevel.map((c, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-md border border-[#fed7aa] bg-white p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-sm border border-[#fed7aa] bg-[#fff7ed] px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[#9a3412] uppercase">
-                        {TELAAH_LEVEL_SUMBER_CATATAN_LABEL[c.olehLevel]}
-                      </span>
-                      <span className="text-[10.5px] text-[#7a8899]">
-                        {new Date(c.timestamp).toLocaleDateString("id-ID", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    {c.catatan.trim() ? (
-                      <p className="mt-1.5 text-[12.5px] leading-relaxed whitespace-pre-line text-[#3a4454]">
-                        {c.catatan}
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[11.5px] text-[#b0bac5] italic">
-                        (tanpa catatan)
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <BannerCatatanBerjenjang
+            catatanPerLevel={catatanPerLevel}
+            catatanPerDokumen={catatanPerDokumen}
+          />
 
           {/* Data Pengajuan */}
           <EditSection title="Data Pengajuan">
@@ -530,7 +831,7 @@ export default function ModalEditRevisiTelaah({
                   type="text"
                   value={namaPenanggungJawab}
                   onChange={(e) => setNamaPenanggungJawab(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full rounded-sm border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -541,7 +842,7 @@ export default function ModalEditRevisiTelaah({
                   type="text"
                   value={jabatan}
                   onChange={(e) => setJabatan(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full rounded-sm border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -552,7 +853,7 @@ export default function ModalEditRevisiTelaah({
                   type="text"
                   value={nomorSurat}
                   onChange={(e) => setNomorSurat(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full rounded-sm border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -563,7 +864,7 @@ export default function ModalEditRevisiTelaah({
                   type="date"
                   value={tanggalSurat}
                   onChange={(e) => setTanggalSurat(e.target.value)}
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] scheme-light outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full rounded-sm border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] scheme-light outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -576,7 +877,7 @@ export default function ModalEditRevisiTelaah({
                   onChange={(e) =>
                     setJumlahDebitur(e.target.value.replace(/[^0-9]/g, ""))
                   }
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full rounded-sm border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -589,7 +890,7 @@ export default function ModalEditRevisiTelaah({
                   onChange={(e) =>
                     setTotalNilaiPiutang(parseRupiahInput(e.target.value))
                   }
-                  className="w-full rounded-md border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full rounded-sm border border-[#e2e8f2] px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 />
               </div>
               <div className="space-y-1">
@@ -601,7 +902,7 @@ export default function ModalEditRevisiTelaah({
                   onChange={(e) =>
                     setJenisPiutang(e.target.value as typeof jenisPiutang)
                   }
-                  className="w-full cursor-pointer rounded-md border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full cursor-pointer rounded-sm border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 >
                   {JENIS_PIUTANG_OPTIONS.map((opsi) => (
                     <option key={opsi} value={opsi}>
@@ -621,7 +922,7 @@ export default function ModalEditRevisiTelaah({
                       e.target.value as typeof jenisPenghapusan,
                     )
                   }
-                  className="w-full cursor-pointer rounded-md border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
+                  className="w-full cursor-pointer rounded-sm border border-[#e2e8f2] bg-white px-3 py-2 text-[13px] text-[#1a1a2e] outline-none focus:ring-1 focus:ring-[#ea580c]/30"
                 >
                   {JENIS_PENGHAPUSAN_OPTIONS.map((opsi) => (
                     <option key={opsi} value={opsi}>
@@ -634,7 +935,7 @@ export default function ModalEditRevisiTelaah({
             {renderSlot("fileSurat", "Surat Pengantar (Surat Utama)")}
           </EditSection>
 
-          {/* Dokumen Pendukung — sama persis dengan telaah */}
+          {/* Dokumen Pendukung */}
           <EditSection title="Dokumen Pendukung">
             {renderSlot("suratPengantarUsulan", "1. Surat Pengantar Usulan")}
             {renderSlot(
@@ -661,7 +962,7 @@ export default function ModalEditRevisiTelaah({
                   <span className="text-red-500">*</span>
                 </p>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  className={`rounded-sm px-2 py-0.5 text-[11px] font-semibold ${
                     jumlahBuktiTidakMampu > 0
                       ? "bg-green-50 text-green-700"
                       : "bg-gray-100 text-gray-500"
@@ -674,7 +975,7 @@ export default function ModalEditRevisiTelaah({
               <p className="text-[11px] text-[#7a8899]">
                 Minimal satu harus dipenuhi dibawah ini.
               </p>
-              <div className="space-y-3 rounded-md border border-[#e2e8f2] bg-[#f7f8fa] p-3">
+              <div className="space-y-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] p-3">
                 {BUKTI_TIDAK_MAMPU_ITEMS.map((item) => (
                   <EditFileSlot
                     key={item.key as string}
@@ -692,6 +993,9 @@ export default function ModalEditRevisiTelaah({
                       batalkanHapusFile(item.key as string)
                     }
                     required={false}
+                    catatanList={
+                      catatanPerDokumenMap.get(item.key as string) ?? []
+                    }
                   />
                 ))}
               </div>
@@ -704,7 +1008,7 @@ export default function ModalEditRevisiTelaah({
                   <span className="text-red-500">*</span>
                 </p>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  className={`rounded-sm px-2 py-0.5 text-[11px] font-semibold ${
                     jumlahSuratTagihan > 0
                       ? "bg-green-50 text-green-700"
                       : "bg-gray-100 text-gray-500"
@@ -717,7 +1021,7 @@ export default function ModalEditRevisiTelaah({
               <p className="text-[11px] text-[#7a8899]">
                 Minimal satu harus dipenuhi dibawah ini.
               </p>
-              <div className="space-y-3 rounded-md border border-[#e2e8f2] bg-[#f7f8fa] p-3">
+              <div className="space-y-3 rounded-sm border border-[#e2e8f2] bg-[#f7f8fa] p-3">
                 {SURAT_TAGIHAN_ITEMS.map((item) => (
                   <EditFileSlot
                     key={item.key as string}
@@ -735,6 +1039,9 @@ export default function ModalEditRevisiTelaah({
                       batalkanHapusFile(item.key as string)
                     }
                     required={false}
+                    catatanList={
+                      catatanPerDokumenMap.get(item.key as string) ?? []
+                    }
                   />
                 ))}
               </div>
@@ -766,7 +1073,7 @@ export default function ModalEditRevisiTelaah({
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="w-full rounded-md border border-[#e2e8f2] bg-white px-4 py-2.5 text-sm font-medium text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
+            className="w-full rounded-sm border border-[#e2e8f2] bg-white px-4 py-2.5 text-sm font-medium text-[#5a6474] transition hover:bg-[#f7f8fa] disabled:opacity-50 sm:w-auto"
           >
             Batal
           </button>
@@ -774,7 +1081,7 @@ export default function ModalEditRevisiTelaah({
             type="button"
             onClick={handleSimpan}
             disabled={isSaving}
-            className="w-full rounded-md bg-[#ea580c] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#c2410c] disabled:opacity-60 sm:w-auto"
+            className="w-full rounded-sm bg-[#ea580c] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#c2410c] disabled:opacity-60 sm:w-auto"
           >
             {isSaving ? "Menyimpan…" : "Simpan Perbaikan"}
           </button>

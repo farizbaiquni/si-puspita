@@ -3,7 +3,7 @@
 /* ------------------------------------------------------------------ */
 /*  DaftarDokumenReadOnly.tsx                                          */
 /*  Panel dokumen pendukung READ-ONLY — untuk admin / non-giliran /    */
-/*  telaah selesai. Tampilkan status per-dokumen dari tiap level.      */
+/*  telaah selesai. Menampilkan status per-dokumen dari tiap level.    */
 /* ------------------------------------------------------------------ */
 
 import { Fragment, useMemo, useState } from "react";
@@ -122,7 +122,7 @@ const IconLock = () => (
   </svg>
 );
 
-/* ==================== Helper prev entry ==================== */
+/* ==================== Helper ==================== */
 
 interface PrevLevelInfo {
   level: TelaahLevel;
@@ -254,14 +254,13 @@ const HeaderSection: React.FC<{
         <IconLock />
       </span>
       <p className="text-[11.5px] text-[#5a6474]">
-        Panel read-only — Anda hanya dapat melihat dokumen (tidak dapat
-        mengubah).
+        Panel read-only — Anda hanya dapat melihat dokumen.
       </p>
     </div>
   </div>
 );
 
-/* ==================== DocRow (read-only) ==================== */
+/* ==================== DocRow ==================== */
 
 interface DocRowProps {
   nomor: number | null;
@@ -367,7 +366,6 @@ export default function DaftarDokumenReadOnly({
     [dokumenTampilan],
   );
 
-  // Kumpulkan entry terakhir per level DARI SIKLUS SAAT INI.
   const allEntries = useMemo(() => {
     let siklusAwalIdx = 0;
     for (let i = riwayat.length - 1; i >= 0; i--) {
