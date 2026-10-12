@@ -1939,7 +1939,7 @@ function SiPuspitaLandingPageContent() {
                 alt="Logo SI PUSPITA"
                 width={2400}
                 height={644}
-                quality={100}
+                quality={75}
                 priority
                 className="h-11 w-auto shrink-0 object-contain sm:h-12"
               />
@@ -2309,7 +2309,7 @@ function SiPuspitaLandingPageContent() {
                 alt="Logo SI PUSPITA"
                 width={640}
                 height={640}
-                quality={100}
+                quality={75}
                 priority
                 className="mb-3.5 w-28 rounded-lg bg-white p-1.5"
               />
@@ -2511,7 +2511,7 @@ function SiPuspitaLandingPageContent() {
                     alt="Logo"
                     width={640}
                     height={640}
-                    quality={100}
+                    quality={75}
                     priority
                     className="w-40 bg-white"
                   />
