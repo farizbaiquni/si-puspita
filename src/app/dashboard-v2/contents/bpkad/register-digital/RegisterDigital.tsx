@@ -13,6 +13,8 @@ import {
   OPSI_RIWAYAT_PENAGIHAN_LABEL,
 } from "@/types/types";
 import { usePengajuanStore } from "@/store/pengajuan-store";
+import { useTelaahInternalStore } from "@/store/telaah-internal-store";
+import type { TelaahTahap } from "@/types/telaah-internal";
 
 /* ─── Helpers (TIDAK berubah) ─── */
 function formatRupiah(nominal: string | number): string {
@@ -175,6 +177,86 @@ const JenisPenghapusanBadge: React.FC<{
       }`}
     >
       {isBersyarat ? "Bersyarat" : "Mutlak"}
+    </span>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────
+   BADGE TAHAP TELAAH INTERNAL (BARU)
+   Muncul di bawah badge Status — hanya kalau pengajuan punya record di
+   collection `telaahInternal` (sedang / pernah masuk telaah internal).
+   Warna diselaraskan dengan DetailTelaah.tsx & LihatDaftarPengajuanAdmin:
+     Kasubbid  → biru
+     Kabid     → ungu
+     Sekban    → rose
+     Revisi turun → oranye
+     Kirim ke OPD / Revisi OPD → oranye tua
+     Selesai → hijau
+   ───────────────────────────────────────────────────────────────────── */
+
+const TAHAP_TELAAH_BADGE: Record<
+  TelaahTahap,
+  { label: string; cls: string; dot: string }
+> = {
+  MENUNGGU_TELAAH_KASUBBID: {
+    label: "Menunggu Telaah Kasubbid",
+    cls: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+    dot: "bg-[#3b82f6]",
+  },
+  MENUNGGU_TELAAH_KABID: {
+    label: "Menunggu Telaah Kabid",
+    cls: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
+    dot: "bg-[#7c3aed]",
+  },
+  MENUNGGU_TELAAH_SEKBAN: {
+    label: "Menunggu Telaah Sekban",
+    cls: "bg-[#fff1f2] text-[#9f1239] border-[#fecdd3]",
+    dot: "bg-[#f43f5e]",
+  },
+  MENUNGGU_REVISI_KABID: {
+    label: "Menunggu Diteruskan Kabid",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  MENUNGGU_REVISI_KASUBBID: {
+    label: "Menunggu Diteruskan Kasubbid",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  MENUNGGU_ADMIN_KIRIM_REVISI: {
+    label: "Menunggu Kirim ke OPD",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+    dot: "bg-[#ea580c]",
+  },
+  MENUNGGU_REVISI_OPD: {
+    label: "Revisi Telaah Internal",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+    dot: "bg-[#ea580c]",
+  },
+  SELESAI: {
+    label: "Telaah Internal Selesai",
+    cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
+    dot: "bg-[#10b981]",
+  },
+};
+
+const TahapTelaahBadge: React.FC<{
+  tahap: TelaahTahap;
+  compact?: boolean;
+}> = ({ tahap, compact = false }) => {
+  const cfg = TAHAP_TELAAH_BADGE[tahap];
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border font-semibold tracking-wide whitespace-nowrap ${
+        compact
+          ? "gap-1 px-1.5 py-0.5 text-[10px]"
+          : "gap-1.25 px-2.25 py-0.75 text-[11px]"
+      } ${cfg.cls}`}
+    >
+      <span
+        className={`shrink-0 rounded-full ${compact ? "h-1 w-1" : "h-1.5 w-1.5"} ${cfg.dot}`}
+      />
+      {cfg.label}
     </span>
   );
 };
@@ -823,9 +905,10 @@ const SummaryHeader: React.FC<{
 /* ─── Mobile Card (compact) ─── */
 const PengajuanRowCardMobile: React.FC<{
   p: FormulirPenghapusanPiutangOPDRecord;
+  tahap?: TelaahTahap;
   no: number;
   onLihatNominatif: () => void;
-}> = ({ p, no, onLihatNominatif }) => (
+}> = ({ p, tahap, no, onLihatNominatif }) => (
   <div className="space-y-2 p-3">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -839,12 +922,13 @@ const PengajuanRowCardMobile: React.FC<{
           {p.namaPenanggungJawab}
         </div>
       </div>
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col items-end gap-1">
         <StatusBadge
           status={p.status}
           reviuStatus={p.reviuInspektoratStatus}
           compact
         />
+        {tahap && <TahapTelaahBadge tahap={tahap} compact />}
       </div>
     </div>
     <div className="flex flex-wrap items-center gap-2">
@@ -888,6 +972,18 @@ interface PengajuanGroup {
 
 function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
   const { data: dataStore } = usePengajuanStore();
+  const { data: telaahStore } = useTelaahInternalStore();
+
+  // ── Map: pengajuanId → tahap telaah internal saat ini ──
+  // Dibangun dari collection `telaahInternal`. Pengajuan yang belum pernah
+  // masuk telaah tidak akan ada di map ini → badge tahap tidak tampil.
+  const tahapByPengajuanId = useMemo(() => {
+    const map = new Map<string, TelaahTahap>();
+    telaahStore.forEach((t) => {
+      map.set(t.pengajuanId, t.tahapSaatIni);
+    });
+    return map;
+  }, [telaahStore]);
 
   const daftarPengajuan = useMemo(() => {
     const sumber = semuaPengajuan ?? dataStore;
@@ -1093,6 +1189,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                           <PengajuanRowCardMobile
                             key={p.id}
                             p={p}
+                            tahap={tahapByPengajuanId.get(p.id)}
                             no={idx + 1}
                             onLihatNominatif={() =>
                               p.daftarNominatifPiutang &&
@@ -1159,6 +1256,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                         group.items.map((p, idx) => {
                           const isLastInGroup = idx === group.items.length - 1;
                           const isEven = idx % 2 === 0;
+                          const tahap = tahapByPengajuanId.get(p.id);
                           return (
                             <tr
                               key={p.id}
@@ -1201,13 +1299,18 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                                 </div>
                               </td>
 
-                              {/* Status */}
+                              {/* Status — badge status + (opsional) badge tahap telaah */}
                               <td className="px-2.5 py-2 align-top whitespace-nowrap">
-                                <StatusBadge
-                                  status={p.status}
-                                  reviuStatus={p.reviuInspektoratStatus}
-                                  compact
-                                />
+                                <div className="flex flex-col items-start gap-1">
+                                  <StatusBadge
+                                    status={p.status}
+                                    reviuStatus={p.reviuInspektoratStatus}
+                                    compact
+                                  />
+                                  {tahap && (
+                                    <TahapTelaahBadge tahap={tahap} compact />
+                                  )}
+                                </div>
                               </td>
 
                               {/* No. Registrasi / Tgl */}

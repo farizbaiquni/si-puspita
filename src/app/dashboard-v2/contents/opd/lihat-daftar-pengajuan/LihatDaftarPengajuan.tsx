@@ -666,7 +666,7 @@ const DocumentCard: React.FC<{
 
   return (
     <div
-      className={`group flex items-center gap-3 rounded-xs border border-l-[2px] bg-white px-3 py-2 transition-all duration-150 ${
+      className={`group flex items-center gap-3 rounded-xs border border-l-2 bg-white px-3 py-2 transition-all duration-150 ${
         tersedia
           ? "border-[#e2e8f2] border-l-[#0f9b6e] hover:border-[#a0bdec] hover:border-l-[#0f9b6e] hover:bg-[#fafcff] hover:shadow-xs"
           : "border-dashed border-[#e2e8f2] border-l-[#d0d7de] bg-[#fbfbfc]"

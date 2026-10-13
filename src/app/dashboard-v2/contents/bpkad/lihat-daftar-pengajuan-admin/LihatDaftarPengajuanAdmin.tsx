@@ -9,6 +9,14 @@ import type {
   UploadedFileRef,
 } from "@/types/types";
 import { usePengajuanStore } from "@/store/pengajuan-store";
+import { useTelaahInternalStore } from "@/store/telaah-internal-store";
+import type {
+  TelaahInternalRecord,
+  TelaahLogEntry,
+  TelaahMilestone,
+  TelaahTahap,
+} from "@/types/telaah-internal";
+import { TELAAH_MILESTONE_LABEL } from "@/types/telaah-internal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -52,7 +60,8 @@ function formatTanggalWaktu(iso: string): string {
       year: "numeric",
     }) +
     " · " +
-    d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+    d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) +
+    " WIB"
   );
 }
 
@@ -76,6 +85,26 @@ function nomorTampilan(p: FormulirPenghapusanPiutangOPDRecord): string {
     return p.nomorRegistrasi || p.nomorPengajuan || "-";
   }
   return p.nomorPengajuan || "-";
+}
+
+/** Label level pelaku telaah (menerima "admin" juga). */
+function labelOlehLevel(level: TelaahLogEntry["olehTelaahLevel"]): string {
+  if (level === "admin") return "Admin BPKAD";
+  if (level === "kasubbid") return "Kasubbid";
+  if (level === "kabid") return "Kabid";
+  if (level === "sekban") return "Sekban";
+  return level;
+}
+
+/** Inisial 1-2 huruf dari nama, untuk avatar bulat Penanggung Jawab OPD. */
+function ambilInisial(nama: string): string {
+  const kata = nama.trim().split(/\s+/).filter(Boolean);
+  if (kata.length === 0) return "?";
+  const inisial = kata
+    .slice(0, 2)
+    .map((k) => k.replace(/[^A-Za-z]/g, "")[0] ?? "")
+    .join("");
+  return (inisial || "?").toUpperCase();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,14 +144,6 @@ function ambilFile(
     : null;
 }
 
-function labelOpsiRiwayatPenagihanTampilan(
-  opsi: FormulirPenghapusanPiutangOPDRecord["opsiRiwayatPenagihan"],
-): string {
-  if (opsi === "riwayat_tagihan") return "Riwayat Penagihan 1-3";
-  if (opsi === "penyataan_opd") return "Pernyataan OPD";
-  return "-";
-}
-
 const BUKTI_TIDAK_MAMPU_LABELS: {
   key: keyof FormulirPenghapusanPiutangOPDRecord;
   label: string;
@@ -145,15 +166,6 @@ const BUKTI_TIDAK_MAMPU_LABELS: {
     label: "Bukti Kunjungan Penagihan",
   },
 ];
-
-function labelBuktiTidakMampuTerupload(
-  pengajuan: FormulirPenghapusanPiutangOPDRecord,
-): string {
-  const terupload = BUKTI_TIDAK_MAMPU_LABELS.find(
-    ({ key }) => ambilFile(pengajuan, key) !== null,
-  );
-  return terupload ? terupload.label : "-";
-}
 
 function buildDokumenTampilan(
   pengajuan: FormulirPenghapusanPiutangOPDRecord,
@@ -274,7 +286,7 @@ function flattenDokumenTampilan(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Badge config
+// Badge config — Status verifikasi
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<
@@ -302,7 +314,7 @@ const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
   const cfg = STATUS_BADGE[status];
   return (
     <span
-      className={`inline-flex items-center gap-1.25 rounded-full border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
+      className={`inline-flex items-center gap-1.25 rounded-sm border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
     >
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
       {cfg.label}
@@ -316,13 +328,75 @@ const JenisPenghapusanBadge: React.FC<{ jenis: JenisPenghapusan }> = ({
   const isBersyarat = jenis === "Penghapusan Bersyarat";
   return (
     <span
-      className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide whitespace-nowrap uppercase ${
+      className={`inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap uppercase ${
         isBersyarat
           ? "border-[#bfdbfe] bg-[#eff6ff] text-[#1e40af]"
           : "border-[#ddd6fe] bg-[#f5f3ff] text-[#5b21b6]"
       }`}
     >
       {isBersyarat ? "Bersyarat" : "Mutlak"}
+    </span>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Badge config — Tahap Telaah Internal
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TAHAP_TELAAH_BADGE: Record<
+  TelaahTahap,
+  { label: string; cls: string; dot: string }
+> = {
+  MENUNGGU_TELAAH_KASUBBID: {
+    label: "Menunggu Telaah Kasubbid",
+    cls: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+    dot: "bg-[#3b82f6]",
+  },
+  MENUNGGU_TELAAH_KABID: {
+    label: "Menunggu Telaah Kabid",
+    cls: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
+    dot: "bg-[#7c3aed]",
+  },
+  MENUNGGU_TELAAH_SEKBAN: {
+    label: "Menunggu Telaah Sekban",
+    cls: "bg-[#fff1f2] text-[#9f1239] border-[#fecdd3]",
+    dot: "bg-[#f43f5e]",
+  },
+  MENUNGGU_REVISI_KABID: {
+    label: "Menunggu Diteruskan Kabid",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  MENUNGGU_REVISI_KASUBBID: {
+    label: "Menunggu Diteruskan Kasubbid",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  MENUNGGU_ADMIN_KIRIM_REVISI: {
+    label: "Menunggu Kirim ke OPD",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+    dot: "bg-[#ea580c]",
+  },
+  MENUNGGU_REVISI_OPD: {
+    label: "Revisi Telaah Internal",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+    dot: "bg-[#ea580c]",
+  },
+  SELESAI: {
+    label: "Telaah Internal Selesai",
+    cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
+    dot: "bg-[#10b981]",
+  },
+};
+
+const TahapTelaahBadge: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
+  const cfg = TAHAP_TELAAH_BADGE[tahap];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.25 rounded-sm border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+      {cfg.label}
     </span>
   );
 };
@@ -496,6 +570,105 @@ const IconAlert = () => (
   </svg>
 );
 
+// ── Ikon khusus panel Telaah Internal ──
+
+const IconMilestoneCheck = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+  >
+    <path
+      d="M3 8l3.5 3.5L13 4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const IconMilestoneX = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+  >
+    <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+  </svg>
+);
+
+const IconMilestoneArrow = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+  >
+    <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconMilestoneSend = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path
+      d="M2 8L14 2l-5 12-2-4-5-2z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const IconMilestoneFile = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path
+      d="M9.5 2H4a1.5 1.5 0 00-1.5 1.5v9A1.5 1.5 0 004 14h8a1.5 1.5 0 001.5-1.5V6L9.5 2z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M9.5 2v4h4" strokeLinecap="round" />
+  </svg>
+);
+
+const IconMilestoneRefresh = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path d="M3.5 8a4.5 4.5 0 117.5 3.5" strokeLinecap="round" />
+    <path
+      d="M13 3v3.5h-3.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      transform="translate(-0.5 0)"
+    />
+  </svg>
+);
+
 const SortIndicator: React.FC<{ active: boolean; dir: "asc" | "desc" }> = ({
   active,
   dir,
@@ -596,7 +769,7 @@ const DokumenItem: React.FC<{
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-sm border px-3 py-2.5 ${
+      className={`flex items-center gap-3 rounded-xs border px-3 py-2.5 ${
         belumUpload
           ? "border-dashed border-[#e2e8f2] bg-[#fbfbfc]"
           : "border-[#e2e8f2] bg-[#f7f8fa]"
@@ -620,14 +793,14 @@ const DokumenItem: React.FC<{
       </div>
       <div className="min-w-0 flex-1">
         <div
-          className={`mb-0.5 text-sm leading-snug font-semibold ${
-            belumUpload ? "text-[#8a96a3]" : "text-[#1a4e8f]"
+          className={`mb-0.5 text-xs leading-snug font-semibold ${
+            belumUpload ? "text-[#565c62]" : "text-[#003e8a]"
           }`}
         >
           {dok.label}
           {wajib && <span className="text-red-500"> *</span>}
           {keterangan && (
-            <span className="ml-1 font-normal text-[#8a96a3]">
+            <span className="ml-1 font-normal text-[#6c747c]">
               (<span className="italic">{keterangan}</span>)
             </span>
           )}
@@ -643,7 +816,7 @@ const DokumenItem: React.FC<{
       {!belumUpload && (
         <button
           onClick={onPreview}
-          className="flex shrink-0 items-center gap-1.5 rounded-sm border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:cursor-pointer hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
+          className="flex shrink-0 items-center gap-1.5 rounded-xs border border-[#e2e8f2] bg-white px-3 py-1.5 text-xs font-semibold text-[#1a4e8f] transition hover:cursor-pointer hover:border-[#a0bdec] hover:bg-[#e8f0fb]"
         >
           <IconEye />
           Lihat PDF
@@ -654,13 +827,252 @@ const DokumenItem: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PANEL: Telaah Internal (BARU)
+// Tampil di PanelDetail admin — hanya kalau pengajuan pernah masuk telaah.
+// Konten:
+//   1. Hero status (ikon + label tahap + pemegang + sejak kapan)
+//   2. Info umum (diajukan oleh, pada, jumlah langkah)
+//   3. Timeline riwayat telaah per milestone + catatan berjenjang
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TAHAP_TELAAH_HERO: Record<
+  TelaahTahap,
+  {
+    label: string;
+    pemegang: string;
+    bg: string;
+    border: string;
+    accentBg: string;
+    textStrong: string;
+  }
+> = {
+  MENUNGGU_TELAAH_KASUBBID: {
+    label: "Menunggu Telaah Kasubbid",
+    pemegang: "Kasubbid",
+    bg: "bg-[#eff6ff]",
+    border: "border-[#bfdbfe]",
+    accentBg: "bg-[#3b82f6]",
+    textStrong: "text-[#1d4ed8]",
+  },
+  MENUNGGU_TELAAH_KABID: {
+    label: "Menunggu Telaah Kabid",
+    pemegang: "Kabid",
+    bg: "bg-[#f3efff]",
+    border: "border-[#ddd0fb]",
+    accentBg: "bg-[#7c3aed]",
+    textStrong: "text-[#5b21b6]",
+  },
+  MENUNGGU_TELAAH_SEKBAN: {
+    label: "Menunggu Telaah Sekban",
+    pemegang: "Sekban",
+    bg: "bg-[#fff1f2]",
+    border: "border-[#fecdd3]",
+    accentBg: "bg-[#f43f5e]",
+    textStrong: "text-[#9f1239]",
+  },
+  MENUNGGU_REVISI_KABID: {
+    label: "Menunggu Diteruskan Kabid",
+    pemegang: "Kabid",
+    bg: "bg-[#fff7ed]",
+    border: "border-[#fed7aa]",
+    accentBg: "bg-[#f97316]",
+    textStrong: "text-[#9a3412]",
+  },
+  MENUNGGU_REVISI_KASUBBID: {
+    label: "Menunggu Diteruskan Kasubbid",
+    pemegang: "Kasubbid",
+    bg: "bg-[#fff7ed]",
+    border: "border-[#fed7aa]",
+    accentBg: "bg-[#f97316]",
+    textStrong: "text-[#9a3412]",
+  },
+  MENUNGGU_ADMIN_KIRIM_REVISI: {
+    label: "Menunggu Kirim ke OPD",
+    pemegang: "Admin BPKAD",
+    bg: "bg-[#fff7ed]",
+    border: "border-[#fdba74]",
+    accentBg: "bg-[#ea580c]",
+    textStrong: "text-[#9a3412]",
+  },
+  MENUNGGU_REVISI_OPD: {
+    label: "Revisi Telaah Internal",
+    pemegang: "OPD",
+    bg: "bg-[#fff7ed]",
+    border: "border-[#fdba74]",
+    accentBg: "bg-[#ea580c]",
+    textStrong: "text-[#9a3412]",
+  },
+  SELESAI: {
+    label: "Telaah Internal Selesai",
+    pemegang: "—",
+    bg: "bg-[#ecfdf5]",
+    border: "border-[#a7f3d0]",
+    accentBg: "bg-[#10b981]",
+    textStrong: "text-[#065f46]",
+  },
+};
+
+const MILESTONE_VISUAL: Record<
+  TelaahMilestone,
+  { bg: string; icon: React.ReactNode }
+> = {
+  DIAJUKAN: { bg: "bg-[#1a4e8f]", icon: <IconMilestoneFile /> },
+  SUDAH_TELAAH_KASUBBID: {
+    bg: "bg-emerald-500",
+    icon: <IconMilestoneCheck />,
+  },
+  SUDAH_TELAAH_KABID: { bg: "bg-purple-500", icon: <IconMilestoneCheck /> },
+  SUDAH_TELAAH_SEKBAN: { bg: "bg-rose-500", icon: <IconMilestoneCheck /> },
+  REVISI_DARI_KASUBBID: { bg: "bg-orange-500", icon: <IconMilestoneX /> },
+  REVISI_DARI_KABID: { bg: "bg-orange-500", icon: <IconMilestoneX /> },
+  REVISI_DARI_SEKBAN: { bg: "bg-orange-500", icon: <IconMilestoneX /> },
+  DITERUSKAN_KASUBBID: {
+    bg: "bg-amber-500",
+    icon: <IconMilestoneArrow />,
+  },
+  DITERUSKAN_KABID: {
+    bg: "bg-amber-500",
+    icon: <IconMilestoneArrow />,
+  },
+  DIKIRIM_KE_OPD: { bg: "bg-amber-600", icon: <IconMilestoneSend /> },
+  SIKLUS_BARU_DIMULAI: {
+    bg: "bg-[#1a4e8f]",
+    icon: <IconMilestoneRefresh />,
+  },
+};
+
+const TelaahTimeline: React.FC<{ entries: TelaahLogEntry[] }> = ({
+  entries,
+}) => {
+  return (
+    <div>
+      {entries.map((entry, idx) => {
+        const visual = MILESTONE_VISUAL[entry.milestone];
+        const isLast = idx === entries.length - 1;
+        return (
+          <div key={idx} className="flex gap-3">
+            {/* Left: dot + vertical line */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${visual.bg}`}
+              >
+                {visual.icon}
+              </div>
+              {!isLast && (
+                <div className="my-1 w-px flex-1 bg-[#e2e8f2]" aria-hidden />
+              )}
+            </div>
+
+            {/* Right: content */}
+            <div className={`min-w-0 flex-1 ${isLast ? "" : "pb-4"}`}>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-[12.5px] font-semibold text-[#1a1a2e]">
+                  {TELAAH_MILESTONE_LABEL[entry.milestone]}
+                </span>
+                {isLast && (
+                  <span className="rounded-sm border border-[#dbe6f7] bg-[#eff6ff] px-1.5 py-px text-[9px] font-bold tracking-wide text-[#1a4e8f] uppercase">
+                    Terakhir
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 text-[10.5px] text-[#7a8899]">
+                {formatTanggalWaktu(entry.timestamp)} · oleh{" "}
+                <span className="font-mono font-medium text-[#5a6474]">
+                  {entry.olehUsername}
+                </span>{" "}
+                ({labelOlehLevel(entry.olehTelaahLevel)})
+              </div>
+              {entry.catatan && entry.catatan.trim() && (
+                <div className="mt-1.5 rounded-sm border border-[#eef1f5] bg-[#f7f8fa] px-2.5 py-2 text-[11.5px] leading-relaxed whitespace-pre-line text-[#3a4454]">
+                  {entry.catatan}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const TelaahInternalPanel: React.FC<{ telaah: TelaahInternalRecord }> = ({
+  telaah,
+}) => {
+  const hero = TAHAP_TELAAH_HERO[telaah.tahapSaatIni];
+
+  // Defensive: kalau tahap tidak dikenal (mis. data lama dari versi
+  // sebelum tahap baru ditambahkan, atau ada tahap baru di type yang
+  // belum sempat diupdate di sini), jangan render panel — hindari crash
+  // "Cannot read properties of undefined (reading 'border')".
+  if (!hero) return null;
+
+  // Timestamp "sejak" = timestamp dari entry terakhir yang SUDAH terjadi.
+  // State tahap sekarang ini mulai berlaku tepat setelah entry terakhir dicatat.
+  const entryTerakhir = telaah.riwayat[telaah.riwayat.length - 1];
+
+  return (
+    <div
+      className={`overflow-hidden rounded-sm border bg-white ${hero.border}`}
+    >
+      {/* ═══ Hero status ═══ */}
+      <div className={`px-5 py-4 ${hero.bg}`}>
+        <div className="flex items-start gap-3">
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-white shadow-sm ${hero.accentBg}`}
+          >
+            {telaah.selesai ? <IconCheck /> : <IconClock />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div
+              className={`text-[15px] leading-tight font-bold ${hero.textStrong}`}
+            >
+              {hero.label}
+            </div>
+            {!telaah.selesai && (
+              <div className="mt-1 text-[12px] text-[#5a6474]">
+                Sedang di:{" "}
+                <span className="font-semibold">{hero.pemegang}</span>
+              </div>
+            )}
+            {entryTerakhir && (
+              <div className="mt-0.5 text-[11px] text-[#7a8899]">
+                Sejak {formatTanggalWaktu(entryTerakhir.timestamp)}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ Body ═══ */}
+      <div className="space-y-5 px-5 py-4">
+        {/* ── Timeline riwayat ── */}
+        <div>
+          <div className="mb-3 text-[10.5px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+            Riwayat Telaah
+          </div>
+          {telaah.riwayat.length === 0 ? (
+            <div className="rounded-sm border border-dashed border-[#e2e8f2] py-5 text-center text-[12px] text-[#b0bac5] italic">
+              Belum ada riwayat.
+            </div>
+          ) : (
+            <TelaahTimeline entries={telaah.riwayat} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Detail Pengajuan (panel)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PanelDetail: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
+  /** Record telaah internal (kalau pengajuan pernah masuk telaah internal). */
+  telaah?: TelaahInternalRecord;
   onBack: () => void;
-}> = ({ pengajuan, onBack }) => {
+}> = ({ pengajuan, telaah, onBack }) => {
   const [previewDoc, setPreviewDoc] = useState<DokumenEntry | null>(null);
 
   const dokumenTampilan = useMemo(
@@ -685,112 +1097,353 @@ const PanelDetail: React.FC<{
 
       <button
         onClick={onBack}
-        className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-[#1a4e8f] hover:underline"
+        className="group mb-4 inline-flex cursor-pointer items-center gap-2 rounded-xs border border-[#e2e8f2] bg-white py-1.5 pr-3.5 pl-1.5 text-[12.5px] font-semibold text-[#5a6474] shadow-xs transition-all duration-150 hover:-translate-x-0.5 hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f] hover:shadow-sm active:translate-x-0"
       >
-        <IconArrowLeft />
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f] transition-colors duration-150 group-hover:bg-[#1a4e8f] group-hover:text-white">
+          <IconArrowLeft />
+        </span>
         Kembali ke daftar
       </button>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* ── Kolom kiri ── */}
         <div className="space-y-4 lg:col-span-2">
-          <div className="rounded-sm border border-[#e2e8f2] bg-white">
-            <div className="p-5">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
-                    Nomor Surat
+          {/* Kartu info pengajuan */}
+          <div className="overflow-hidden rounded-xs border border-[#e2e8f2] bg-white shadow-sm">
+            {/* Top accent bar — brand color, murni hiasan */}
+            <div
+              className="h-1 w-full bg-linear-to-r from-[#1a4e8f] via-[#c8a020] to-[#0f9b6e]"
+              aria-hidden
+            />
+
+            {/* ── Header: Nomor Surat + Registrasi + Badges ── */}
+            <div className="relative bg-linear-to-br from-[#fafbfd] via-white to-[#fafbfd] px-5 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#eff6ff] text-[#1a4e8f]">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                      >
+                        <path
+                          d="M9.5 2H4a1.5 1.5 0 00-1.5 1.5v9A1.5 1.5 0 004 14h8a1.5 1.5 0 001.5-1.5V6L9.5 2z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M9.5 2v4h4M5.5 8.5h5M5.5 11h3"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </span>
+                    <span className="text-[10px] font-bold tracking-widest text-[#7a8899] uppercase">
+                      Nomor Surat
+                    </span>
                   </div>
-                  <div className="text-lg font-bold text-[#1a1a2e]">
+                  <div className="font-mono text-[19px] leading-tight font-bold tracking-tight text-[#1a1a2e]">
                     {pengajuan.nomorSurat || "-"}
                   </div>
                   {pengajuan.nomorRegistrasi && (
-                    <div className="mt-1.5">
-                      <div className="mb-0.5 text-[11px] font-semibold tracking-[0.08em] text-[#7a8899] uppercase">
-                        Nomor Registrasi
-                      </div>
-                      <div className="font-mono text-sm font-bold text-[#0f9b6e]">
+                    <div className="mt-3 inline-flex items-center gap-2 rounded-md border border-[#a7f3d0] bg-[#ecfdf5] px-2.5 py-1.5 shadow-xs">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-xs bg-[#10b981] text-white">
+                        <svg
+                          width="9"
+                          height="9"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                        >
+                          <path
+                            d="M3 8l3.5 3.5L13 4.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <span className="text-[9.5px] font-bold tracking-[0.08em] text-[#065f46] uppercase">
+                        No. Registrasi
+                      </span>
+                      <span className="font-mono text-[12.5px] font-bold text-[#065f46]">
                         {pengajuan.nomorRegistrasi}
-                      </div>
+                      </span>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <JenisPenghapusanBadge jenis={pengajuan.jenisPenghapusan} />
                   <StatusBadge status={pengajuan.status} />
+                  {telaah && <TahapTelaahBadge tahap={telaah.tahapSaatIni} />}
                 </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-3">
+            {/* ── Body: field grid + highlight band ── */}
+            <div className="space-y-5 border-t border-[#eef1f5] px-5 py-5">
+              {/* Grid identitas & klasifikasi (5 field) */}
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
                 {[
-                  { label: "Nama OPD", value: pengajuan.namaOPD },
+                  {
+                    label: "Nama OPD",
+                    value: pengajuan.namaOPD,
+                    icon: (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path
+                          d="M3.5 14.5V2.5a1 1 0 011-1h7a1 1 0 011 1v12"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M2 14.5h12M6 5.5h1M9 5.5h1M6 8.5h1M9 8.5h1M6 11.5h1M9 11.5h1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    ),
+                  },
                   {
                     label: "Tanggal Surat",
                     value: formatTanggal(pengajuan.tanggalSurat),
+                    icon: (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <rect x="2" y="3.5" width="12" height="10.5" rx="1.5" />
+                        <path
+                          d="M2 6.5h12M5 1.5v3M11 1.5v3"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    ),
                   },
                   {
                     label: "Jenis Piutang",
                     value: labelJenisPiutang(pengajuan.jenisPiutang),
+                    icon: (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path
+                          d="M8.5 2H3a1 1 0 00-1 1v5.5L9 15a1 1 0 001.4 0l4.1-4.1a1 1 0 000-1.4L8.5 2z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <circle
+                          cx="5"
+                          cy="5"
+                          r="1"
+                          fill="currentColor"
+                          stroke="none"
+                        />
+                      </svg>
+                    ),
                   },
                   {
                     label: "Jenis Penghapusan",
                     value: pengajuan.jenisPenghapusan || "-",
-                  },
-                  { label: "Jumlah Debitur", value: pengajuan.jumlahDebitur },
-                  {
-                    label: "Total Nilai Piutang",
-                    value: (
-                      <span className="font-bold text-[#1a4e8f]">
-                        {formatRupiah(pengajuan.totalNilaiPiutang)}
-                      </span>
+                    icon: (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path
+                          d="M8 2L1.5 5.5 8 9l6.5-3.5L8 2z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M1.5 8L8 11.5 14.5 8M1.5 11L8 14.5 14.5 11"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     ),
                   },
                   {
-                    label: "Jumlah Angsuran",
-                    value: formatRupiah(pengajuan.nilaiRekapitulasiAngsuran),
+                    label: "Jumlah Debitur",
+                    value: pengajuan.jumlahDebitur,
+                    icon: (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <circle cx="6" cy="5.5" r="2.5" />
+                        <path
+                          d="M1.5 14c0-2.5 2-4.5 4.5-4.5S10.5 11.5 10.5 14"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M11 5.5a2.5 2.5 0 110 5M12 9.5c1.5.5 2.5 2 2.5 4.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    ),
                   },
-                ].map(({ label, value }) => (
-                  <div key={label}>
-                    <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                      {label}
+                ].map(({ label, value, icon }) => (
+                  <div
+                    key={label}
+                    className="flex items-start gap-3 rounded-md border border-transparent px-2.5 py-2 transition-all duration-150 hover:border-[#eef1f5] hover:bg-[#fafbfc]"
+                  >
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#f0f4fb] text-[#1a4e8f]">
+                      {icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-0.5 text-[10px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                        {label}
+                      </div>
+                      <div className="text-[13px] leading-snug font-medium text-[#1a1a2e]">
+                        {value}
+                      </div>
                     </div>
-                    <div className="text-[13px] text-[#1a1a2e]">{value}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Highlight band: Nilai-nilai keuangan (2 field) */}
+              <div className="relative overflow-hidden rounded-md border border-[#dbe6f7] bg-linear-to-br from-[#f4f8fd] via-white to-[#f4fbf8] p-4">
+                <div
+                  className="pointer-events-none absolute -top-6 -right-6 h-24 w-24 rounded-full bg-[#1a4e8f]/5"
+                  aria-hidden
+                />
+                <div className="relative grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {[
+                    {
+                      label: "Total Nilai Piutang",
+                      value: formatRupiah(pengajuan.totalNilaiPiutang),
+                      accent: "bg-[#eff6ff] text-[#1a4e8f]",
+                      valueClass: "text-[#1a4e8f]",
+                      icon: (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <ellipse cx="6" cy="4.5" rx="4" ry="2.3" />
+                          <path
+                            d="M2 4.5v3c0 1.3 1.8 2.3 4 2.3s4-1 4-2.3v-3"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M2 7.5v3c0 1.3 1.8 2.3 4 2.3 1.5 0 2.8-.4 3.5-1.1"
+                            strokeLinecap="round"
+                          />
+                          <ellipse cx="11" cy="9.5" rx="3" ry="1.8" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      label: "Jumlah Angsuran",
+                      value: formatRupiah(pengajuan.nilaiRekapitulasiAngsuran),
+                      accent: "bg-[#ecfdf5] text-[#0f6e56]",
+                      valueClass: "text-[#0f6e56]",
+                      icon: (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <path
+                            d="M3 2h10v12l-2-1.2-2 1.2-2-1.2-2 1.2L3 14V2z"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M6 6h4M6 8.5h4M6 11h2.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      ),
+                    },
+                  ].map(({ label, value, accent, valueClass, icon }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md shadow-xs ${accent}`}
+                      >
+                        {icon}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="mb-0.5 text-[10px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                          {label}
+                        </div>
+                        <div
+                          className={`text-[16px] leading-tight font-bold tracking-tight tabular-nums ${valueClass}`}
+                        >
+                          {value}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="border-t border-[#eef1f5] p-5">
-              <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-                Penanggung Jawab OPD
+            {/* ── Penanggung Jawab OPD ── */}
+            <div className="border-t border-[#eef1f5] bg-[#fafbfc] px-5 py-4">
+              <div className="mb-4 flex items-center gap-2.5">
+                <span className="text-[10px] font-bold tracking-widest text-[#7a8899] uppercase">
+                  Penanggung Jawab OPD
+                </span>
+                <span className="h-px flex-1 bg-[#e8edf4]" aria-hidden />
               </div>
-              <div className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2">
-                {[
-                  { label: "Nama", value: pengajuan.namaPenanggungJawab },
-                  { label: "Jabatan", value: pengajuan.jabatan },
-                  {
-                    label: "Opsi Riwayat Penagihan",
-                    value: labelOpsiRiwayatPenagihanTampilan(
-                      pengajuan.opsiRiwayatPenagihan,
-                    ),
-                  },
-                  {
-                    label: "Bukti Dokumen Tidak Mampu Melunasi Utang",
-                    value: labelBuktiTidakMampuTerupload(pengajuan),
-                  },
-                ].map(({ label, value }) => (
-                  <div key={label}>
-                    <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                      {label}
-                    </div>
-                    <div className="text-[13px] text-[#1a1a2e]">{value}</div>
+
+              {/* Hero PJ */}
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xs bg-linear-to-br from-[#1a4e8f] to-[#0e3b6e] text-[14px] font-bold tracking-wide text-white shadow-md ring-4 ring-white">
+                  {ambilInisial(pengajuan.namaPenanggungJawab)}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] leading-tight font-bold text-[#1a1a2e]">
+                    {pengajuan.namaPenanggungJawab}
                   </div>
-                ))}
+                  <div className="mt-0.5 truncate text-[12px] text-[#7a8899]">
+                    {pengajuan.jabatan}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
+          {/* ══════════ PANEL TELAAH INTERNAL (BARU) ══════════ */}
+          {telaah && <TelaahInternalPanel telaah={telaah} />}
+
+          {/* Dokumen Pendukung */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
-            <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+            <div className="mb-3 text-[13px] font-bold tracking-[0.08em] text-[#31363d] uppercase">
               Dokumen Pendukung ({dokumen.filter((d) => d.file).length}/
               {dokumen.length} terupload)
             </div>
@@ -844,71 +1497,246 @@ const PanelDetail: React.FC<{
           </div>
         </div>
 
+        {/* ── Kolom kanan ── */}
         <div className="lg:col-span-1">
-          <div className="rounded-sm border border-[#e2e8f2] bg-white p-5 lg:sticky lg:top-4">
-            <div className="mb-3 text-[11px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
-              Status Verifikasi
+          <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white shadow-sm lg:sticky lg:top-4">
+            {/* ═══ Header ═══ */}
+            <div className="relative flex items-center gap-2.5 border-b border-[#eef1f5] bg-linear-to-br from-[#fafbfd] to-white px-4 py-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs bg-linear-to-br from-[#1a4e8f] to-[#0e3b6e] text-white shadow-sm">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                >
+                  <path
+                    d="M10 1.5L3.5 4v6c0 4.5 2.75 7.5 6.5 8.5 3.75-1 6.5-4 6.5-8.5V4L10 1.5z"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M7 10l2 2 4-4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span className="text-[11px] font-bold tracking-[0.08em] text-[#1a4e8f] uppercase">
+                Status Verifikasi
+              </span>
             </div>
 
-            {!sudahDiverifikasi ? (
-              <div className="flex flex-col items-center gap-2 rounded-sm border border-dashed border-[#e2e8f2] py-8 text-center">
-                <div className="text-[#b0bac5]">
-                  <IconClock />
-                </div>
-                <div className="text-[13px] font-semibold text-[#7a8899]">
-                  Belum diverifikasi
-                </div>
-                <div className="px-4 text-[11px] text-[#b0bac5]">
-                  Pengajuan ini masih menunggu tindakan verifikator.
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                <div>
-                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                    Hasil Verifikasi
+            {/* ═══ Body ═══ */}
+            <div className="space-y-4 px-4 py-4">
+              {!sudahDiverifikasi ? (
+                /* ── Belum diverifikasi ── */
+                <div className="flex flex-col items-center gap-2.5 rounded-xs border border-dashed border-[#dbe6f7] bg-[#fafbfc] py-8 text-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xs bg-[#eff6ff] text-[#1a4e8f] shadow-xs ring-1 ring-[#dbe6f7]">
+                    <IconClock />
+                  </span>
+                  <div className="text-[13px] font-bold text-[#1a4e8f]">
+                    Belum diverifikasi
                   </div>
-                  <StatusBadge status={pengajuan.status} />
-                </div>
-                <div>
-                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                    Diverifikasi Oleh
-                  </div>
-                  <div className="text-[13px] text-[#1a1a2e]">
-                    {pengajuan.verifikatorId || "-"}
+                  <div className="max-w-52 px-4 text-[11px] leading-relaxed text-[#7a8899]">
+                    Pengajuan ini masih menunggu tindakan verifikator.
                   </div>
                 </div>
-                <div>
-                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                    Tanggal Verifikasi
-                  </div>
-                  <div className="text-[13px] text-[#1a1a2e]">
-                    {pengajuan.tanggalVerifikasi
-                      ? formatTanggalWaktu(pengajuan.tanggalVerifikasi)
-                      : "-"}
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-0.5 text-[11px] font-semibold tracking-[0.06em] text-[#7a8899] uppercase">
-                    Keterangan / Catatan
-                  </div>
-                  <div className="text-[13px] text-[#1a1a2e]">
-                    {pengajuan.catatanVerifikasi || (
-                      <span className="text-[#b0bac5] italic">
-                        Tidak ada catatan
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+              ) : (
+                <>
+                  {/* ── Hero status ── */}
+                  <div
+                    className={`relative overflow-hidden rounded-xs border p-3.5 ${
+                      pengajuan.status === "teregistrasi"
+                        ? "border-[#a7f3d0] bg-linear-to-br from-[#ecfdf5] to-white"
+                        : "border-[#fed7aa] bg-linear-to-br from-[#fff7ed] to-white"
+                    }`}
+                  >
+                    {/* Garis accent kiri — warna sesuai status */}
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 ${
+                        pengajuan.status === "teregistrasi"
+                          ? "bg-[#10b981]"
+                          : "bg-[#f97316]"
+                      }`}
+                      aria-hidden
+                    />
 
-            <button
-              onClick={onBack}
-              className="mt-4 w-full rounded-sm border border-[#e2e8f2] bg-white py-2.5 text-sm font-semibold text-[#5a6474] transition hover:bg-[#f7f8fa]"
-            >
-              Kembali
-            </button>
+                    <div className="relative flex items-start gap-3">
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xs text-white shadow-sm ${
+                          pengajuan.status === "teregistrasi"
+                            ? "bg-[#10b981]"
+                            : "bg-[#f97316]"
+                        }`}
+                      >
+                        {pengajuan.status === "teregistrasi" ? (
+                          <IconCheck />
+                        ) : (
+                          <IconAlert />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        {/* Badge status — teks hitam untuk status teregistrasi */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1.25 rounded-sm border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${
+                              pengajuan.status === "teregistrasi"
+                                ? "border-[#a7f3d0] bg-[#ecfdf5] text-black"
+                                : STATUS_BADGE[pengajuan.status].cls
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                STATUS_BADGE[pengajuan.status].dot
+                              }`}
+                            />
+                            {STATUS_BADGE[pengajuan.status].label}
+                          </span>
+
+                          {/* Badge tahap telaah — dipindah ke bawah/beside badge status */}
+                          {telaah && (
+                            <TahapTelaahBadge tahap={telaah.tahapSaatIni} />
+                          )}
+                        </div>
+
+                        {/* Deskripsi — hitam untuk teregistrasi, tetap oranye untuk revisi */}
+                        <div
+                          className={`mt-2 text-[11px] leading-relaxed ${
+                            pengajuan.status === "teregistrasi"
+                              ? "text-black"
+                              : "text-[#9a3412]"
+                          }`}
+                        >
+                          {pengajuan.status === "teregistrasi"
+                            ? "Pengajuan telah lolos verifikasi dan resmi teregistrasi."
+                            : "Pengajuan dikembalikan untuk diperbaiki oleh OPD."}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Info rows ── */}
+                  <div className="space-y-3">
+                    {/* Diverifikasi Oleh */}
+                    <div className="flex items-start gap-2.5">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f]">
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <circle cx="8" cy="5.5" r="2.5" />
+                          <path
+                            d="M2.5 14c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                          Diverifikasi Oleh
+                        </div>
+                        <div className="mt-0.5 text-[13px] leading-snug font-medium text-[#1a1a2e]">
+                          {pengajuan.verifikatorId || "-"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tanggal Verifikasi */}
+                    <div className="flex items-start gap-2.5">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f]">
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <rect
+                            x="2"
+                            y="3.5"
+                            width="12"
+                            height="10.5"
+                            rx="1.5"
+                          />
+                          <path
+                            d="M2 6.5h12M5 1.5v3M11 1.5v3"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                          Tanggal Verifikasi
+                        </div>
+                        <div className="mt-0.5 text-[13px] leading-snug font-medium text-[#1a1a2e]">
+                          {pengajuan.tanggalVerifikasi
+                            ? formatTanggalWaktu(pengajuan.tanggalVerifikasi)
+                            : "-"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Keterangan / Catatan */}
+                    <div>
+                      <div className="mb-1.5 flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f]">
+                          <svg
+                            width="13"
+                            height="13"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path
+                              d="M13.5 8a5 5 0 01-5 5H4L1.5 15v-3.5a5 5 0 015-5h2a5 5 0 015 5z"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <div className="text-[10px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
+                          Keterangan / Catatan
+                        </div>
+                      </div>
+                      {pengajuan.catatanVerifikasi ? (
+                        <div
+                          className={`ml-9.5 rounded-xs border-l-[3px] bg-[#f9fafc] px-3 py-2 text-[12.5px] leading-relaxed whitespace-pre-line text-[#3a4454] ${
+                            pengajuan.status === "revisi"
+                              ? "border-l-[#f97316]"
+                              : "border-l-[#10b981]"
+                          }`}
+                        >
+                          {pengajuan.catatanVerifikasi}
+                        </div>
+                      ) : (
+                        <div className="ml-9.5 text-[12.5px] text-[#b0bac5] italic">
+                          Tidak ada catatan
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ═══ Footer ═══ */}
+            <div className="border-t border-[#eef1f5] bg-[#fafbfc] px-4 py-3">
+              <button
+                onClick={onBack}
+                className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xs border border-[#e2e8f2] bg-white py-2.5 text-[13px] font-semibold text-[#5a6474] transition hover:border-[#a0bdec] hover:bg-[#e8f0fb] hover:text-[#1a4e8f]"
+              >
+                <IconArrowLeft />
+                Kembali
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -922,9 +1750,10 @@ const PanelDetail: React.FC<{
 
 const PengajuanRowCardMobile: React.FC<{
   p: FormulirPenghapusanPiutangOPDRecord;
+  tahap?: TelaahTahap;
   no: number;
   onLihatDetail: () => void;
-}> = ({ p, no, onLihatDetail }) => (
+}> = ({ p, tahap, no, onLihatDetail }) => (
   <div className="space-y-2.5 p-4">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -938,8 +1767,9 @@ const PengajuanRowCardMobile: React.FC<{
           {p.namaPenanggungJawab}
         </div>
       </div>
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col items-end gap-1">
         <StatusBadge status={p.status} />
+        {tahap && <TahapTelaahBadge tahap={tahap} />}
       </div>
     </div>
 
@@ -1008,6 +1838,19 @@ function LihatDaftarPengajuanAdmin({
   semuaPengajuan,
 }: LihatDaftarPengajuanAdminProps = {}) {
   const { data: dataStore } = usePengajuanStore();
+  const { data: telaahStore } = useTelaahInternalStore();
+
+  // ── Map: pengajuanId → full record telaah internal ──
+  // Dipakai dua tempat:
+  //   1. Badge tahap di baris tabel & mobile card (`?.tahapSaatIni`)
+  //   2. Panel Telaah Internal di PanelDetail (full record)
+  const telaahByPengajuanId = useMemo(() => {
+    const map = new Map<string, TelaahInternalRecord>();
+    telaahStore.forEach((t) => {
+      map.set(t.pengajuanId, t);
+    });
+    return map;
+  }, [telaahStore]);
 
   // ── State filter (hanya via chips) ──
   const [activeStatuses, setActiveStatuses] = useState<Set<StatusFormulir>>(
@@ -1050,7 +1893,7 @@ function LihatDaftarPengajuanAdmin({
     return { total, diajukan, revisi, teregistrasi };
   }, [daftarPengajuan]);
 
-  // ── Toggle status (dari chips) ──
+  // ── Toggle status ──
   const toggleStatus = (status: StatusFormulir) => {
     setActiveStatuses((prev) => {
       const next = new Set(prev);
@@ -1127,11 +1970,15 @@ function LihatDaftarPengajuanAdmin({
 
   if (selected) {
     return (
-      <PanelDetail pengajuan={selected} onBack={() => setSelected(null)} />
+      <PanelDetail
+        pengajuan={selected}
+        telaah={telaahByPengajuanId.get(selected.id)}
+        onBack={() => setSelected(null)}
+      />
     );
   }
 
-  // ── Config kartu statis (bukan filter) ──
+  // ── Config kartu statis ──
   const statusCards: {
     status: StatusFormulir;
     label: string;
@@ -1176,7 +2023,7 @@ function LihatDaftarPengajuanAdmin({
 
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
-      {/* ══════════ Summary Cards (statis, bukan filter) ══════════ */}
+      {/* ══════════ Summary Cards ══════════ */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {statusCards.map((card) => {
           const percent =
@@ -1205,7 +2052,6 @@ function LihatDaftarPengajuanAdmin({
                 </div>
               </div>
 
-              {/* Progress bar */}
               <div className="w-full">
                 <div className="h-1 w-full overflow-hidden rounded-full bg-white">
                   <div
@@ -1336,7 +2182,7 @@ function LihatDaftarPengajuanAdmin({
           </div>
         ) : (
           <>
-            {/* Kartu — tampilan mobile (< sm) */}
+            {/* Mobile */}
             <div className="sm:hidden">
               {groupedPengajuan.map((group) => {
                 const isCollapsed = collapsedGroups[group.status];
@@ -1378,6 +2224,7 @@ function LihatDaftarPengajuanAdmin({
                           <PengajuanRowCardMobile
                             key={p.id}
                             p={p}
+                            tahap={telaahByPengajuanId.get(p.id)?.tahapSaatIni}
                             no={idx + 1}
                             onLihatDetail={() => setSelected(p)}
                           />
@@ -1389,7 +2236,7 @@ function LihatDaftarPengajuanAdmin({
               })}
             </div>
 
-            {/* Tabel — tampilan tablet & desktop (>= sm) */}
+            {/* Desktop */}
             <div className="hidden overflow-x-auto sm:block">
               <table className="w-full border-collapse text-[12px]">
                 <thead>
@@ -1436,7 +2283,6 @@ function LihatDaftarPengajuanAdmin({
                   const cfg = STATUS_BADGE[group.status];
                   return (
                     <tbody key={group.status}>
-                      {/* Header grup */}
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f4fb]">
                         <td colSpan={7} className="p-0">
                           <button
@@ -1481,6 +2327,9 @@ function LihatDaftarPengajuanAdmin({
                           group.items.map((p, idx) => {
                             const isLastInGroup =
                               idx === group.items.length - 1;
+                            const tahap = telaahByPengajuanId.get(
+                              p.id,
+                            )?.tahapSaatIni;
                             return (
                               <tr
                                 key={p.id}
@@ -1490,12 +2339,10 @@ function LihatDaftarPengajuanAdmin({
                                     : "border-b border-[#eef1f5]"
                                 }`}
                               >
-                                {/* No — plain text, rata atas */}
                                 <td className="px-3 py-2.5 align-top text-[12px] font-semibold text-[#7a8899]">
                                   {idx + 1}.
                                 </td>
 
-                                {/* Pengajuan */}
                                 <td className="px-3 py-2.5 align-top">
                                   <div className="font-mono text-[11px] font-bold whitespace-nowrap text-[#1a4e8f]">
                                     {nomorTampilan(p)}
@@ -1508,7 +2355,6 @@ function LihatDaftarPengajuanAdmin({
                                   </div>
                                 </td>
 
-                                {/* Piutang & Nominal — badge di bawah nominal */}
                                 <td className="px-3 py-2.5 align-top whitespace-nowrap">
                                   <div className="text-[12.5px] font-bold text-[#1a1a2e]">
                                     {formatRupiah(p.totalNilaiPiutang)}
@@ -1523,22 +2369,23 @@ function LihatDaftarPengajuanAdmin({
                                   </div>
                                 </td>
 
-                                {/* Status */}
                                 <td className="px-3 py-2.5 align-top whitespace-nowrap">
-                                  <StatusBadge status={p.status} />
+                                  <div className="flex flex-col items-start gap-1">
+                                    <StatusBadge status={p.status} />
+                                    {tahap && (
+                                      <TahapTelaahBadge tahap={tahap} />
+                                    )}
+                                  </div>
                                 </td>
 
-                                {/* Tgl Surat */}
                                 <td className="px-3 py-2.5 align-top text-[11.5px] font-semibold whitespace-nowrap text-[#3a4454]">
                                   {formatTanggalSingkat(p.tanggalSurat)}
                                 </td>
 
-                                {/* Tgl Input */}
                                 <td className="px-3 py-2.5 align-top text-[11.5px] font-semibold whitespace-nowrap text-[#3a4454]">
                                   {formatTanggalSingkat(p.createdAt)}
                                 </td>
 
-                                {/* Aksi */}
                                 <td className="px-3 py-2.5 align-top whitespace-nowrap">
                                   <button
                                     onClick={() => setSelected(p)}
