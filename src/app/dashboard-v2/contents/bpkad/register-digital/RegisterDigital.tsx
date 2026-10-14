@@ -1234,7 +1234,7 @@ function RegisterDigital({ semuaPengajuan }: RegisterDigitalProps = {}) {
                   return (
                     <tbody key={group.opd}>
                       {/* ✨ Group header — BERSIH: hanya chevron + nama OPD */}
-                      <tr className="sticky top-[33px] z-9 border-y border-[#dbe6f7] bg-[#f0f4fb]">
+                      <tr className="sticky top-8.25 z-9 border-y border-[#dbe6f7] bg-[#f0f4fb]">
                         <td colSpan={6} className="p-0">
                           <button
                             onClick={() => toggleGroup(group.opd)}

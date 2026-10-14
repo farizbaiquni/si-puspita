@@ -323,7 +323,7 @@ const StatCard: React.FC<{
 
 const ProgressTelaah: React.FC<{ tahap: TelaahTahap }> = ({ tahap }) => {
   const selesai = stepSelesai(tahap);
-  const steps = ["Kas", "Kab", "Sek"];
+  const steps = ["Kasubbid", "Kabid", "Sekban"];
 
   return (
     <div className="inline-flex items-center gap-1">
@@ -972,25 +972,25 @@ export default function TelaahInternalAdmin() {
       </div>
 
       {/* TAB BAR */}
-      <div className="mb-3.5 flex flex-wrap gap-1.5 border-b border-[#e2e8f2]">
+      <div className="mb-3.5 flex flex-wrap gap-1.5 border-b border-[rgb(177,180,185)]">
         {tabs.map((t) => {
           const isActive = tab === t.key;
           return (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-[13px] font-semibold transition ${
+              className={`group relative -mb-px flex cursor-pointer items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-all duration-150 ${
                 isActive
                   ? "border-[#1a4e8f] text-[#1a4e8f]"
-                  : "border-transparent text-[#7a8899] hover:text-[#1a1a2e]"
+                  : "border-transparent text-[#7a8899] hover:border-[#c8d9f5] hover:text-[#1a1a2e]"
               }`}
             >
               {t.label}
               <span
-                className={`rounded-sm px-1.5 py-px text-[10.5px] font-bold ${
+                className={`inline-flex h-5 min-w-5 items-center justify-center rounded-xs px-1.5 text-[10.5px] font-bold transition-colors duration-150 ${
                   isActive
-                    ? "bg-[#eff6ff] text-[#1a4e8f]"
-                    : "bg-[#f0f4fb] text-[#7a8899]"
+                    ? "bg-[#1a4e8f] text-white shadow-xs"
+                    : "bg-[#f0f4fb] text-[#7a8899] group-hover:bg-[#e2e8f2] group-hover:text-[#5a6474]"
                 }`}
               >
                 {t.count}
