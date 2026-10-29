@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 serviceAccountKey.json
+
+# backup data production (berisi data sensitif — jangan di-commit)
+/backups/
+
+# skrip sementara untuk audit/uji production — jangan di-commit
+/scripts/_tmp-*

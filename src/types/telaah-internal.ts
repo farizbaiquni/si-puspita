@@ -4,6 +4,8 @@
 /*  (Kasubbid → Kabid → Sekban, dengan alur revisi turun berjenjang)   */
 /* ------------------------------------------------------------------ */
 
+import type { BadgeConfig } from "@/types/types";
+
 /* ==================== 1. Tahap & Milestone ==================== */
 
 /**
@@ -92,6 +94,59 @@ export const TELAAH_TAHAP_LABEL: Record<TelaahTahap, string> = {
   MENUNGGU_ADMIN_KIRIM_REVISI: "Menunggu Admin Kirim ke OPD",
   MENUNGGU_REVISI_OPD: "Menunggu Revisi OPD",
   SELESAI: "Selesai",
+};
+
+/* ==================== 2b. Badge config (satu sumber kebenaran) ======== */
+
+/**
+ * Konfigurasi badge untuk tiap tahap telaah. Konsisten dengan
+ * STATUS_FORMULIR_BADGE: biru = awal, oranye = revisi, emerald/teal = done.
+ *
+ * CATATAN: `SELESAI` sengaja pakai TEAL (bukan emerald) agar bisa
+ * dibedakan dari `STATUS_FORMULIR_BADGE.teregistrasi` (emerald) saat
+ * keduanya tampil berurutan di tabel Register Digital.
+ */
+export const TELAAH_TAHAP_BADGE: Record<TelaahTahap, BadgeConfig> = {
+  MENUNGGU_TELAAH_KASUBBID: {
+    label: "Menunggu Telaah Kasubbid",
+    cls: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+    dot: "bg-[#3b82f6]",
+  },
+  MENUNGGU_TELAAH_KABID: {
+    label: "Menunggu Telaah Kabid",
+    cls: "bg-[#f3efff] text-[#5b21b6] border-[#ddd0fb]",
+    dot: "bg-[#7c3aed]",
+  },
+  MENUNGGU_TELAAH_SEKBAN: {
+    label: "Menunggu Telaah Sekban",
+    cls: "bg-[#fff1f2] text-[#9f1239] border-[#fecdd3]",
+    dot: "bg-[#f43f5e]",
+  },
+  MENUNGGU_REVISI_KABID: {
+    label: "Menunggu Diteruskan Kabid",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  MENUNGGU_REVISI_KASUBBID: {
+    label: "Menunggu Diteruskan Kasubbid",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  MENUNGGU_ADMIN_KIRIM_REVISI: {
+    label: "Menunggu Kirim ke OPD",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+    dot: "bg-[#ea580c]",
+  },
+  MENUNGGU_REVISI_OPD: {
+    label: "Revisi Telaah Internal",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+    dot: "bg-[#ea580c]",
+  },
+  SELESAI: {
+    label: "Telaah Internal Selesai",
+    cls: "bg-[#eef2ff] text-[#3730a3] border-[#c7d2fe]",
+    dot: "bg-[#6366f1]",
+  },
 };
 
 export const TELAAH_MILESTONE_LABEL: Record<TelaahMilestone, string> = {

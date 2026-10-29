@@ -1,0 +1,279 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------------------------------------------------------------- */
+    /*  opd — data referensi OPD (DAFTAR_OPD di types.ts)                 */
+    /* ---------------------------------------------------------------- */
+    match /opd/{opdId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /*  counters — dokumen counter nomor registrasi & nomor pengajuan    */
+    /* ---------------------------------------------------------------- */
+    match /counters/{counterId} {
+      allow read: if true;
+
+      allow write: if
+        request.resource.data.keys().hasOnly(["urutanTerakhir"]) &&
+        request.resource.data.urutanTerakhir is int &&
+        request.resource.data.urutanTerakhir > 0 &&
+        (
+          !exists(/databases/$(database)/documents/counters/$(counterId)) ||
+          request.resource.data.urutanTerakhir >
+            resource.data.urutanTerakhir
+        );
+    }
+
+    /* ---------------------------------------------------------------- */
+    /*  pengajuan — data utama                                            */
+    /*                                                                  */
+    /*  `update: if true` sengaja permissive — validation detail ada     */
+    /*  di application layer (lib/pengajuan.ts & pengajuan-store.tsx).   */
+    /*  Field `revisiTelaahInternal` (revisi telaah internal) ikut       */
+    /*  tersimpan lewat update ini.                                       */
+    /*                                                                  */
+    /*  ⚠️ WAJIB DIPERKETAT begitu Step Auth selesai.                    */
+    /* ---------------------------------------------------------------- */
+    match /pengajuan/{id} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          "opdId", "namaOPD", "status", "createdAt", "nomorRegistrasi", "nomorPengajuan"
+        ]) &&
+        request.resource.data.status == "diajukan" &&
+        request.resource.data.nomorRegistrasi == null;
+
+      allow update: if true;
+
+      allow delete: if false;
+
+      /* riwayatRevisi — snapshot histori tiap kali OPD "Edit & Ajukan Ulang" */
+      match /riwayatRevisi/{riwayatId} {
+        allow read: if true;
+        allow write: if true;
+      }
+
+      /* riwayatBerjenjang — audit trail keputusan verifikasi berjenjang */
+      match /riwayatBerjenjang/{riwayatId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if false;
+      }
+    }
+
+    /* ---------------------------------------------------------------- */
+    /*  notifikasiOPD — notifikasi untuk OPD                             */
+    /*  Mencakup 2 tipe:                                                  */
+    /*   - "verifikasi"       (hasil verifikasi BPKAD)                   */
+    /*   - "telaah_internal"  (revisi dari telaah internal)              */
+    /*                                                                  */
+    /*  Field `tipe` OPSIONAL — pakai `hasAll` (minimal harus punya      */
+    /*  field-field ini, boleh ada tambahan `tipe`). Ini sengaja         */
+    /*  supaya notif LAMA (tanpa `tipe`) tetap valid tanpa migrasi.      */
+    /* ---------------------------------------------------------------- */
+    match /notifikasiOPD/{notifId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          "opdId", "pengajuanId", "nomorPengajuan", "status", "judul", "pesan", "dibaca", "createdAt"
+        ]) &&
+        request.resource.data.dibaca == false;
+
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["dibaca"]);
+
+      allow delete: if false;
+    }
+
+    /* ================================================================ */
+    /*  TELAAH INTERNAL STRUKTURAL (Kasubbid → Kabid → Sekban)         */
+    /*                                                                  */
+    /*  Alur 8-state:                                                    */
+    /*   - Naik  : MENUNGGU_TELAAH_KASUBBID → _KABID → _SEKBAN → SELESAI */
+    /*   - Turun : MENUNGGU_REVISI_KABID → _KASUBBID                     */
+    /*             → MENUNGGU_ADMIN_KIRIM_REVISI → MENUNGGU_REVISI_OPD   */
+    /*   - Reset : MENUNGGU_REVISI_OPD → MENUNGGU_TELAAH_KASUBBID        */
+    /*             (via "Ajukan Telaah Ulang", siklusKe++)               */
+    /*                                                                  */
+    /*  Field yang boleh berubah saat update:                            */
+    /*   - tahapSaatIni  : state machine aktif                           */
+    /*   - riwayat       : log append-only (11 milestone)                */
+    /*   - selesai       : shortcut query                                */
+    /*   - selesaiPada   : timestamp final                               */
+    /*   - siklusKe      : counter siklus (di-update oleh Telaah Ulang)  */
+    /* ================================================================ */
+
+    match /telaahInternal/{pengajuanId} {
+      allow read: if true;
+
+      /* Validasi bentuk data minimal saat create. Doc ID = pengajuanId
+         (deterministik — dicek di aplikasi lewat transaction
+         get-then-set, bukan di rules karena rules tidak bisa
+         membandingkan path param dengan field).
+         
+         `siklusKe == 1` memastikan siklus pertama selalu mulai dari 1 —
+         kenaikan hanya boleh lewat update (Ajukan Telaah Ulang). */
+      allow create: if
+        request.resource.data.keys().hasAll([
+          "id", "pengajuanId", "nomorPengajuan", "nomorRegistrasi",
+          "namaOPD", "namaPenanggungJawab", "diajukanOleh", "diajukanPada",
+          "tahapSaatIni", "selesai", "selesaiPada", "riwayat", "siklusKe"
+        ]) &&
+        request.resource.data.siklusKe == 1 &&
+        request.resource.data.tahapSaatIni == "MENUNGGU_TELAAH_KASUBBID" &&
+        request.resource.data.selesai == false &&
+        request.resource.data.selesaiPada == null &&
+        request.resource.data.riwayat.size() >= 1;
+
+      /* Update: validasi urutan tahap ada di transaction aplikasi.
+         Rules hanya batasi field yang boleh berubah — supaya field
+         identitas (nomorPengajuan, namaOPD, dst) tidak bisa diubah
+         setelah dokumen dibuat (defensive; UI tidak pernah ubah ini). */
+      allow update: if
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            "tahapSaatIni",
+            "riwayat",
+            "selesai",
+            "selesaiPada",
+            "siklusKe"
+          ]);
+
+      allow delete: if false;
+    }
+
+    match /notifikasiInternal/{notifId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          "targetUsername", "targetLevel", "telaahId", "pengajuanId",
+          "nomorPengajuan", "nomorRegistrasi", "milestone",
+          "judul", "pesan", "dibaca", "createdAt"
+        ]) &&
+        request.resource.data.dibaca == false;
+
+      allow update: if
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly(["dibaca"]);
+
+      allow delete: if false;
+    }
+
+    /* ================================================================ */
+    /*  DRAFT SURAT PENGANTAR KE INSPEKTORAT                            */
+    /*                                                                  */
+    /*  Menampung unggahan surat pengantar dari halaman detail SEBELUM  */
+    /*  admin menekan "Ajukan Reviu". Doc ID = pengajuanId (deterministik */
+    /*  → 1 pengajuan = 1 draft).                                       */
+    /*                                                                  */
+    /*  Saat pengajuan diajukan, referensi surat pengantar dipindahkan  */
+    /*  ke `reviuInspektorat` lalu dokumen draft ini dihapus dalam satu */
+    /*  transaction.                                                    */
+    /* ================================================================ */
+
+    match /suratPengantarInspektorat/{pengajuanId} {
+      allow read: if true;
+
+      allow create, update: if
+        request.resource.data.keys().hasAll([
+          "id", "pengajuanId", "suratPengantar", "diunggahOleh",
+          "diunggahPada", "diperbaruiPada"
+        ]) &&
+        request.resource.data.id == pengajuanId &&
+        request.resource.data.pengajuanId == pengajuanId &&
+        request.resource.data.suratPengantar is map &&
+        request.resource.data.suratPengantar.ukuranBytes is int &&
+        request.resource.data.suratPengantar.ukuranBytes > 0 &&
+        request.resource.data.suratPengantar.ukuranBytes <= 10485760 &&
+        request.resource.data.suratPengantar.namaFile is string &&
+        request.resource.data.suratPengantar.namaFile.lower().matches(".*\\.pdf$") &&
+        request.resource.data.suratPengantar.url is string;
+
+      allow delete: if true;
+    }
+
+    /* ================================================================ */
+    /*  REVIU INSPEKTORAT                                               */
+    /*  Koleksi terpisah untuk tahap reviu setelah telaah internal.     */
+    /*  Doc ID = pengajuanId (deterministik → 1 pengajuan = 1 reviu).   */
+    /*                                                                  */
+    /*  Create WAJIB:                                                  */
+    /*   1. menyertakan `suratPengantar` — referensi file PDF "Surat    */
+    /*      Pengantar ke Inspektorat" yang lebih dulu di-upload ke      */
+    /*      Cloudinary oleh aplikasi;                                  */
+    /*   2. dokumen `beritaAcara/{pengajuanId}` sudah ada — Berita      */
+    /*      Acara wajib dibuat & disimpan sebelum pengajuan diajukan    */
+    /*      reviu.                                                      */
+    /*                                                                  */
+    /*  ⚠️ WAJIB DIPERKETAT begitu Step Auth selesai.                    */
+    /* ================================================================ */
+
+    match /reviuInspektorat/{pengajuanId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          "id", "pengajuanId", "diajukanOleh", "diajukanPada", "status",
+          "suratPengantar"
+        ]) &&
+        request.resource.data.status == "MENUNGGU_REVIU" &&
+        request.resource.data.suratPengantar is map &&
+        exists(/databases/$(database)/documents/beritaAcara/$(pengajuanId));
+
+      /* Immutable setelah dibuat — tidak ada aksi lanjutan di aplikasi. */
+      allow update, delete: if false;
+    }
+
+    /* ================================================================ */
+    /*  BERITA ACARA PENELAAHAN INTERNAL (menu Reviu Inspektorat)       */
+    /*                                                                  */
+    /*  Koleksi TERPISAH supaya simpan/ubah Berita Acara TIDAK pernah   */
+    /*  menyentuh dokumen `pengajuan` & `telaahInternal` (alur lama     */
+    /*  tetap jalan apa adanya). Doc ID = pengajuanId (deterministik    */
+    /*  → 1 pengajuan = 1 BA).                                          */
+    /*                                                                  */
+    /*  Field yang boleh berubah saat update = seluruh isian BA +       */
+    /*  `diperbaruiPada`. Metadata `dibuatPada` / `dibuatOleh`          */
+    /*  immutable (hanya diisi saat penyimpanan pertama).               */
+    /*                                                                  */
+    /*  ⚠️ WAJIB DIPERKETAT begitu Step Auth selesai.                    */
+    /* ================================================================ */
+
+    match /beritaAcara/{pengajuanId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          "id", "pengajuanId", "nomorBA", "perangkatDaerah",
+          "nomorRegistrasi", "tanggalRegistrasi", "jenisPiutang",
+          "namaJumlahDebitur", "nilaiPiutang", "tahunPerolehan",
+          "nilaiPiutangKesimpulan", "tanggalBA", "aspekPenelaahan",
+          "penelaah", "dibuatPada", "diperbaruiPada", "dibuatOleh"
+        ]) &&
+        request.resource.data.id == pengajuanId &&
+        request.resource.data.pengajuanId == pengajuanId &&
+        request.resource.data.aspekPenelaahan.size() == 10 &&
+        request.resource.data.penelaah is map;
+
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "nomorBA", "perangkatDaerah", "nomorRegistrasi",
+          "tanggalRegistrasi", "jenisPiutang", "namaJumlahDebitur",
+          "nilaiPiutang", "tahunPerolehan", "nilaiPiutangKesimpulan",
+          "tanggalBA", "aspekPenelaahan", "penelaah", "diperbaruiPada"
+        ]);
+
+      /* Tidak ada aksi hapus di aplikasi. */
+      allow delete: if false;
+    }
+  }
+}

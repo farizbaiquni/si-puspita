@@ -17,6 +17,7 @@ import type {
   TelaahTahap,
 } from "@/types/telaah-internal";
 import { TELAAH_MILESTONE_LABEL } from "@/types/telaah-internal";
+import { REVIU_STATUS_BADGE } from "@/types/reviu-inspektorat";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -105,6 +106,30 @@ function ambilInisial(nama: string): string {
     .map((k) => k.replace(/[^A-Za-z]/g, "")[0] ?? "")
     .join("");
   return (inisial || "?").toUpperCase();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group key — KATEGORI grup tabel
+//
+// Kategori = StatusFormulir + "menunggu_reviu".
+// Pengajuan dengan reviuInspektoratStatus === "MENUNGGU_REVIU" masuk grup
+// "menunggu_reviu" (BUKAN "teregistrasi"), supaya satu pengajuan tidak
+// muncul di dua grup. Statusnya di database tetap "teregistrasi", tapi
+// secara visual/kategori sudah pindah ke grup tersendiri.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type GroupKey = StatusFormulir | "menunggu_reviu";
+
+const GROUP_ORDER: GroupKey[] = [
+  "diajukan",
+  "revisi",
+  "teregistrasi",
+  "menunggu_reviu",
+];
+
+function groupKeyOf(p: FormulirPenghapusanPiutangOPDRecord): GroupKey {
+  if (p.reviuInspektoratStatus === "MENUNGGU_REVIU") return "menunggu_reviu";
+  return p.status;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -310,8 +335,31 @@ const STATUS_BADGE: Record<
   },
 };
 
+/** Badge config per kategori grup — tambah "menunggu_reviu" di atas 3 status. */
+const GROUP_BADGE: Record<
+  GroupKey,
+  { label: string; cls: string; dot: string }
+> = {
+  diajukan: STATUS_BADGE.diajukan,
+  revisi: STATUS_BADGE.revisi,
+  teregistrasi: STATUS_BADGE.teregistrasi,
+  menunggu_reviu: REVIU_STATUS_BADGE.MENUNGGU_REVIU,
+};
+
 const StatusBadge: React.FC<{ status: StatusFormulir }> = ({ status }) => {
   const cfg = STATUS_BADGE[status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.25 rounded-sm border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  );
+};
+
+const ReviuBadge: React.FC = () => {
+  const cfg = REVIU_STATUS_BADGE.MENUNGGU_REVIU;
   return (
     <span
       className={`inline-flex items-center gap-1.25 rounded-sm border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${cfg.cls}`}
@@ -384,8 +432,8 @@ const TAHAP_TELAAH_BADGE: Record<
   },
   SELESAI: {
     label: "Telaah Internal Selesai",
-    cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
-    dot: "bg-[#10b981]",
+    cls: "bg-[#eef2ff] text-[#3730a3] border-[#c7d2fe]",
+    dot: "bg-[#6366f1]",
   },
 };
 
@@ -567,6 +615,24 @@ const IconAlert = () => (
       strokeLinejoin="round"
     />
     <path d="M8 6.5v3.5M8 12v.5" strokeLinecap="round" />
+  </svg>
+);
+
+const IconShield = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+  >
+    <path
+      d="M8 1.5L2.5 3.5v5c0 4 2.5 6.5 5.5 7.5 3-1 5.5-3.5 5.5-7.5v-5L8 1.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M5.5 8l2 2 3.5-4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -827,12 +893,7 @@ const DokumenItem: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PANEL: Telaah Internal (BARU)
-// Tampil di PanelDetail admin — hanya kalau pengajuan pernah masuk telaah.
-// Konten:
-//   1. Hero status (ikon + label tahap + pemegang + sejak kapan)
-//   2. Info umum (diajukan oleh, pada, jumlah langkah)
-//   3. Timeline riwayat telaah per milestone + catatan berjenjang
+// PANEL: Telaah Internal
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TAHAP_TELAAH_HERO: Record<
@@ -951,7 +1012,6 @@ const TelaahTimeline: React.FC<{ entries: TelaahLogEntry[] }> = ({
         const isLast = idx === entries.length - 1;
         return (
           <div key={idx} className="flex gap-3">
-            {/* Left: dot + vertical line */}
             <div className="flex flex-col items-center">
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${visual.bg}`}
@@ -963,7 +1023,6 @@ const TelaahTimeline: React.FC<{ entries: TelaahLogEntry[] }> = ({
               )}
             </div>
 
-            {/* Right: content */}
             <div className={`min-w-0 flex-1 ${isLast ? "" : "pb-4"}`}>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <span className="text-[12.5px] font-semibold text-[#1a1a2e]">
@@ -1000,21 +1059,14 @@ const TelaahInternalPanel: React.FC<{ telaah: TelaahInternalRecord }> = ({
 }) => {
   const hero = TAHAP_TELAAH_HERO[telaah.tahapSaatIni];
 
-  // Defensive: kalau tahap tidak dikenal (mis. data lama dari versi
-  // sebelum tahap baru ditambahkan, atau ada tahap baru di type yang
-  // belum sempat diupdate di sini), jangan render panel — hindari crash
-  // "Cannot read properties of undefined (reading 'border')".
   if (!hero) return null;
 
-  // Timestamp "sejak" = timestamp dari entry terakhir yang SUDAH terjadi.
-  // State tahap sekarang ini mulai berlaku tepat setelah entry terakhir dicatat.
   const entryTerakhir = telaah.riwayat[telaah.riwayat.length - 1];
 
   return (
     <div
       className={`overflow-hidden rounded-sm border bg-white ${hero.border}`}
     >
-      {/* ═══ Hero status ═══ */}
       <div className={`px-5 py-4 ${hero.bg}`}>
         <div className="flex items-start gap-3">
           <span
@@ -1043,9 +1095,7 @@ const TelaahInternalPanel: React.FC<{ telaah: TelaahInternalRecord }> = ({
         </div>
       </div>
 
-      {/* ═══ Body ═══ */}
       <div className="space-y-5 px-5 py-4">
-        {/* ── Timeline riwayat ── */}
         <div>
           <div className="mb-3 text-[10.5px] font-bold tracking-[0.08em] text-[#7a8899] uppercase">
             Riwayat Telaah
@@ -1069,7 +1119,6 @@ const TelaahInternalPanel: React.FC<{ telaah: TelaahInternalRecord }> = ({
 
 const PanelDetail: React.FC<{
   pengajuan: FormulirPenghapusanPiutangOPDRecord;
-  /** Record telaah internal (kalau pengajuan pernah masuk telaah internal). */
   telaah?: TelaahInternalRecord;
   onBack: () => void;
 }> = ({ pengajuan, telaah, onBack }) => {
@@ -1106,17 +1155,13 @@ const PanelDetail: React.FC<{
       </button>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* ── Kolom kiri ── */}
         <div className="space-y-4 lg:col-span-2">
-          {/* Kartu info pengajuan */}
           <div className="overflow-hidden rounded-xs border border-[#e2e8f2] bg-white shadow-sm">
-            {/* Top accent bar — brand color, murni hiasan */}
             <div
               className="h-1 w-full bg-linear-to-r from-[#1a4e8f] via-[#c8a020] to-[#0f9b6e]"
               aria-hidden
             />
 
-            {/* ── Header: Nomor Surat + Registrasi + Badges ── */}
             <div className="relative bg-linear-to-br from-[#fafbfd] via-white to-[#fafbfd] px-5 py-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -1180,13 +1225,14 @@ const PanelDetail: React.FC<{
                   <JenisPenghapusanBadge jenis={pengajuan.jenisPenghapusan} />
                   <StatusBadge status={pengajuan.status} />
                   {telaah && <TahapTelaahBadge tahap={telaah.tahapSaatIni} />}
+                  {pengajuan.reviuInspektoratStatus === "MENUNGGU_REVIU" && (
+                    <ReviuBadge />
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* ── Body: field grid + highlight band ── */}
             <div className="space-y-5 border-t border-[#eef1f5] px-5 py-5">
-              {/* Grid identitas & klasifikasi (5 field) */}
               <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
                 {[
                   {
@@ -1328,7 +1374,6 @@ const PanelDetail: React.FC<{
                 ))}
               </div>
 
-              {/* Highlight band: Nilai-nilai keuangan (2 field) */}
               <div className="relative overflow-hidden rounded-md border border-[#dbe6f7] bg-linear-to-br from-[#f4f8fd] via-white to-[#f4fbf8] p-4">
                 <div
                   className="pointer-events-none absolute -top-6 -right-6 h-24 w-24 rounded-full bg-[#1a4e8f]/5"
@@ -1412,7 +1457,6 @@ const PanelDetail: React.FC<{
               </div>
             </div>
 
-            {/* ── Penanggung Jawab OPD ── */}
             <div className="border-t border-[#eef1f5] bg-[#fafbfc] px-5 py-4">
               <div className="mb-4 flex items-center gap-2.5">
                 <span className="text-[10px] font-bold tracking-widest text-[#7a8899] uppercase">
@@ -1421,7 +1465,6 @@ const PanelDetail: React.FC<{
                 <span className="h-px flex-1 bg-[#e8edf4]" aria-hidden />
               </div>
 
-              {/* Hero PJ */}
               <div className="flex items-center gap-3.5">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xs bg-linear-to-br from-[#1a4e8f] to-[#0e3b6e] text-[14px] font-bold tracking-wide text-white shadow-md ring-4 ring-white">
                   {ambilInisial(pengajuan.namaPenanggungJawab)}
@@ -1438,10 +1481,8 @@ const PanelDetail: React.FC<{
             </div>
           </div>
 
-          {/* ══════════ PANEL TELAAH INTERNAL (BARU) ══════════ */}
           {telaah && <TelaahInternalPanel telaah={telaah} />}
 
-          {/* Dokumen Pendukung */}
           <div className="rounded-sm border border-[#e2e8f2] bg-white p-5">
             <div className="mb-3 text-[13px] font-bold tracking-[0.08em] text-[#31363d] uppercase">
               Dokumen Pendukung ({dokumen.filter((d) => d.file).length}/
@@ -1497,41 +1538,19 @@ const PanelDetail: React.FC<{
           </div>
         </div>
 
-        {/* ── Kolom kanan ── */}
         <div className="lg:col-span-1">
           <div className="overflow-hidden rounded-sm border border-[#e2e8f2] bg-white shadow-sm lg:sticky lg:top-4">
-            {/* ═══ Header ═══ */}
             <div className="relative flex items-center gap-2.5 border-b border-[#eef1f5] bg-linear-to-br from-[#fafbfd] to-white px-4 py-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs bg-linear-to-br from-[#1a4e8f] to-[#0e3b6e] text-white shadow-sm">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                >
-                  <path
-                    d="M10 1.5L3.5 4v6c0 4.5 2.75 7.5 6.5 8.5 3.75-1 6.5-4 6.5-8.5V4L10 1.5z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M7 10l2 2 4-4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <IconShield />
               </span>
               <span className="text-[11px] font-bold tracking-[0.08em] text-[#1a4e8f] uppercase">
                 Status Verifikasi
               </span>
             </div>
 
-            {/* ═══ Body ═══ */}
             <div className="space-y-4 px-4 py-4">
               {!sudahDiverifikasi ? (
-                /* ── Belum diverifikasi ── */
                 <div className="flex flex-col items-center gap-2.5 rounded-xs border border-dashed border-[#dbe6f7] bg-[#fafbfc] py-8 text-center">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xs bg-[#eff6ff] text-[#1a4e8f] shadow-xs ring-1 ring-[#dbe6f7]">
                     <IconClock />
@@ -1545,7 +1564,6 @@ const PanelDetail: React.FC<{
                 </div>
               ) : (
                 <>
-                  {/* ── Hero status ── */}
                   <div
                     className={`relative overflow-hidden rounded-xs border p-3.5 ${
                       pengajuan.status === "teregistrasi"
@@ -1553,7 +1571,6 @@ const PanelDetail: React.FC<{
                         : "border-[#fed7aa] bg-linear-to-br from-[#fff7ed] to-white"
                     }`}
                   >
-                    {/* Garis accent kiri — warna sesuai status */}
                     <div
                       className={`absolute inset-y-0 left-0 w-1 ${
                         pengajuan.status === "teregistrasi"
@@ -1578,7 +1595,6 @@ const PanelDetail: React.FC<{
                         )}
                       </span>
                       <div className="min-w-0 flex-1 pt-0.5">
-                        {/* Badge status — teks hitam untuk status teregistrasi */}
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span
                             className={`inline-flex items-center gap-1.25 rounded-sm border px-2.25 py-0.75 text-[11px] font-semibold tracking-wide whitespace-nowrap ${
@@ -1595,13 +1611,14 @@ const PanelDetail: React.FC<{
                             {STATUS_BADGE[pengajuan.status].label}
                           </span>
 
-                          {/* Badge tahap telaah — dipindah ke bawah/beside badge status */}
                           {telaah && (
                             <TahapTelaahBadge tahap={telaah.tahapSaatIni} />
                           )}
+
+                          {pengajuan.reviuInspektoratStatus ===
+                            "MENUNGGU_REVIU" && <ReviuBadge />}
                         </div>
 
-                        {/* Deskripsi — hitam untuk teregistrasi, tetap oranye untuk revisi */}
                         <div
                           className={`mt-2 text-[11px] leading-relaxed ${
                             pengajuan.status === "teregistrasi"
@@ -1617,9 +1634,7 @@ const PanelDetail: React.FC<{
                     </div>
                   </div>
 
-                  {/* ── Info rows ── */}
                   <div className="space-y-3">
-                    {/* Diverifikasi Oleh */}
                     <div className="flex items-start gap-2.5">
                       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f]">
                         <svg
@@ -1647,7 +1662,6 @@ const PanelDetail: React.FC<{
                       </div>
                     </div>
 
-                    {/* Tanggal Verifikasi */}
                     <div className="flex items-start gap-2.5">
                       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f]">
                         <svg
@@ -1683,7 +1697,6 @@ const PanelDetail: React.FC<{
                       </div>
                     </div>
 
-                    {/* Keterangan / Catatan */}
                     <div>
                       <div className="mb-1.5 flex items-center gap-2.5">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xs bg-[#f0f4fb] text-[#1a4e8f]">
@@ -1727,7 +1740,6 @@ const PanelDetail: React.FC<{
               )}
             </div>
 
-            {/* ═══ Footer ═══ */}
             <div className="border-t border-[#eef1f5] bg-[#fafbfc] px-4 py-3">
               <button
                 onClick={onBack}
@@ -1770,6 +1782,7 @@ const PengajuanRowCardMobile: React.FC<{
       <div className="flex shrink-0 flex-col items-end gap-1">
         <StatusBadge status={p.status} />
         {tahap && <TahapTelaahBadge tahap={tahap} />}
+        {p.reviuInspektoratStatus === "MENUNGGU_REVIU" && <ReviuBadge />}
       </div>
     </div>
 
@@ -1812,18 +1825,14 @@ interface LihatDaftarPengajuanAdminProps {
   semuaPengajuan?: FormulirPenghapusanPiutangOPDRecord[];
 }
 
-const STATUS_GROUP_ORDER: StatusFormulir[] = [
-  "diajukan",
-  "revisi",
-  "teregistrasi",
-];
-
-const STATUS_PRIORITY: Record<StatusFormulir, number> = Object.fromEntries(
-  STATUS_GROUP_ORDER.map((status, idx) => [status, idx]),
-) as Record<StatusFormulir, number>;
+const STATUS_PRIORITY: Record<StatusFormulir, number> = {
+  diajukan: 0,
+  revisi: 1,
+  teregistrasi: 2,
+};
 
 interface PengajuanGroup {
-  status: StatusFormulir;
+  key: GroupKey;
   items: FormulirPenghapusanPiutangOPDRecord[];
 }
 
@@ -1840,10 +1849,6 @@ function LihatDaftarPengajuanAdmin({
   const { data: dataStore } = usePengajuanStore();
   const { data: telaahStore } = useTelaahInternalStore();
 
-  // ── Map: pengajuanId → full record telaah internal ──
-  // Dipakai dua tempat:
-  //   1. Badge tahap di baris tabel & mobile card (`?.tahapSaatIni`)
-  //   2. Panel Telaah Internal di PanelDetail (full record)
   const telaahByPengajuanId = useMemo(() => {
     const map = new Map<string, TelaahInternalRecord>();
     telaahStore.forEach((t) => {
@@ -1852,24 +1857,35 @@ function LihatDaftarPengajuanAdmin({
     return map;
   }, [telaahStore]);
 
-  // ── State filter (hanya via chips) ──
-  const [activeStatuses, setActiveStatuses] = useState<Set<StatusFormulir>>(
-    new Set(STATUS_GROUP_ORDER),
+  // State filter — pakai GroupKey (bukan cuma StatusFormulir), karena
+  // "menunggu_reviu" adalah kategori tambahan yang bukan status di DB.
+  const [activeStatuses, setActiveStatuses] = useState<Set<GroupKey>>(
+    new Set(GROUP_ORDER),
   );
   const [search, setSearch] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [selected, setSelected] =
     useState<FormulirPenghapusanPiutangOPDRecord | null>(null);
 
+  // Collapsed state per grup:
+  //  - `undefined` = user belum pernah toggle → default collapse kalau kosong
+  //  - `true`      = user collapse manual → tetap collapse
+  //  - `false`     = user expand manual  → tetap expand
   const [collapsedGroups, setCollapsedGroups] = useState<
-    Record<StatusFormulir, boolean>
-  >({
-    diajukan: false,
-    revisi: false,
-    teregistrasi: false,
-  });
+    Partial<Record<GroupKey, boolean>>
+  >({});
 
-  // ── Data source ──
+  const isGroupCollapsed = (key: GroupKey, itemCount: number): boolean => {
+    const explicit = collapsedGroups[key];
+    if (explicit !== undefined) return explicit;
+    return itemCount === 0; // kosong = collapse default
+  };
+
+  const toggleGroup = (key: GroupKey, itemCount: number) => {
+    const current = isGroupCollapsed(key, itemCount);
+    setCollapsedGroups((prev) => ({ ...prev, [key]: !current }));
+  };
+
   const daftarPengajuan = useMemo(() => {
     const sumber = semuaPengajuan ?? dataStore;
     return [...sumber].sort((a, b) => {
@@ -1880,45 +1896,45 @@ function LihatDaftarPengajuanAdmin({
     });
   }, [semuaPengajuan, dataStore]);
 
-  // ── Stats ──
-  const stats = useMemo(() => {
-    const total = daftarPengajuan.length;
-    const diajukan = daftarPengajuan.filter(
-      (p) => p.status === "diajukan",
-    ).length;
-    const revisi = daftarPengajuan.filter((p) => p.status === "revisi").length;
-    const teregistrasi = daftarPengajuan.filter(
-      (p) => p.status === "teregistrasi",
-    ).length;
-    return { total, diajukan, revisi, teregistrasi };
+  // Stats per-kategori (bukan per status DB) — cocok dengan chip filter
+  // dan header grup.
+  const countByGroup = useMemo(() => {
+    const counts: Record<GroupKey, number> = {
+      diajukan: 0,
+      revisi: 0,
+      teregistrasi: 0,
+      menunggu_reviu: 0,
+    };
+    for (const p of daftarPengajuan) {
+      counts[groupKeyOf(p)]++;
+    }
+    return counts;
   }, [daftarPengajuan]);
 
-  // ── Toggle status ──
-  const toggleStatus = (status: StatusFormulir) => {
+  const toggleStatus = (key: GroupKey) => {
     setActiveStatuses((prev) => {
       const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      if (next.size === 0) return new Set(STATUS_GROUP_ORDER);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      if (next.size === 0) return new Set(GROUP_ORDER);
       return next;
     });
   };
 
   const resetFilter = () => {
-    setActiveStatuses(new Set(STATUS_GROUP_ORDER));
+    setActiveStatuses(new Set(GROUP_ORDER));
     setSearch("");
     setSortConfig(null);
   };
 
   const isFilterAktif =
-    activeStatuses.size < STATUS_GROUP_ORDER.length ||
+    activeStatuses.size < GROUP_ORDER.length ||
     search.trim().length > 0 ||
     sortConfig !== null;
 
-  // ── Filter ──
   const filtered = useMemo(() => {
     return daftarPengajuan.filter((p) => {
-      if (!activeStatuses.has(p.status)) return false;
+      if (!activeStatuses.has(groupKeyOf(p))) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -1934,10 +1950,9 @@ function LihatDaftarPengajuanAdmin({
     });
   }, [daftarPengajuan, activeStatuses, search]);
 
-  // ── Group + Sort ──
   const groupedPengajuan = useMemo<PengajuanGroup[]>(() => {
-    return STATUS_GROUP_ORDER.map((status) => {
-      const items = filtered.filter((p) => p.status === status);
+    return GROUP_ORDER.map((key) => {
+      const items = filtered.filter((p) => groupKeyOf(p) === key);
       if (sortConfig) {
         items.sort((a, b) => {
           const va = a[sortConfig.key] || "";
@@ -1951,13 +1966,9 @@ function LihatDaftarPengajuanAdmin({
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
       }
-      return { status, items };
+      return { key, items };
     }).filter((group) => group.items.length > 0 || !search);
   }, [filtered, sortConfig, search]);
-
-  const toggleGroup = (status: StatusFormulir) => {
-    setCollapsedGroups((prev) => ({ ...prev, [status]: !prev[status] }));
-  };
 
   const handleSortClick = (key: SortKey) => {
     setSortConfig((prev) => {
@@ -1978,9 +1989,9 @@ function LihatDaftarPengajuanAdmin({
     );
   }
 
-  // ── Config kartu statis ──
+  // Config kartu statis ringkasan (4 kartu — sesuai 4 kategori).
   const statusCards: {
-    status: StatusFormulir;
+    key: GroupKey;
     label: string;
     count: number;
     icon: React.ReactNode;
@@ -1990,9 +2001,9 @@ function LihatDaftarPengajuanAdmin({
     progressColor: string;
   }[] = [
     {
-      status: "diajukan",
+      key: "diajukan",
       label: "Menunggu Verifikasi",
-      count: stats.diajukan,
+      count: countByGroup.diajukan,
       icon: <IconClock />,
       accentClass: "bg-[#1a4e8f]",
       bgClass: "bg-[#e8f0fb]",
@@ -2000,9 +2011,9 @@ function LihatDaftarPengajuanAdmin({
       progressColor: "bg-[#1a4e8f]",
     },
     {
-      status: "revisi",
+      key: "revisi",
       label: "Perlu Revisi",
-      count: stats.revisi,
+      count: countByGroup.revisi,
       icon: <IconAlert />,
       accentClass: "bg-[#c0392b]",
       bgClass: "bg-[#fef2f2]",
@@ -2010,30 +2021,40 @@ function LihatDaftarPengajuanAdmin({
       progressColor: "bg-[#c0392b]",
     },
     {
-      status: "teregistrasi",
+      key: "teregistrasi",
       label: "Teregistrasi",
-      count: stats.teregistrasi,
+      count: countByGroup.teregistrasi,
       icon: <IconCheck />,
       accentClass: "bg-[#0f9b6e]",
       bgClass: "bg-[#e6f7f2]",
       borderClass: "border-[#a7e8d4]",
       progressColor: "bg-[#0f9b6e]",
     },
+    {
+      key: "menunggu_reviu",
+      label: "Menunggu Reviu Inspektorat",
+      count: countByGroup.menunggu_reviu,
+      icon: <IconShield />,
+      accentClass: "bg-[#f59e0b]",
+      bgClass: "bg-[#fffbeb]",
+      borderClass: "border-[#fde68a]",
+      progressColor: "bg-[#f59e0b]",
+    },
   ];
 
   return (
     <div className="font-inherit mx-auto w-full max-w-400">
       {/* ══════════ Summary Cards ══════════ */}
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {statusCards.map((card) => {
           const percent =
-            stats.total === 0
+            daftarPengajuan.length === 0
               ? 0
-              : Math.round((card.count / stats.total) * 100);
+              : Math.round((card.count / daftarPengajuan.length) * 100);
 
           return (
             <div
-              key={card.status}
+              key={card.key}
               className={`flex min-w-0 flex-col gap-3 rounded-sm border px-4 py-3.5 ${card.bgClass} ${card.borderClass}`}
             >
               <div className="flex w-full items-center gap-3">
@@ -2110,20 +2131,15 @@ function LihatDaftarPengajuanAdmin({
         <span className="mr-1 text-[10.5px] font-bold tracking-wider text-[#7a8899] uppercase">
           Filter:
         </span>
-        {STATUS_GROUP_ORDER.map((status) => {
-          const isActive = activeStatuses.has(status);
-          const cfg = STATUS_BADGE[status];
-          const count =
-            status === "diajukan"
-              ? stats.diajukan
-              : status === "revisi"
-                ? stats.revisi
-                : stats.teregistrasi;
+        {GROUP_ORDER.map((key) => {
+          const isActive = activeStatuses.has(key);
+          const cfg = GROUP_BADGE[key];
+          const count = countByGroup[key];
           return (
             <button
-              key={status}
+              key={key}
               type="button"
-              onClick={() => toggleStatus(status)}
+              onClick={() => toggleStatus(key)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
                 isActive
                   ? cfg.cls
@@ -2185,15 +2201,20 @@ function LihatDaftarPengajuanAdmin({
             {/* Mobile */}
             <div className="sm:hidden">
               {groupedPengajuan.map((group) => {
-                const isCollapsed = collapsedGroups[group.status];
-                const cfg = STATUS_BADGE[group.status];
+                const isCollapsed = isGroupCollapsed(
+                  group.key,
+                  group.items.length,
+                );
+                const cfg = GROUP_BADGE[group.key];
                 return (
                   <div
-                    key={group.status}
+                    key={group.key}
                     className="border-b border-[#e2e8f2] last:border-b-0"
                   >
                     <button
-                      onClick={() => toggleGroup(group.status)}
+                      onClick={() =>
+                        toggleGroup(group.key, group.items.length)
+                      }
                       className="flex w-full items-center gap-2.5 bg-[#f7f8fa] px-4 py-3 text-left"
                     >
                       <span
@@ -2229,6 +2250,11 @@ function LihatDaftarPengajuanAdmin({
                             onLihatDetail={() => setSelected(p)}
                           />
                         ))}
+                      </div>
+                    )}
+                    {!isCollapsed && group.items.length === 0 && (
+                      <div className="px-4 py-5 text-center text-xs text-[#b0bac5] italic">
+                        Tidak ada pengajuan pada kategori ini.
                       </div>
                     )}
                   </div>
@@ -2279,14 +2305,19 @@ function LihatDaftarPengajuanAdmin({
                   </tr>
                 </thead>
                 {groupedPengajuan.map((group) => {
-                  const isCollapsed = collapsedGroups[group.status];
-                  const cfg = STATUS_BADGE[group.status];
+                  const isCollapsed = isGroupCollapsed(
+                    group.key,
+                    group.items.length,
+                  );
+                  const cfg = GROUP_BADGE[group.key];
                   return (
-                    <tbody key={group.status}>
+                    <tbody key={group.key}>
                       <tr className="border-b border-[#e2e8f2] bg-[#f0f4fb]">
                         <td colSpan={7} className="p-0">
                           <button
-                            onClick={() => toggleGroup(group.status)}
+                            onClick={() =>
+                              toggleGroup(group.key, group.items.length)
+                            }
                             className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors hover:bg-[#e8f0fb]"
                           >
                             <span
@@ -2318,9 +2349,9 @@ function LihatDaftarPengajuanAdmin({
                           <tr>
                             <td
                               colSpan={7}
-                              className="py-6 text-center text-xs text-[#b0bac5]"
+                              className="py-6 text-center text-xs text-[#b0bac5] italic"
                             >
-                              Tidak ada pengajuan pada status ini.
+                              Tidak ada pengajuan pada kategori ini.
                             </td>
                           </tr>
                         ) : (
@@ -2375,6 +2406,8 @@ function LihatDaftarPengajuanAdmin({
                                     {tahap && (
                                       <TahapTelaahBadge tahap={tahap} />
                                     )}
+                                    {p.reviuInspektoratStatus ===
+                                      "MENUNGGU_REVIU" && <ReviuBadge />}
                                   </div>
                                 </td>
 

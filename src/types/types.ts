@@ -98,6 +98,59 @@ export interface PernyataanOPD {
   bersediaPerbaiki: boolean;
 }
 
+/* ==================== 1e. Badge config (satu sumber kebenaran) ============ */
+
+/**
+ * Konfigurasi visual badge status — satu sumber kebenaran untuk class
+ * Tailwind, label, dan dot warna. Dipakai di semua tabel/kartu/detail
+ * supaya badge tidak "drift" antar file.
+ *
+ * Aturan warna (semantik):
+ *  - Biru    → "baru masuk / menunggu tahap awal"
+ *  - Violet  → "naik jenjang internal (telaah Kabid)"
+ *  - Rose    → "naik jenjang internal (telaah Sekban)"
+ *  - Oranye  → "revisi / dikembalikan"
+ *  - Emerald → "teregistrasi (titik masuk final)"
+ *  - Teal    → "sub-proses selesai (telaah internal selesai)"
+ *  - Amber   → "menunggu aksi pihak eksternal (reviu Inspektorat)"
+ */
+export interface BadgeConfig {
+  label: string;
+  cls: string;
+  dot: string;
+}
+
+/** Badge status formulir utama (3 nilai `StatusFormulir`). */
+export const STATUS_FORMULIR_BADGE: Record<StatusFormulir, BadgeConfig> = {
+  diajukan: {
+    label: "Diajukan",
+    cls: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+    dot: "bg-[#3b82f6]",
+  },
+  revisi: {
+    label: "Revisi",
+    cls: "bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]",
+    dot: "bg-[#f97316]",
+  },
+  teregistrasi: {
+    label: "Teregistrasi",
+    cls: "bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]",
+    dot: "bg-[#10b981]",
+  },
+};
+
+/**
+ * Badge "Revisi Telaah Internal" untuk sisi OPD — tampil saat
+ * `record.revisiTelaahInternal.aktif` true. Warnanya sama dengan
+ * `TELAAH_TAHAP_BADGE.MENUNGGU_REVISI_OPD` karena substansinya memang
+ * state yang sama (dilihat dari sudut pandang berbeda).
+ */
+export const REVISI_TELAAH_BADGE: BadgeConfig = {
+  label: "Revisi Telaah Internal",
+  cls: "bg-[#fff7ed] text-[#9a3412] border-[#fdba74]",
+  dot: "bg-[#ea580c]",
+};
+
 /* ==================== 1b. Notifikasi OPD ==================== */
 
 export interface NotifikasiOPD {
